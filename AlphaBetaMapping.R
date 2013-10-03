@@ -35,6 +35,9 @@ require(MASS)
 #load workspace if needed on reset
 #load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
 
+#source in all the Alpha Mapping functions
+source("C:\\Users\\Ben\\Dropbox\\Scripts/Dimensions/AlphaMappingFunctions.R")
+
 #Bring in Phylogenetic Data
 trx<-read.nexus("C:\\Users\\Ben\\Dropbox\\Shared Ben and Catherine\\DimDivEntire\\\\Files for Analysis\\ColombiaPhylogenyUM.tre")
 spnames<-read.table(file="C:\\Users\\Ben\\Dropbox\\Shared Ben and Catherine\\DimDivEntire\\Files for Analysis\\SpNameTree.txt" , sep = "\t", header = TRUE)
@@ -75,8 +78,6 @@ agg.morph<-aggregate(morph.complete,list(morph.complete$SpID),mean)
 mon<-agg.morph[,-2]
 colnames(mon)<-c("Species","Bill","Mass","Wing Chord")
 
-#source in all the Alpha Mapping functions
-source("C:\\Users\\Ben\\Dropbox\\Scripts/Dimensions/AlphaMappingFunctions.R")
 
 ####Bring in niche models
   setwd("D:/Niche_Models/")

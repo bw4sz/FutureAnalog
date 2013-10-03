@@ -7,7 +7,7 @@
 
 #Wrap this into a function to be called from another script
 
-SDM_SP<-function(cell_size){
+SDM_SP<-function(cell_size,output_folder){
 
 #If you have already installed, let's start here.
 #Call the packages we are going to need in this tutorial
@@ -22,7 +22,7 @@ require(stringr)
 
 #set a working directory, where do we want to save files
 #save locally for now
-setwd("D:\\Niche_Models")
+setwd("output_folder")
 dir.create(paste(getwd(),cell_size,sep="/"))
 setwd(paste(getwd(),cell_size,sep="/"))
 dir.create("logs")
@@ -46,6 +46,9 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
 #We are going to use the layers that juan used for his Amnat paper. Only on laptop
 #myExpl <- c("C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio3.bil", "C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio4.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio7.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio11.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio12.bil" )
 
+##############################
+#The Paths to the climate layers must be changed. The layers are too large to hang out on dropbox and github (40gb)
+#Unzip the files to a local directory and change the paths.
 
 #myExpl <- c("D:\\worldclim_bio1-9_30s_bil\\bio_1.bil",
             #"D:\\worldclim_bio1-9_30s_bil\\bio_2.bil",
@@ -53,6 +56,7 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
             #"D:\\worldclim_bio1-9_30s_bil\\bio_12.bil",
             #"D:\\worldclim_bio1-9_30s_bil\\bio_15.bil")
 
+#Paths must be changed to local directory! unzip
 #Import environmental data from worldclim, three variables
 myExpl <- c("D:\\worldclim_bio1-9_30s_bil\\bio_1.bil",
             "D:\\worldclim_bio1-9_30s_bil\\bio_12.bil",

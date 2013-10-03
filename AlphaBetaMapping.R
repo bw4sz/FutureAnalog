@@ -1,7 +1,11 @@
 ##Alpha Mapping
 #Ben Weinstein Stony Brook University
 
-##Goals: To develop parralell computing methods to turn niche models into assemblages and perform phylogenetic and functional betadiversity metrics
+##Goals: To develop parallel computing methods to turn niche models into assemblages and perform phylogenetic and functional betadiversity metrics
+#This is the first script, and calls a source function to compute non-analog assemblages
+
+#See Stralberg, D., D. Jongsomjit, C. a Howell, M. a Snyder, J. D. Alexander, J. a Wiens, and T. L. Root. 2009. Re-shuffling of species with climate disruption: a no-analog future for California birds? PloS One 4:e6825.
+
 #October 16th 2012 - Ben Weinstein. Stony Brook University
 
 #require packages
@@ -21,8 +25,15 @@ require(parallel)
 require(ecodist)
 require(vegan)
 require(MASS)
-#load workspace if needed
-load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
+
+##
+#######################################################################################################################
+#Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
+#######################################################################################################################
+##
+
+#load workspace if needed on reset
+#load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
 
 #Bring in Phylogenetic Data
 trx<-read.nexus("C:\\Users\\Ben\\Dropbox\\Shared Ben and Catherine\\DimDivEntire\\\\Files for Analysis\\ColombiaPhylogenyUM.tre")
@@ -33,10 +44,24 @@ spnames<-read.table(file="C:\\Users\\Ben\\Dropbox\\Shared Ben and Catherine\\Dim
 trx$tip.label<-gsub("_",".",as.character(spnames$SpName))
 co<-cophenetic(trx)
 
-#Bring in functional tree
-tree.func<-read.tree("C:\\Users\\Ben\\Dropbox\\Shared Ben and Catherine\\DimDivEntire\\Files for Analysis\\func.tre")
-tree.func$tip.label<-gsub("_",".",tree.func$tip.label)
-fco<-cophenetic(tree.func)
+#Bring in morphology
+###Bring in trait data
+morph <- read.csv("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\MorphologyShort.csv",na.strings="9999")
+
+#just get males
+morph.male<-morph[morph$Sex=="Macho",c("SpID","ExpC","Peso","AlCdo")]
+morph.complete<-morph.male[complete.cases(morph.male),]
+
+#aggregate for species
+agg.morph<-aggregate(morph.complete,list(morph.complete$SpID),mean)
+mon<-agg.morph[,-2]
+colnames(mon)<-c("Species","Bill","Mass","WingChord")
+rownames(mon)<-gsub(" ",".",mon[,1])
+mon<-mon[,-1]
+
+#principal component traits and get euclidean distance matrix
+fco<-as.matrix(dist(prcomp(mon)$x))
+
 
 #bring in traits
 morph <- read.csv("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\MorphologyShort.csv",na.strings="9999")
@@ -147,7 +172,7 @@ MPDs<-lapply(siteXspps,AlphaPhylo)
 MFDs<-lapply(siteXspps,AlphaFunc.tree)
 
 ###################################################################
-#Functional Dispersion Metric Laliberté, E., and P. Legendre (2010)
+#Functional Dispersion Metric Lalibert?, E., and P. Legendre (2010)
 ##################################################################
 
 FDs<-lapply(siteXspps,AlphaFunc.FD,traits=mon)

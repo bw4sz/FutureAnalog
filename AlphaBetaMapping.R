@@ -27,6 +27,14 @@ require(vegan)
 require(MASS)
 
 ##
+#Set dropbox and github paths
+
+
+#Ben's positions:
+droppath<-"C:\\Users\\Jorge\\Dropbox\\"
+
+gitpath<-"C:/Users/Jorge/Dropbox/FutureAnalog/"
+
 #######################################################################################################################
 #Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
 #######################################################################################################################
@@ -36,11 +44,11 @@ require(MASS)
 #load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
 
 #source in all the Alpha Mapping functions
-source("C:\\Users\\Ben\\Dropbox\\Scripts/Dimensions/AlphaMappingFunctions.R")
+source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
 
 #Bring in Phylogenetic Data
-trx<-read.nexus("C:\\Users\\Ben\\Dropbox\\Shared Ben and Catherine\\DimDivEntire\\\\Files for Analysis\\ColombiaPhylogenyUM.tre")
-spnames<-read.table(file="C:\\Users\\Ben\\Dropbox\\Shared Ben and Catherine\\DimDivEntire\\Files for Analysis\\SpNameTree.txt" , sep = "\t", header = TRUE)
+trx<-read.nexus(paste(gitpath,"InputData/ColombiaPhylogenyUM.tre",sep=""))
+spnames<-read.table(paste(gitpath,"InputData/SpNameTree.txt",sep="") , sep = "\t", header = TRUE)
 
 #Replace tip.label with Spnames#
 #replace the tiplabels with periods, which is the biomod default

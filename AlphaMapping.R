@@ -273,7 +273,7 @@ names(diff.raster)<-names(siteXspps[-1])
 
 par(mfrow=c(3,2))
 plot(diff.raster[[1]],col=brewer.pal(7,"RdBu"))
-plot(diff.raster[[2]],col=brewer.pal(7,"RdBu"))
+#plot(diff.raster[[2]],col=brewer.pal(7,"RdBu"))
 
 #####################
 #Correlate rasters
@@ -290,7 +290,7 @@ return(a)
 #This needs to be inspected, does this work for multiple climate scenerios, need to test?
 #############
 #Write alpha rasters to file
-lapply(1:length(cell.Raster),function(x){
+lapply(1:length(cell.Rasters),function(x){
   writeRaster(stack(cell.Rasters[[x]]),paste(paste(gitpath,"Figures/",sep=""),names(cell.Rasters)[x],sep=""),overwrite=TRUE,bylayer=TRUE,suffix='names')
 })
 

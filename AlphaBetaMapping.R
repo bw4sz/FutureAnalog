@@ -150,7 +150,7 @@ filnam<-paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
   })
 
 #get the crop files
-niche.crops<-list.files(output_folder,pattern="TotalConsensus_EMbyROCcrop.gri",full.name=T,recursive=T)
+niche.crops<-list.files(paste(output_folder,cell_size,sep="/"),pattern="TotalConsensus_EMbyROCcrop.gri",full.name=T,recursive=T)
 
 #Get current models
 current_niche<-niche.crops[grep("current",niche.crops,value=FALSE)]
@@ -167,29 +167,15 @@ MICROC2070rcp26_niche<-niche.crops[grep("MICROC2070rcp26",niche.crops,value=FALS
 input.niche<-list(current_niche,MICROC2070rcp26_niche)
 names(input.niche)<-c("current","MICROC2070rcp26")
 
-#################################################### Start here if not cropping!
-
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
 siteXspps<-lapply(input.niche,tableFromRaster,threshold=700)
 
-#Get future models, for now its just
-MICROC2070rcp26_niche<-niche[grep("MICROC2070rcp26",niche,value=FALSE)]
-#MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
-#MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
-
-#create list of input rasters
-#input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
-#names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
-
-input.niche<-list(current_niche,MICROC2070rcp26_niche)
-names(input.niche)<-c("current","MICROC2070rcp26")
-
 ####################################################
-#Niche Models Completed
+#Niche Models Completed!
 ####################################################
 
 #################################################
-#Alpha Cell Statistics - fid the tasxonomic, phylgoenetic and trait diversity at each cell
+#Alpha Cell Statistics - find the taxonomic, phylgoenetic and trait diversity at each cell
 #################################################
 #Functions are sourced from AlphaMappingFunctions.R
 
@@ -210,51 +196,59 @@ MPDs<-lapply(siteXspps,AlphaPhylo)
 ########## Trait Alpha Tree Diversity (MFD)
 ########################################
 
-MFDs<-lapply(siteXspps,AlphaFunc.tree)
+MFDs<-lapply(siteXspps,AlphaFunc)
 
 ###################################################################
 #Functional Dispersion Metric Lalibert?, E., and P. Legendre (2010)
 ##################################################################
-
-FDs<-lapply(siteXspps,AlphaFunc.FD,traits=mon)
+#This is discontinued due to computational constraints
+#FDs<-lapply(siteXspps,AlphaFunc.FD,traits=mon)
 
 ##########################
 #Visualize Mapping Metrics
 ##########################
-par(mfrow=c(2,3))
+#set to the number of climate scenerios.
+par(mfrow=c(2,2))
 
 cellVisuals<-function(inp.name){
 
-  #Test with richness
+#Taxonomic richness
 richness<-cellVis(cells=rownames(siteXspps[names(siteXspps) %in% inp.name][[1]]),value=apply(siteXspps[names(siteXspps) %in% inp.name][[1]],1,sum))
 
-#Phylogenetic
+#Phylogenetic richness
 
 MPD.vis<-cellVis(cells=MPDs[names(MPDs) %in% inp.name][[1]]$Cell,value=MPDs[names(MPDs) %in% inp.name][[1]]$MPD)
 
 #Func Tree
 MFD.vis<-cellVis(MFDs[names(MFDs) %in% inp.name][[1]]$Cell,MFDs[names(MFDs) %in% inp.name][[1]]$MFD)
-return(list(richness,MPD.vis,MFD.vis))}
+
+out<-list(richness,MPD.vis,MFD.vis)
+names(out)<-c("Richness","Phylogenetic","Trait")
+return(out)}
 
 cell.Rasters<-lapply(names(siteXspps),cellVisuals)
+names(cell.Rasters)<-names(siteXspps)
+##FD Functional Divergence, discontiuned, proceed at own risk. 
 
-##FD Functional Divergence
+##############
 #apply visualization to all columns
-FD_metrics<-lapply(FDs,function(x){
-  apply(x,2,cellVis,cells=rownames(x))
-})
+#FD_metrics<-lapply(FDs,function(x){
+ # apply(x,2,cellVis,cells=rownames(x))
+#})
   
-  
+#Normalize the metrics
+#FD.norm<-FD.stack/cellStats(FD.stack,"max")
+
+#plot(FD.norm)
 #create a stack of metrics
 
-for ( x in 1:length(cell.Rasters)){
-  cell.Rasters[[x]][[4]]<-stack(FD_metrics[[x]][-c(1,2,4,8)])
-}
+#for ( x in 1:length(cell.Rasters)){
+ # cell.Rasters[[x]][[4]]<-stack(FD_metrics[[x]][-c(1,2,4,8)])
+#}
 
-#Normalize the metrics
-FD.norm<-FD.stack/cellStats(FD.stack,"max")
+##############
+  
 
-plot(FD.norm)
 
 ################################################
 #Calculate differences among climate projections
@@ -263,13 +257,16 @@ plot(FD.norm)
 #
 current<-cell.Rasters[[1]]
 
+plot(stack(current))
+
+#Compute Differences
+
 diff.raster<-lapply(2:length(cell.Rasters),function(x){
-  out<-list(current[[1]]-cell.Rasters[[x]][[1]],
+  out<-stack(current[[1]]-cell.Rasters[[x]][[1]],
             current[[2]]-cell.Rasters[[x]][[2]],
-            current[[3]]-cell.Rasters[[x]][[3]],
-current[[4]]-cell.Rasters[[x]][[4]])
+            current[[3]]-cell.Rasters[[x]][[3]])
   names(out)<-c("Richness","Phylo","Func")
-  return(stack(out))}
+  return(out)}
   )
 
 names(diff.raster)<-names(siteXspps[-1])
@@ -287,7 +284,19 @@ a<-qplot(data=within.cor,x=X1,y=X2,fill=value,geom="tile") + xlab("") + ylab("")
 return(a)
 })
 
-#Write difference raster to file
-writeRaster(diff.raster[[2]],bylayer=TRUE,"C:\\Users\\Ben\\Dropbox\\Shared Ben and Catherine\\FutureAnalog\\Alpha\\AlphaChange.tif",overwrite=TRUE,suffix=names(diff.raster[[2]]))
+#Write difference in alpha out to file.
 
-save.image("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
+#############
+#This needs to be inspected, does this work for multiple climate scenerios, need to test?
+#############
+#Write alpha rasters to file
+lapply(1:length(cell.Raster),function(x){
+  writeRaster(stack(cell.Rasters[[x]]),paste(paste(gitpath,"Figures/",sep=""),names(cell.Rasters)[x],sep=""),overwrite=TRUE,bylayer=TRUE,suffix='names')
+})
+
+#Write difference raster to file
+lapply(1:length(diff.raster),function(x){
+  writeRaster(diff.raster[[x]],bylayer=TRUE,paste(gitpath,"Figures/AlphaChange.tif",sep=""),overwrite=TRUE,suffix=names(diff.raster[[x]]))
+})
+
+save.image(paste(droppath,"NASA_Anusha\\AlphaMapping.rData",sep=""))

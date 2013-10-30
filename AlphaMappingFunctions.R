@@ -13,7 +13,8 @@ tableFromRaster<-function(fil_list,threshold){
   }
   
   #use a regular expression  to extract names
-  species<-str_match(fil_list,pattern="Models/(\\w+.\\w+)")[,2]
+  species<-str_match(fil_list,pattern=paste(cell_size,"(\\w+.\\w+)/proj_",sep="/"))[,2]
+  
   
   #Name the rows and columns. 
   colnames(trial)<-species
@@ -59,13 +60,11 @@ AlphaPhylo<-function(siteXspp.raster){
   colnames(MPDcell)<-c("Cell","MPD")
   return(MPDcell)}
 
-AlphaFunc.tree<-function(siteXspp.raster){
-  
-  ftrx<-prune.sample(siteXspp.raster,tree.func)
-  fco<-cophenetic(ftrx)
+AlphaFunc<-function(siteXspp.raster){
   
   #Only keep communities with species with functional information and richness > 1
-  siteXspp.raster.Func<-siteXspp.raster[,colnames(fco)]
+  siteXspp.raster.Func<-siteXspp.raster[,colnames(siteXspp.raster) %in% colnames(fco)]
+  
   rowS.Func<-apply(siteXspp.raster.Func,1,sum)
   siteXspp.Func<-siteXspp.raster.Func[rowS.Func > 1,]
   

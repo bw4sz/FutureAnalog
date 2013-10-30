@@ -30,9 +30,9 @@ require(MASS)
 #Set dropbox and github paths
 
 #Ben's positions:
-droppath<-"C:\\Users\\Jorge\\Dropbox\\"
+droppath<-"C:\\Users\\Ben\\Dropbox\\"
 
-gitpath<-"C:/Users/Jorge/Dropbox/FutureAnalog/"
+gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
 
 #######################################################################################################################
 #Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
@@ -103,10 +103,9 @@ source(paste(gitpath,"SDM.r",sep=""))
 ####################################
 #Perform Niche Models
 ####################################
-
 #Define outside so they can be used below.
-cell_size=1
-output_folder="C:/Users/Jorge/Desktop/Testmod"
+cell_size=.75
+output_folder="C:/Users/Ben/Desktop/Testmod"
 SDM_SP(cell_size,output_folder)
 
 ##############################
@@ -114,7 +113,6 @@ SDM_SP(cell_size,output_folder)
 ##############################
 
 ####Bring in niche models, from the output directory specified above.
-
 #get all the niche model data
 niche<-list.files(output_folder,pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
 
@@ -163,9 +161,12 @@ MICROC2070rcp26_niche<-niche.crops[grep("MICROC2070rcp26",niche.crops,value=FALS
 #MICROC2070rcp45_niche<-niche.crops[grep("MICROC2070rcp45",niche.crops,value=FALSE)]
 
 #create list of input rasters
-input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+#input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+#names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
-names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
+input.niche<-list(current_niche,MICROC2070rcp26_niche)
+names(input.niche)<-c("current","MICROC2070rcp26")
+
 #################################################### Start here if not cropping!
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 

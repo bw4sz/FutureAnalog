@@ -4,7 +4,7 @@ tableFromRaster<-function(fil_list,threshold){
   trial<-foreach(mod=1:length(fil_list),.combine=cbind) %do% {
     
     #read in the niche models from file
-    niche.m<-lapply(fil_list[mod],function(x) raster(x))
+    niche.m<-lapply(fil_list[[mod]],function(x) raster(x))
     
     niche_ens<-niche.m[[1]][[1]]
     

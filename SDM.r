@@ -22,19 +22,22 @@ require(stringr)
 
 #set a working directory, where do we want to save files
 #save locally for now
-dir.create("output_folder")
-setwd("output_folder")
+dir.create(output_folder)
+setwd(output_folder)
 
 dir.create(paste(getwd(),cell_size,sep="/"))
 setwd(paste(getwd(),cell_size,sep="/"))
 
 dir.create("logs")
 
+print("Directory Created")
 #To perform the biomod, you must have three pieces of data
 #1) Presence Absence Matrix
 #2) Input localities in a 2 column matrix
 #3) Environmental Variables - unclear whether this should be masked or not
 
+#################################
+##Step 1 Bring in Presence Data
 #################################
 
 #1) presence absence data matrix for the desired species
@@ -50,6 +53,9 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
 #myExpl <- c("C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio3.bil", "C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio4.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio7.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio11.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio12.bil" )
 
 ##############################
+#Step 2, Bring in Climate Data
+##############################
+
 #The Paths to the climate layers must be changed. The layers are too large to hang out on dropbox and github (40gb)
 #Unzip the files to a local directory and change the paths.
 
@@ -74,8 +80,6 @@ res(myExpl)
 
 #Set Cell size
 ####################################
-#set layer sie
-
 fact<-cell_size/res(myExpl)
 ####################################
 
@@ -83,7 +87,7 @@ fact<-cell_size/res(myExpl)
 myExpl<-aggregate(myExpl,fact)
 
 ##############################################
-#Climate Scenerios and Futute Climate
+#Step 3: Climate Scenerios and Futute Climate
 ##############################################
 
 #Bring in future climate layers (need to uncomment here when ready, anusha, and subsequent lines)
@@ -92,8 +96,10 @@ MICROC_2070_rcp26<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp26\\biova
 #MICROC_2070_rcp85<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
 #MICROC_2070_rcp45<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
 
-
+#Step 4 Set the Extent
+#######################################################
 exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))
+#######################################################
 
 #Cut by the extent
 
@@ -109,7 +115,7 @@ names(MICROC_2070_rcp26.c)<-names(myExpl)
 
 #create a list of all env to project into
 #projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rcp85.c)
-projEnv<-list(myExpl.crop)
+projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c)
 
 #If you are using all climate scenerios
 #names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85")
@@ -166,7 +172,7 @@ paste("Species to be modeled",spec,sep=": ")
 
 cl<-makeCluster(4,"SOCK")
 registerDoSNOW(cl)
-system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.verbose=T,.errorhandling="pass") %dopar% {
+system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
   sink(paste("logs/",paste(spec[[x]],".txt",sep=""),sep=""))
   
   #remove sites that have no valid records
@@ -371,9 +377,10 @@ mvar<-melt(varI)
 colnames(mvar)<-c("Bioclim","Species","Model","value")
 
 #Plot variable importance across all models
-ggplot(mvar, aes(x=Species,y=Bioclim,fill=value)) + geom_tile() + scale_fill_gradient(limits=c(0,1),low="blue",high="red",na.value="white") + opts(axis.text.x=theme_text(angle=-90)) + facet_grid(Model ~ .)
+ggplot(mvar, aes(x=Species,y=Bioclim,fill=value)) + geom_tile() + scale_fill_gradient(limits=c(0,1),low="blue",high="red",na.value="white") + theme(axis.text.x=element_text(angle=-90)) + facet_grid(Model ~ .)
 
 ggsave("VariableImportance.jpeg")
 }
 
 print("SDM Function Defined")
+setwd(gitpath)

@@ -16,3 +16,11 @@ Redistributions of source code must retain the above copyright notice, this list
 Contact information Sarah Supp's email: sarah@weecology.org and sarah.supp@stonybrook.edu
 
 
+Readme
+=================================
+
+_AlphaMapping.R_ : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics
+calls _SDM.R_ which performs the ensemble niche models using biomod
+-The input localities are in the Inputdata folder, but the env layers need to help locally, there are > 30GB
+
+_FutureAnalog.R_ computes betametrics between current and future assemblages, needs to be done carefully, consider how parallelization works on your operating system. 

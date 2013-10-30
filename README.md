@@ -16,3 +16,23 @@ Redistributions of source code must retain the above copyright notice, this list
 Contact information Sarah Supp's email: sarah@weecology.org and sarah.supp@stonybrook.edu
 
 
+Contents
+=================================
+
+_Inputdata_ folder contains hummingbird localities for Ecuador and Colombia, the shapefile for the country perimeter of Ecuador
+morphology, and phylogeny. 
+
+Alpha-Diversity
+---------------
+_AlphaMapping.R_ : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics
+calls _AlphaMappingFunctions.R_ to calculate grid based metrics of alpha diversity on grid cells
+_SDM.R_ which performs the ensemble niche models using biomod
+-The input localities are in the Inputdata folder, but the env layers need to help locally, there are > 30GB
+
+Beta-Diversity
+------------
+_FutureAnalog.R_ computes betametrics between current and future assemblages, needs to be done carefully, consider how parallelization works on your operating system. 
+
+Figures
+--------------
+Output results and figures are stored in the folder, with the exception of the large data and .Rdata files which are help on dropbox (please contact authors)

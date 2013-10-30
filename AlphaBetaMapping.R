@@ -62,7 +62,6 @@ mon<-mon[,-1]
 #principal component traits and get euclidean distance matrix
 fco<-as.matrix(dist(prcomp(mon)$x))
 
-
 #bring in traits
 morph <- read.csv("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\MorphologyShort.csv",na.strings="9999")
 

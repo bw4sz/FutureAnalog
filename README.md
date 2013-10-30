@@ -16,7 +16,7 @@ Redistributions of source code must retain the above copyright notice, this list
 Contact information Sarah Supp's email: sarah@weecology.org and sarah.supp@stonybrook.edu
 
 
-Readme
+Contents
 =================================
 
 _Inputdata_ folder contains hummingbird localities for Ecuador and Colombia, the shapefile for the country perimeter of Ecuador

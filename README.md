@@ -20,7 +20,8 @@ Readme
 =================================
 
 _Inputdata_ folder contains hummingbird localities for Ecuador and Colombia, the shapefile for the country perimeter of Ecuador
-and 
+morphology, and phylogeny. 
+
 Alpha-Diversity
 ---------------
 _AlphaMapping.R_ : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics

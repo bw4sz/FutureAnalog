@@ -22,9 +22,12 @@ require(stringr)
 
 #set a working directory, where do we want to save files
 #save locally for now
+dir.create("output_folder")
 setwd("output_folder")
+
 dir.create(paste(getwd(),cell_size,sep="/"))
 setwd(paste(getwd(),cell_size,sep="/"))
+
 dir.create("logs")
 
 #To perform the biomod, you must have three pieces of data
@@ -38,7 +41,7 @@ dir.create("logs")
 #For the graham lab, or users of the dropbox, just change the user below to your name, or the whatever the dropbox path is:"
 
 #Lets go get the presence data on hummingbird distributions
-PA<-read.csv("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\MASTER_POINTLOCALITYarcmap_review.csv")
+PA<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep=""))
 #Just take the columns you want. 
 PAdat<-PA[,colnames (PA) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
 
@@ -49,12 +52,6 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
 ##############################
 #The Paths to the climate layers must be changed. The layers are too large to hang out on dropbox and github (40gb)
 #Unzip the files to a local directory and change the paths.
-
-#myExpl <- c("D:\\worldclim_bio1-9_30s_bil\\bio_1.bil",
-            #"D:\\worldclim_bio1-9_30s_bil\\bio_2.bil",
-            ##"D:\\worldclim_bio1-9_30s_bil\\bio_4.bil",
-            #"D:\\worldclim_bio1-9_30s_bil\\bio_12.bil",
-            #"D:\\worldclim_bio1-9_30s_bil\\bio_15.bil")
 
 #Paths must be changed to local directory! unzip
 #Import environmental data from worldclim, three variables
@@ -85,9 +82,13 @@ fact<-cell_size/res(myExpl)
 #Set cell size to ~ .1 degree
 myExpl<-aggregate(myExpl,fact)
 
+##############################################
+#Climate Scenerios and Futute Climate
+##############################################
+
 #Bring in future climate layers (need to uncomment here when ready, anusha, and subsequent lines)
 #Start with one layer
-#MICROC_2070_rcp26<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp26<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
 #MICROC_2070_rcp85<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
 #MICROC_2070_rcp45<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
 
@@ -98,11 +99,11 @@ exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))
 
 #Crop by this layer, 
 myExpl.crop<-stack(crop(myExpl,exte))
-#MICROC_2070_rcp26.c<-stack(crop(MICROC_2070_rcp26,exte))
+MICROC_2070_rcp26.c<-stack(crop(MICROC_2070_rcp26,exte))
 #MICROC_2070_rcp85.c<-stack(crop(MICROC_2070_rcp85,exte))
 #MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp85,exte))
 
-#names(MICROC_2070_rcp26.c)<-names(myExpl)
+names(MICROC_2070_rcp26.c)<-names(myExpl)
 #names(MICROC_2070_rcp85.c)<-names(myExpl)
 #names(MICROC_2070_rcp45.c)<-names(myExpl)
 
@@ -110,8 +111,17 @@ myExpl.crop<-stack(crop(myExpl,exte))
 #projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rcp85.c)
 projEnv<-list(myExpl.crop)
 
+#If you are using all climate scenerios
 #names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85")
-names(projEnv)<-c("current")
+
+#Current and one future scenerio
+names(projEnv)<-c("current","MICROC2070rcp26")
+
+#Only current
+#names(projEnv)<-c("current")
+
+
+print(paste("Climate Scenerios:",names(projEnv)))
 
 #######################
 #Which species to run
@@ -154,9 +164,9 @@ if(!length(projEnv)==1){spec<-spec[!apply(modelXspp,2,sum)==length(projEnv)]}
 
 paste("Species to be modeled",spec,sep=": ")
 
-cl<-makeCluster(8,"SOCK")
+cl<-makeCluster(4,"SOCK")
 registerDoSNOW(cl)
-system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"),.verbose=T,.errorhandling="pass") %dopar% {
+system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.verbose=T,.errorhandling="pass") %dopar% {
   sink(paste("logs/",paste(spec[[x]],".txt",sep=""),sep=""))
   
   #remove sites that have no valid records
@@ -181,7 +191,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   #########################The above gets you presence only records
   #To get presence/psuedoabscence  
   #Get the presence absence matrix
-    loc_matrix<-table(loc_clean$LOCALITY,loc_clean$SPECIES)
+  loc_matrix<-table(loc_clean$LOCALITY,loc_clean$SPECIES)
  
   #Select the species you'd like
   sp_matrix<-as.data.frame(melt(loc_matrix[,spec[x]]))

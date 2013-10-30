@@ -8,7 +8,7 @@
 
 #October 16th 2012 - Ben Weinstein. Stony Brook University
 
-#require packages
+#require packages for alpha analysis
 require(RColorBrewer)
 require(biomod2)
 require(maptools)
@@ -26,9 +26,8 @@ require(ecodist)
 require(vegan)
 require(MASS)
 
-##
-#Set dropbox and github paths
 
+#Set dropbox and github paths
 
 #Ben's positions:
 droppath<-"C:\\Users\\Jorge\\Dropbox\\"
@@ -57,7 +56,7 @@ co<-cophenetic(trx)
 
 #Bring in morphology
 ###Bring in trait data
-morph <- read.csv("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\MorphologyShort.csv",na.strings="9999")
+morph <- read.csv(paste(gitpath,"InputData/MorphologyShort.csv",sep=""),na.strings="9999")
 
 #just get males
 morph.male<-morph[morph$Sex=="Macho",c("SpID","ExpC","Peso","AlCdo")]
@@ -73,50 +72,78 @@ mon<-mon[,-1]
 #principal component traits and get euclidean distance matrix
 fco<-as.matrix(dist(prcomp(mon)$x))
 
-#bring in traits
-morph <- read.csv("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\MorphologyShort.csv",na.strings="9999")
+##################################################
+#Niche models for each species need to be run
+#Beware Biomod Outputs are HUGE, i'd suggest starting with a couple species and saving locally
+#########################################################################################
 
-#just get males
-morph.male<-morph[morph$Sex=="Macho",c("SpID","ExpC","Peso","AlCdo")]
-morph.complete<-morph.male[complete.cases(morph.male),]
+#source SDM function
+source(paste(gitpath,"SDM.r",sep=""))
 
-#aggregate for species
-agg.morph<-aggregate(morph.complete,list(morph.complete$SpID),mean)
-mon<-agg.morph[,-2]
-colnames(mon)<-c("Species","Bill","Mass","Wing Chord")
+#Function computes ensemble niche models with default methods (Models=GLM,GBM,MAXENT) and paramters (background draws, keep ROC > .75)
+#The SDM function could be tweaked to take in any set of parameters, but given the enormous number of options, start simple. 
+#current arguements cell size (in degrees, ie 1 degree = 112km^2 at the equator) and output directory (If it doesn't exist, script will create it)
 
+########################################################
+#Before you run the function, go through this checklist
+########################################################
+#1.Set the Extent (Line 95)
+#The extent was the bounding box we used for another paper and could be set a variable, or changed internally if you like
 
-####Bring in niche models
-  setwd("D:/Niche_Models/")
+#2. Run for how many species
+#i'd suggest just running on a few species at first, go to line 159 (x=1:length(spec)) and change length(spec) to the total number of species desired, rather than all species
+
+#3 Set the climate scenerios (line 58 for current, 91 for future)
+
+#There really isn't an elegant way of coding which climate scenerios you want, so please pay close attention to lines 
+#The climate scenerios are very large, and are need to held locally
+
+#In general the script is meant as a helpful wrapper, but attention needs to be paid to alot of the manual details in the setup of BIOMOD, there are simply too many options and dependencies for me to take a all encompassing function
+
+####################################
+#Perform Niche Models
+####################################
+
+#Define outside so they can be used below.
+cell_size=1
+output_folder="C:/Users/Jorge/Desktop/Testmod"
+SDM_SP(cell_size,output_folder)
 
 ##############################
-#Bring in Model Data
+#Bring in Completed Model Data
 ##############################
+
+####Bring in niche models, from the output directory specified above.
 
 #get all the niche model data
-niche<-list.files(getwd(),pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
+niche<-list.files(output_folder,pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
 
 #split into current and future
 #Get current models
 current_niche<-niche[grep("current",niche,value=FALSE)]
 
-#Get future models, for now its just
+#Get future models, for now its just, check the SDM.R script
 MICROC2070rcp26_niche<-niche[grep("MICROC2070rcp26",niche,value=FALSE)]
-MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
-MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
+#MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
+#MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
 
 #create list of input rasters
-input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+#input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
 
-names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
+input.niche<-list(current_niche,MICROC2070rcp26_niche)
+#names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
+names(input.niche)<-c("current","MICROC2070rcp26")
 
 
-##############################
-#Optional Clip by extent, skip to line 101
-##############################
-ec<-readShapePoly("C:/Users/Ben/Dropbox/Shared Ben and Catherine/FutureAnalog/EcuadorCut.shp")
+###############################################
+#Clip to Extent and shape of desired countries (Ecuador for now)
+###############################################
+
+ec<-readShapePoly(paste(gitpath,"Inputdata/EcuadorCut.shp",sep=""))
 r<-raster(extent(ec))
-res(r)<-.1
+
+#Match cell size above from the SDM_SP function
+res(r)<-cell_size
 plot(ec.r<-rasterize(ec,r))
 niche.crop<-lapply(niche,function(x){
   r<-crop(raster(x),extent(ec.r))
@@ -125,15 +152,15 @@ filnam<-paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
   })
 
 #get the crop files
-niche.crops<-list.files(getwd(),pattern="TotalConsensus_EMbyROCcrop.gri",full.name=T,recursive=T)
+niche.crops<-list.files(output_folder,pattern="TotalConsensus_EMbyROCcrop.gri",full.name=T,recursive=T)
 
 #Get current models
 current_niche<-niche.crops[grep("current",niche.crops,value=FALSE)]
 
 #Get future models, for now its just
 MICROC2070rcp26_niche<-niche.crops[grep("MICROC2070rcp26",niche.crops,value=FALSE)]
-MICROC2070rcp85_niche<-niche.crops[grep("MICROC2070rcp85",niche.crops,value=FALSE)]
-MICROC2070rcp45_niche<-niche.crops[grep("MICROC2070rcp45",niche.crops,value=FALSE)]
+#MICROC2070rcp85_niche<-niche.crops[grep("MICROC2070rcp85",niche.crops,value=FALSE)]
+#MICROC2070rcp45_niche<-niche.crops[grep("MICROC2070rcp45",niche.crops,value=FALSE)]
 
 #create list of input rasters
 input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
@@ -141,19 +168,24 @@ input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICR
 names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 #################################################### Start here if not cropping!
 
-#Create siteXspp table from input rasters
+#Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
 siteXspps<-lapply(input.niche,tableFromRaster,threshold=700)
 
 #Get future models, for now its just
 MICROC2070rcp26_niche<-niche[grep("MICROC2070rcp26",niche,value=FALSE)]
-MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
-MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
+#MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
+#MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
 
 #create list of input rasters
-input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+#input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+#names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
-names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
+input.niche<-list(current_niche,MICROC2070rcp26_niche)
+names(input.niche)<-c("current","MICROC2070rcp26")
 
+####################################################
+#Niche Models Completed
+####################################################
 
 #################################################
 #Alpha Cell Statistics - fid the tasxonomic, phylgoenetic and trait diversity at each cell

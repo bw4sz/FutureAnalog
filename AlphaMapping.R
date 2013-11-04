@@ -108,7 +108,7 @@ source(paste(gitpath,"SDM.r",sep=""))
 #3 Set the climate scenerios (line 58 for current, 91 for future)
 
 #There really isn't an elegant way of coding which climate scenerios you want, so please pay close attention to lines 
-#The climate scenerios are very large, and are need to held locally
+#The climate scenerios are very large, and need to be held locally
 
 #In general the script is meant as a helpful wrapper, but attention needs to be paid to alot of the manual details in the setup of BIOMOD, there are simply too many options and dependencies for me to take a all encompassing function
 
@@ -117,7 +117,8 @@ source(paste(gitpath,"SDM.r",sep=""))
 ####################################
 #Define outside so they can be used below.
 cell_size=.75
-output_folder="C:/Users/Ben/Desktop/Testmod"
+#output_folder="C:/Users/Ben/Desktop/Testmod"
+output_folder = "C:/Users/Anusha/Desktop/Testmod"
 SDM_SP(cell_size,output_folder)
 
 ##############################

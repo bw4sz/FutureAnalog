@@ -28,12 +28,14 @@ require(MASS)
 
 
 #Set dropbox and github paths
+# Ben's
+# droppath<-"C:\\Users\\Ben\\Dropbox\\"
+# gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
 
-#Ben's positions:
-droppath<-"C:\\Users\\Ben\\Dropbox\\"
-
-gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
-
+# Anusha's paths
+droppath <- "C:\\Users/Anusha/Documents/Dropbox/Hummingbirds/Lab paper 1 Predicted vs observed assemblages/"
+gitpath <- "C:\\Users/Anusha/Documents/GitHub/FutureAnalog/"
+setwd(droppath)
 #######################################################################################################################
 #Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
 #######################################################################################################################

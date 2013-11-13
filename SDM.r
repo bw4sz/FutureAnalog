@@ -48,7 +48,10 @@ PA<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep
 PAdat<-PA[,colnames (PA) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
 
 PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
-#We are going to use the layers that juan used for his Amnat paper (2010). Only on laptop
+#We are going to use layers that Juan used for his Amnat paper (Parra, McGuire, and Graham 2010). 
+  # citation: Parra, J.L., J.A. McGuire, and C.H. Graham. 2010. Incorporating Clade Identity in 
+  #           Analyses of Phylogenetic Community Structure: An Example with Hummingbirds.The American 
+  #           Naturalist 176: 573-587.
 
 ##############################
 #Step 2, Bring in Climate Data

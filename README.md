@@ -50,8 +50,7 @@ held on dropbox (please contact authors)
 
 Requirements
 ---------------
-R version 2.XX or greater
-_Packages:_
+R version 2.XX or greater and _Packages:_
 * analogue 
 * ape
 * biomod2

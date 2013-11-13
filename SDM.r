@@ -41,7 +41,7 @@ print("Directory Created")
 #################################
 
 #1) presence absence data matrix for the desired species
-#For the graham lab, or users of the dropbox, just change the user below to your name, or the whatever the dropbox path is:"
+#For the graham lab, or users of the dropbox, just change the user (gitpath) below to your name, or the whatever the dropbox path is:"
 
 #Lets go get the presence data on hummingbird distributions
 PA<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep=""))
@@ -127,7 +127,7 @@ names(projEnv)<-c("current","MICROC2070rcp26")
 #names(projEnv)<-c("current")
 
 
-print(paste("Climate Scenerios:",names(projEnv)))
+print(paste("Climate Scenarios:",names(projEnv)))
 
 #######################
 #Which species to run
@@ -227,6 +227,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   )
   
   plot(myBiomodData)
+    
   #Define modeling options
   myBiomodOption <- BIOMOD_ModelingOptions(    
     MAXENT = list( path_to_maxent.jar = "D:/Niche_Models/maxent.jar",
@@ -310,7 +311,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   #Project SDM into env projections
   #All the gcm and current worldclim layer (first) are put together in a list
   #Loop through this list, only run if it has not been run before
-  #name it corrently
+  #name it correctly
 bio_project<-function(GCM,nam){
   paste("Running Env", nam)
   if(!gsub(" ",".",spec[x]) %in% completed_models[[nam]]){

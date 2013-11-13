@@ -60,7 +60,7 @@ co<-cophenetic(trx)
 ###Bring in trait data
 morph <- read.csv(paste(gitpath,"InputData/MorphologyShort.csv",sep=""),na.strings="9999")
 
-#just get males
+#just get males & the 3 traits of interest
 morph.male<-morph[morph$Sex=="Macho",c("SpID","ExpC","Peso","AlCdo")]
 morph.complete<-morph.male[complete.cases(morph.male),]
 
@@ -105,7 +105,7 @@ source(paste(gitpath,"SDM.r",sep=""))
 #2. Run for how many species
 #i'd suggest just running on a few species at first, go to line 159 (x=1:length(spec)) and change length(spec) to the total number of species desired, rather than all species
 
-#3 Set the climate scenerios (line 58 for current, 91 for future)
+#3 Set the climate scenarios (line 58 for current, 91 for future)
 
 #There really isn't an elegant way of coding which climate scenerios you want, so please pay close attention to lines 
 #The climate scenerios are very large, and need to be held locally
@@ -115,7 +115,7 @@ source(paste(gitpath,"SDM.r",sep=""))
 ####################################
 #Perform Niche Models
 ####################################
-#Define outside so they can be used below.
+#Define these variables outside the function so they can be used below.
 cell_size=.75
 #output_folder="C:/Users/Ben/Desktop/Testmod"
 output_folder = "C:/Users/Anusha/Desktop/Testmod"

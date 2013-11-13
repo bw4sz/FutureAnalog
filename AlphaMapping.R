@@ -53,6 +53,7 @@ spnames<-read.table(paste(gitpath,"InputData/SpNameTree.txt",sep="") , sep = "\t
 
 #Replace tip.label with Spnames#
 #replace the tiplabels with periods, which is the biomod default
+# Cophenetic distance is the distance between all pairs of species- measure of relatedness
 trx$tip.label<-gsub("_",".",as.character(spnames$SpName))
 co<-cophenetic(trx)
 
@@ -116,6 +117,7 @@ source(paste(gitpath,"SDM.r",sep=""))
 #Perform Niche Models
 ####################################
 #Define these variables outside the function so they can be used below.
+# Cell size is in degrees. 1 degree = 112km
 cell_size=.75
 #output_folder="C:/Users/Ben/Desktop/Testmod"
 output_folder = "C:/Users/Anusha/Desktop/Testmod"

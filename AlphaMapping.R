@@ -40,7 +40,7 @@ gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
 ##
 
 #load workspace if needed on reset
-#load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
+load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
 
 #source in all the Alpha Mapping functions
 source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
@@ -80,7 +80,6 @@ z.scores <- data.frame(Bill, Mass, WingChord)
 rownames(z.scores) <- rownames(mon)
 
 fco <- as.matrix(dist(z.scores, method = "euclidean"))
-
 
 ##################################################
 #Niche models for each species need to be run

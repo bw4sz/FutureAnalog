@@ -68,7 +68,6 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
 
 
 #Import environmental data from worldclim, three variables
-## TO DO ###########################
 myExpl <- c(paste(envrwd, "bio_1.bil", sep=""), 
             paste(envrwd, "bio_12.bil", sep=""),
             paste(envrwd, "bio_15.bil", sep=""))
@@ -101,7 +100,6 @@ myExpl<-aggregate(myExpl,fact)
 #Bring in future climate layers (need to uncomment here when ready, anusha, and subsequent lines)
 # Modelname_year_emmissionscenario
 #Start with one layer
-##### TO DO ##################
 MICROC_2070_rcp26<-stack(paste(climwd, "MICROCrcp26\\biovars.grd", sep=""))[[c(1,12,15)]]
 #MICROC_2070_rcp85<-stack(paste(climwd, "MICROCrcp85\\biovars.grd", sep=""))[[c(1,12,15)]]
 #MICROC_2070_rcp45<-stack(paste(climwd, "MICROCrcp45\\biovars.grd",sep=""))[[c(1,12,15)]]

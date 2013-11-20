@@ -71,7 +71,7 @@ myExpl<-stack(myExpl)
 
 
 #Just get the clean localities
-loc_clean<-PAdat[PAdat$SpatialCheck=="Y" & !PAdat$MapDecision %in% levels(PAdat$MapDecision)[!levels(PAdat$MapDecision) %in% "REJECT"],]
+loc_clean<-PAdat[PAdat$SpatialCheck=="Y" & PAdat$MapDecision %in% levels(PAdat$MapDecision)[!levels(PAdat$MapDecision) %in% "REJECT"],]
 
 extPoint<-SpatialPoints(loc_clean[,c("LONGDECDEG","LATDECDEG")])
 #exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))

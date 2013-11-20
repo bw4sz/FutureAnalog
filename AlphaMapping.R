@@ -28,12 +28,14 @@ require(MASS)
 
 
 #Set dropbox and github paths
+# Ben's
+# droppath<-"C:\\Users\\Ben\\Dropbox\\"
+# gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
 
-#Ben's positions:
-droppath<-"C:\\Users\\Ben\\Dropbox\\"
-
-gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
-
+# Anusha's paths
+droppath <- "C:\\Users/Anusha/Documents/Dropbox/Hummingbirds/Lab paper 1 Predicted vs observed assemblages/"
+gitpath <- "C:\\Users/Anusha/Documents/GitHub/FutureAnalog/"
+setwd(droppath)
 #######################################################################################################################
 #Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
 #######################################################################################################################
@@ -51,6 +53,7 @@ spnames<-read.table(paste(gitpath,"InputData/SpNameTree.txt",sep="") , sep = "\t
 
 #Replace tip.label with Spnames#
 #replace the tiplabels with periods, which is the biomod default
+# Cophenetic distance is the distance between all pairs of species- measure of relatedness
 trx$tip.label<-gsub("_",".",as.character(spnames$SpName))
 co<-cophenetic(trx)
 
@@ -58,7 +61,7 @@ co<-cophenetic(trx)
 ###Bring in trait data
 morph <- read.csv(paste(gitpath,"InputData/MorphologyShort.csv",sep=""),na.strings="9999")
 
-#just get males
+#just get males & the 3 traits of interest
 morph.male<-morph[morph$Sex=="Macho",c("SpID","ExpC","Peso","AlCdo")]
 morph.complete<-morph.male[complete.cases(morph.male),]
 
@@ -102,19 +105,21 @@ source(paste(gitpath,"SDM.r",sep=""))
 #2. Run for how many species
 #i'd suggest just running on a few species at first, go to line 159 (x=1:length(spec)) and change length(spec) to the total number of species desired, rather than all species
 
-#3 Set the climate scenerios (line 58 for current, 91 for future)
+#3 Set the climate scenarios (line 58 for current, 91 for future)
 
 #There really isn't an elegant way of coding which climate scenerios you want, so please pay close attention to lines 
-#The climate scenerios are very large, and are need to held locally
+#The climate scenerios are very large, and need to be held locally
 
 #In general the script is meant as a helpful wrapper, but attention needs to be paid to alot of the manual details in the setup of BIOMOD, there are simply too many options and dependencies for me to take a all encompassing function
 
 ####################################
 #Perform Niche Models
 ####################################
-#Define outside so they can be used below.
+#Define these variables outside the function so they can be used below.
+# Cell size is in degrees. 1 degree = 112km
 cell_size=.75
-output_folder="C:/Users/Ben/Desktop/Testmod"
+#output_folder="C:/Users/Ben/Desktop/Testmod"
+output_folder = "C:/Users/Anusha/Desktop/Testmod"
 SDM_SP(cell_size,output_folder)
 
 ##############################

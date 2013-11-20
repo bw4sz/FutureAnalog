@@ -41,7 +41,6 @@ print("Directory Created")
 #################################
 
 #1) presence absence data matrix for the desired species
-#For the graham lab, or users of the dropbox, just change the user below to your name, or the whatever the dropbox path is:"
 
 #Lets go get the presence data on hummingbird distributions
 PA<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep=""))
@@ -49,8 +48,10 @@ PA<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep
 PAdat<-PA[,colnames (PA) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
 
 PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
-#We are going to use the layers that juan used for his Amnat paper. Only on laptop
-#myExpl <- c("C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio3.bil", "C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio4.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio7.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio11.bil","C:\\Users\\Ben\\Documents\\GIS\\bio_5m_bil/bio12.bil" )
+#We are going to use layers that Juan used for his Amnat paper (Parra, McGuire, and Graham 2010). 
+  # citation: Parra, J.L., J.A. McGuire, and C.H. Graham. 2010. Incorporating Clade Identity in 
+  #           Analyses of Phylogenetic Community Structure: An Example with Hummingbirds.The American 
+  #           Naturalist 176: 573-587.
 
 ##############################
 #Step 2, Bring in Climate Data
@@ -61,6 +62,7 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
 
 #Paths must be changed to local directory! unzip
 #Import environmental data from worldclim, three variables
+## TO DO ###########################
 myExpl <- c("D:\\worldclim_bio1-9_30s_bil\\bio_1.bil",
             "D:\\worldclim_bio1-9_30s_bil\\bio_12.bil",
             "D:\\worldclim_bio1-9_30s_bil\\bio_15.bil")
@@ -80,10 +82,10 @@ res(myExpl)
 
 #Set Cell size
 ####################################
-fact<-cell_size/res(myExpl)
+fact<-cell_size/res(myExpl) # aggregate() needs it in this format
 ####################################
 
-#Set cell size to ~ .1 degree
+#Set cell size to ~ cell_size degree
 myExpl<-aggregate(myExpl,fact)
 
 ##############################################
@@ -91,12 +93,15 @@ myExpl<-aggregate(myExpl,fact)
 ##############################################
 
 #Bring in future climate layers (need to uncomment here when ready, anusha, and subsequent lines)
+# Modelname_year_emmissionscenario
 #Start with one layer
+##### TO DO ##################
 MICROC_2070_rcp26<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
 #MICROC_2070_rcp85<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
 #MICROC_2070_rcp45<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
 
-#Step 4 Set the Extent
+#Step 4 Set the Extent to project *into*. Presence points are still taken from everywhere
+#Avoid projecting into areas where sample size is really low
 #######################################################
 exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))
 #######################################################
@@ -127,7 +132,7 @@ names(projEnv)<-c("current","MICROC2070rcp26")
 #names(projEnv)<-c("current")
 
 
-print(paste("Climate Scenerios:",names(projEnv)))
+print(paste("Climate Scenarios:",names(projEnv)))
 
 #######################
 #Which species to run
@@ -227,6 +232,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   )
   
   plot(myBiomodData)
+    
   #Define modeling options
   myBiomodOption <- BIOMOD_ModelingOptions(    
     MAXENT = list( path_to_maxent.jar = "D:/Niche_Models/maxent.jar",
@@ -310,7 +316,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   #Project SDM into env projections
   #All the gcm and current worldclim layer (first) are put together in a list
   #Loop through this list, only run if it has not been run before
-  #name it corrently
+  #name it correctly
 bio_project<-function(GCM,nam){
   paste("Running Env", nam)
   if(!gsub(" ",".",spec[x]) %in% completed_models[[nam]]){

@@ -25,6 +25,12 @@ require(stringr)
 dir.create(output_folder)
 setwd(output_folder)
 
+#set path to where data (environment, climate) layers are located
+#Paths must be changed to local directory! unzip
+envrwd("D:\\worldclim_bio1-9_30s_bil\\")
+climwd("D:\\Future GCM Layers\\MICROC 2070\\")
+jarwd("D:/Niche_Models/maxent.jar")
+
 dir.create(paste(getwd(),cell_size,sep="/"))
 setwd(paste(getwd(),cell_size,sep="/"))
 
@@ -60,12 +66,12 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
 #The Paths to the climate layers must be changed. The layers are too large to hang out on dropbox and github (40gb)
 #Unzip the files to a local directory and change the paths.
 
-#Paths must be changed to local directory! unzip
+
 #Import environmental data from worldclim, three variables
 ## TO DO ###########################
-myExpl <- c("D:\\worldclim_bio1-9_30s_bil\\bio_1.bil",
-            "D:\\worldclim_bio1-9_30s_bil\\bio_12.bil",
-            "D:\\worldclim_bio1-9_30s_bil\\bio_15.bil")
+myExpl <- c(paste(envrwd, "bio_1.bil", sep=""), 
+            paste(envrwd, "bio_12.bil", sep=""),
+            paste(envrwd, "bio_15.bil", sep=""))
 
 myExpl<-stack(myExpl)
 
@@ -96,9 +102,9 @@ myExpl<-aggregate(myExpl,fact)
 # Modelname_year_emmissionscenario
 #Start with one layer
 ##### TO DO ##################
-MICROC_2070_rcp26<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
-#MICROC_2070_rcp85<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
-#MICROC_2070_rcp45<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp26<-stack(paste(climwd, "MICROCrcp26\\biovars.grd", sep=""))[[c(1,12,15)]]
+#MICROC_2070_rcp85<-stack(paste(climwd, "MICROCrcp85\\biovars.grd", sep=""))[[c(1,12,15)]]
+#MICROC_2070_rcp45<-stack(paste(climwd, "MICROCrcp45\\biovars.grd",sep=""))[[c(1,12,15)]]
 
 #Step 4 Set the Extent to project *into*. Presence points are still taken from everywhere
 #Avoid projecting into areas where sample size is really low
@@ -235,7 +241,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
     
   #Define modeling options
   myBiomodOption <- BIOMOD_ModelingOptions(    
-    MAXENT = list( path_to_maxent.jar = "D:/Niche_Models/maxent.jar",
+    MAXENT = list( path_to_maxent.jar = jarwd,
                    maximumiterations = 200,
                    visible = TRUE,
                    linear = TRUE,

@@ -178,7 +178,7 @@ if(!length(projEnv)==1){spec<-spec[!apply(modelXspp,2,sum)==length(projEnv)]}
 
 
 paste("Species to be modeled",spec,sep=": ")
-
+## Parallelization code
 cl<-makeCluster(4,"SOCK")
 registerDoSNOW(cl)
 system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
@@ -197,6 +197,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   spname<-levels(factor((PA_species$SPECIES)))
   
   #get unique localities
+  ## TO DO- consider spatial thinning
   pts<-aggregate(PA_species,list(PA_species$LOCALITY),FUN=mean)
   
   #The format required is x,y,presence columns as their "response"
@@ -209,6 +210,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   loc_matrix<-table(loc_clean$LOCALITY,loc_clean$SPECIES)
  
   #Select the species you'd like
+  #spec is the name of the species list
   sp_matrix<-as.data.frame(melt(loc_matrix[,spec[x]]))
   unique.loc<-unique(loc_clean[,c("LOCALITY","LONGDECDEG","LATDECDEG")])
   p_a<-merge(sp_matrix,unique.loc,by.x="row.names",by.y="LOCALITY")
@@ -217,18 +219,19 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   #name the columns
   colnames(p_a)<-c("Locality","Response","LONGDECDEG","LATDECDEG")
   
+  # This is making the data binary; making the data Biomod-friendly
   p_a[p_a$Response > 1,"Response"]<-1
   p_a<-p_a[!p_a$Locality=="",]
-  p_a<-aggregate(p_a,list(p_a$Locality),FUN=mean)
+  p_a<-aggregate(p_a,list(p_a$Locality),FUN=mean) # What is this for?
   
   #the 0 are not true absences, they are NA's psuedoabsences
   #p_a[p_a$Response == 0,"Response"]<-NA
   
-  #Always get the right number of psuedo absences, there are 2115 sites
+  #Always get the right number of psuedo absences
+  #There are *length(all/other species' points)* sites. This script takes only other species
   number_pSA<-nrow(p_a) - length(pts)
   
-  #Format the data
-  
+  #Format the data. Tell it what the response variable is.
   myBiomodData <- BIOMOD_FormatingData(resp.var = p_a[,"Response"],
                                        expl.var = stack(myExpl),
                                        resp.xy = p_a[,c("LONGDECDEG","LATDECDEG")],
@@ -237,7 +240,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   
   plot(myBiomodData)
     
-  #Define modeling options
+  #Define modeling options. Right now on defaults.
   myBiomodOption <- BIOMOD_ModelingOptions(    
     MAXENT = list( path_to_maxent.jar = jarwd,
                    maximumiterations = 200,
@@ -257,7 +260,7 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
                    defaultprevalence = 0.5)
   )
    
-  #Give current project a name, so we can go get the files later
+  #Give project a name based on scenario, so we can go get the files later
   projnam<-'current'
   myBiomodModelOut<-BIOMOD_Modeling( myBiomodData, 
                                      models = c("GLM","GBM","MAXENT"), 
@@ -271,12 +274,11 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   
   # get all models evaluation                                     
   myBiomodModelEval <- getModelsEvaluations(myBiomodModelOut)
-  
-  
+    
   # print the dimnames of this object
   dimnames(myBiomodModelEval)
   
-  # let's print the ROC and TSS scores of all selected models, get the mean value for all the combined runs.
+  # let's print the ROC scores of all selected models, get the mean value for all the combined runs.
   stat<-myBiomodModelEval["ROC","Testing.data",,"Full",]
   
   #need to write this to file
@@ -292,10 +294,6 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   write.csv(cbind(c.var,spec[x]),filename)
   
   #Ensemble model outputs
-  
-  # get evaluation scores??, as is see it i want the data for the full runs of the ensemble mean value
-  #ens_stat<-melt(getEMeval(myBiomodEM))
-  #ens_stat[ens_stat$x3=="em.mean",]
   
   # projection over the globe under current conditions  
   #The clamping issue is a big one here!

@@ -27,7 +27,8 @@ tableFromRaster<-function(fil_list,threshold){
   siteXspp<-trial[!is.na(sum.row),]
   siteXspp.raster<-siteXspp[apply(siteXspp,1,sum,na.rm=TRUE)>0,]
   #return the raster for each siteXspp
-  return(siteXspp.raster)}
+  return(siteXspp.raster)
+}
 
 #write a function that chunks vectors into pieces
 chunk<-function(dat,max){
@@ -58,8 +59,10 @@ AlphaPhylo<-function(siteXspp.raster){
   #Add in cell names and write to file
   MPDcell<-data.frame(rownames(siteXspp.Phylo),a)
   colnames(MPDcell)<-c("Cell","MPD")
-  return(MPDcell)}
+  return(MPDcell)
+}
 
+# Needs to be changed with new understanding of traits (no dendrograms!)
 AlphaFunc<-function(siteXspp.raster){
   
   #Only keep communities with species with functional information and richness > 1
@@ -81,7 +84,7 @@ AlphaFunc<-function(siteXspp.raster){
 #Start with the three trait data, means we need more than 2 species 
 
 #Create FD compute function
-
+# Delete
 AlphaFunc.FD<-function(siteXspp.raster,traits){
     
   #Need more species than traits

@@ -331,7 +331,7 @@ bio_project<-function(GCM,nam){
     compress = 'xz',
     clamping.mask = T)
   
-  #Ensemble projection
+  #Ensemble projection (model gets made here)
   EnsBas<-BIOMOD_EnsembleForecasting(projection.output = myBiomodProjection, EM.output = myBiomodEM)
   }}
   
@@ -365,16 +365,19 @@ ggsave("ModelEvaluations.jpeg")
 
 ggplot(model_eval, aes(x=Species,y=Model,fill=Stat)) + geom_tile() + scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + opts(axis.text.x=theme_text(angle=-90))
 
-model_thresh<-sapply(seq(.5,.95,.05),function(x){
-  table(model_eval$Stat > x,model_eval$Model)["TRUE",]
-})
+## Remove? Could be used to threshold habitat suitabiity models. 
+# Continuous metric of suitabiity, thresholding ROC score(?)
+#model_thresh<-sapply(seq(.5,.95,.05),function(x){
+#  table(model_eval$Stat > x,model_eval$Model)["TRUE",]
+#})
 
-colnames(model_thresh)<-seq(.5,.95,.05)
-model_thresh<-melt(model_thresh)
+#colnames(model_thresh)<-seq(.5,.95,.05)
+#model_thresh<-melt(model_thresh)
 
-names(model_thresh)<-c("Model","ROC_Threshold","Number_of_Species")
-ggplot(model_thresh,aes(x=ROC_Threshold,y=Number_of_Species,col=Model)) + geom_line() + geom_point() + geom_text(aes(label=Number_of_Species),vjust=4,size=5)
-ggsave("ModelThresholding.jpeg",dpi=300,height=8,width=8)
+#names(model_thresh)<-c("Model","ROC_Threshold","Number_of_Species")
+#ggplot(model_thresh,aes(x=ROC_Threshold,y=Number_of_Species,col=Model)) + geom_line() + geom_point() + geom_text(aes(label=Number_of_Species),vjust=4,size=5)
+#ggsave("ModelThresholding.jpeg",dpi=300,height=8,width=8)
+
 #Get the variable importance from file
 varI<-list.files(full.name=TRUE,recursive=T,pattern="VarImportance.csv")
 varI<-rbind.fill(lapply(varI,read.csv))

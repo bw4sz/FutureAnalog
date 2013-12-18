@@ -128,13 +128,14 @@ SDM_SP(cell_size,output_folder)
 
 ####Bring in niche models, from the output directory specified above.
 #get all the niche model data
+## TO DO------------ package update changed naming structure ("TotalConsensus.gri"?)
 niche<-list.files(output_folder,pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
 
 #split into current and future
 #Get current models
 current_niche<-niche[grep("current",niche,value=FALSE)]
 
-#Get future models, for now its just, check the SDM.R script
+#Get future models, for now its just one, check the SDM.R script
 MICROC2070rcp26_niche<-niche[grep("MICROC2070rcp26",niche,value=FALSE)]
 #MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
 #MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
@@ -189,7 +190,7 @@ siteXspps<-lapply(input.niche,tableFromRaster,threshold=700)
 ####################################################
 
 #################################################
-#Alpha Cell Statistics - find the taxonomic, phylgoenetic and trait diversity at each cell
+#Alpha Cell Statistics - find the taxonomic, phylogenetic and trait diversity at each cell
 #################################################
 #Functions are sourced from AlphaMappingFunctions.R
 
@@ -212,12 +213,6 @@ MPDs<-lapply(siteXspps,AlphaPhylo)
 
 MFDs<-lapply(siteXspps,AlphaFunc)
 
-###################################################################
-#Functional Dispersion Metric Lalibert?, E., and P. Legendre (2010)
-##################################################################
-#This is discontinued due to computational constraints
-#FDs<-lapply(siteXspps,AlphaFunc.FD,traits=mon)
-
 ##########################
 #Visualize Mapping Metrics
 ##########################
@@ -226,49 +221,29 @@ par(mfrow=c(2,2))
 
 cellVisuals<-function(inp.name){
 
-#Taxonomic richness
-richness<-cellVis(cells=rownames(siteXspps[names(siteXspps) %in% inp.name][[1]]),value=apply(siteXspps[names(siteXspps) %in% inp.name][[1]],1,sum))
+  #Taxonomic richness
+  richness<-cellVis(cells=rownames(siteXspps[names(siteXspps) %in% inp.name][[1]]),value=apply(siteXspps[names(siteXspps) %in% inp.name][[1]],1,sum))
 
-#Phylogenetic richness
+  #Phylogenetic richness
 
-MPD.vis<-cellVis(cells=MPDs[names(MPDs) %in% inp.name][[1]]$Cell,value=MPDs[names(MPDs) %in% inp.name][[1]]$MPD)
+  MPD.vis<-cellVis(cells=MPDs[names(MPDs) %in% inp.name][[1]]$Cell,value=MPDs[names(MPDs) %in% inp.name][[1]]$MPD)
 
-#Func Tree
-MFD.vis<-cellVis(MFDs[names(MFDs) %in% inp.name][[1]]$Cell,MFDs[names(MFDs) %in% inp.name][[1]]$MFD)
+  #Func Tree
+  MFD.vis<-cellVis(MFDs[names(MFDs) %in% inp.name][[1]]$Cell,MFDs[names(MFDs) %in% inp.name][[1]]$MFD)
 
-out<-list(richness,MPD.vis,MFD.vis)
-names(out)<-c("Richness","Phylogenetic","Trait")
-return(out)}
+  out<-list(richness,MPD.vis,MFD.vis)
+  names(out)<-c("Richness","Phylogenetic","Trait")
+  return(out)
+}
 
 cell.Rasters<-lapply(names(siteXspps),cellVisuals)
 names(cell.Rasters)<-names(siteXspps)
-##FD Functional Divergence, discontiuned, proceed at own risk. 
-
-##############
-#apply visualization to all columns
-#FD_metrics<-lapply(FDs,function(x){
- # apply(x,2,cellVis,cells=rownames(x))
-#})
-  
-#Normalize the metrics
-#FD.norm<-FD.stack/cellStats(FD.stack,"max")
-
-#plot(FD.norm)
-#create a stack of metrics
-
-#for ( x in 1:length(cell.Rasters)){
- # cell.Rasters[[x]][[4]]<-stack(FD_metrics[[x]][-c(1,2,4,8)])
-#}
-
-##############
-  
-
 
 ################################################
 #Calculate differences among climate projections
 ################################################
 
-#
+## Assumes that it calls the first current in the list. Might want to change [[1]] to current
 current<-cell.Rasters[[1]]
 
 plot(stack(current))
@@ -280,8 +255,8 @@ diff.raster<-lapply(2:length(cell.Rasters),function(x){
             current[[2]]-cell.Rasters[[x]][[2]],
             current[[3]]-cell.Rasters[[x]][[3]])
   names(out)<-c("Richness","Phylo","Func")
-  return(out)}
-  )
+  return(out)
+})
 
 names(diff.raster)<-names(siteXspps[-1])
 
@@ -292,10 +267,10 @@ plot(diff.raster[[1]],col=brewer.pal(7,"RdBu"))
 #####################
 #Correlate rasters
 al<-lapply(1:length(diff.raster),function(x){
-within.cor<-cor(values(diff.raster[[x]]),use="complete.obs")
-within.cor<-melt(within.cor)
-a<-qplot(data=within.cor,x=X1,y=X2,fill=value,geom="tile") + xlab("") + ylab("")+ scale_fill_continuous(low="blue",high="red") + geom_text(aes(label=round(value,2)))
-return(a)
+  within.cor<-cor(values(diff.raster[[x]]),use="complete.obs")
+  within.cor<-melt(within.cor)
+  a<-qplot(data=within.cor,x=X1,y=X2,fill=value,geom="tile") + xlab("") + ylab("")+ scale_fill_continuous(low="blue",high="red") + geom_text(aes(label=round(value,2)))
+  return(a)
 })
 
 #Write difference in alpha out to file.

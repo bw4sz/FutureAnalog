@@ -175,9 +175,9 @@ if(!length(projEnv)==1){spec<-spec[!apply(modelXspp,2,sum)==length(projEnv)]}
 
 paste("Species to be modeled",spec,sep=": ")
 
-cl<-makeCluster(4,"SOCK")
+cl<-makeCluster(8,"SOCK")
 registerDoSNOW(cl)
-system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
+system.time(niche_loop<-foreach(x=1:20,.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
   sink(paste("logs/",paste(spec[[x]],".txt",sep=""),sep=""))
   
   #remove sites that have no valid records
@@ -218,13 +218,23 @@ system.time(niche_loop<-foreach(x=1:5,.packages=c("reshape","biomod2"),.errorhan
   p_a<-aggregate(p_a,list(p_a$Locality),FUN=mean)
   
   #the 0 are not true absences, they are NA's psuedoabsences
-  #p_a[p_a$Response == 0,"Response"]<-NA
+  p_a[p_a$Response == 0,"Response"]<-NA
   
-  #Always get the right number of psuedo absences, there are 2115 sites
-  number_pSA<-nrow(p_a) - length(pts)
+  #we want 2000 psuedoabsences, randomly pick 2000 NA rows. 
+  if(length(which(is.na(p_a$Response))) < 2000){
+    psuedos<-which(is.na(p_a$Response))
+  }
+  
+  if(length(which(is.na(p_a$Response))) > 2000){
+    psuedos<-sample(which(is.na(p_a$Response)),2000)
+  }
+  
+  pres_pts<-which(!is.na(p_a$Response))
   
   #Format the data
+  p_a<-p_a[c(pres_pts,psuedos),]
   
+  #Format the data
   myBiomodData <- BIOMOD_FormatingData(resp.var = p_a[,"Response"],
                                        expl.var = stack(myExpl),
                                        resp.xy = p_a[,c("LONGDECDEG","LATDECDEG")],

@@ -19,7 +19,6 @@ require(rgdal)
 require(doSNOW)
 require(ape)
 require(stringr)
-require(FD)
 require(picante)
 require(parallel)
 require(ecodist)
@@ -29,12 +28,12 @@ require(MASS)
 
 #Set dropbox and github paths
 # Ben's
-# droppath<-"C:\\Users\\Ben\\Dropbox\\"
-# gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
+ droppath<-"C:\\Users\\Ben\\Dropbox\\"
+ gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
 
 # Anusha's paths
-droppath <- "C:\\Users/Anusha/Documents/Dropbox/Hummingbirds/Lab paper 1 Predicted vs observed assemblages/"
-gitpath <- "C:\\Users/Anusha/Documents/GitHub/FutureAnalog/"
+#droppath <- "C:\\Users/Anusha/Documents/Dropbox/Hummingbirds/Lab paper 1 Predicted vs observed assemblages/"
+#gitpath <- "C:\\Users/Anusha/Documents/GitHub/FutureAnalog/"
 setwd(droppath)
 #######################################################################################################################
 #Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
@@ -42,7 +41,7 @@ setwd(droppath)
 ##
 
 #load workspace if needed on reset
-load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
+#load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
 
 #source in all the Alpha Mapping functions
 source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
@@ -118,8 +117,8 @@ source(paste(gitpath,"SDM.r",sep=""))
 #Define these variables outside the function so they can be used below.
 # Cell size is in degrees. 1 degree = 112km
 cell_size=.75
-#output_folder="C:/Users/Ben/Desktop/Testmod"
-output_folder = "C:/Users/Anusha/Desktop/Testmod"
+output_folder="C:/Users/Ben/Desktop/Testmod"
+#output_folder = "C:/Users/Anusha/Desktop/Testmod"
 SDM_SP(cell_size,output_folder)
 
 ##############################
@@ -128,7 +127,7 @@ SDM_SP(cell_size,output_folder)
 
 ####Bring in niche models, from the output directory specified above.
 #get all the niche model data
-niche<-list.files(output_folder,pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
+niche<-list.files(paste(output_folder,cell_size,sep="/"),pattern="ensemble.gri",full.name=T,recursive=T)
 
 #split into current and future
 #Get current models
@@ -159,12 +158,12 @@ res(r)<-cell_size
 plot(ec.r<-rasterize(ec,r))
 niche.crop<-lapply(niche,function(x){
   r<-crop(raster(x),extent(ec.r))
-filnam<-paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
+  filnam<-paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
   writeRaster(r,filnam,overwrite=TRUE)
-  })
+})
 
 #get the crop files
-niche.crops<-list.files(paste(output_folder,cell_size,sep="/"),pattern="TotalConsensus_EMbyROCcrop.gri",full.name=T,recursive=T)
+niche.crops<-list.files(paste(output_folder,cell_size,sep="/"),pattern="crop.gri",full.name=T,recursive=T)
 
 #Get current models
 current_niche<-niche.crops[grep("current",niche.crops,value=FALSE)]
@@ -182,7 +181,7 @@ input.niche<-list(current_niche,MICROC2070rcp26_niche)
 names(input.niche)<-c("current","MICROC2070rcp26")
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
-siteXspps<-lapply(input.niche,tableFromRaster,threshold=700)
+siteXspps<-lapply(input.niche,tableFromRaster,threshold=.05)
 
 ####################################################
 #Niche Models Completed!
@@ -298,6 +297,7 @@ a<-qplot(data=within.cor,x=X1,y=X2,fill=value,geom="tile") + xlab("") + ylab("")
 return(a)
 })
 
+al
 #Write difference in alpha out to file.
 
 #############

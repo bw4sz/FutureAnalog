@@ -8,14 +8,37 @@ tableFromRaster<-function(fil_list,threshold){
     
     niche_ens<-niche.m[[1]][[1]]
     
-    #set a threshold for presence/absence
-    A_list<-values(niche_ens>=threshold)*1
-  }
+    #get species name
+    sp.n<-strsplit(names(niche_ens),"_")[[1]][1]
+    
+    #Lets go get the presence data on hummingbird distributions
+    Niche_locals<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep=""))
+
+    #Just take the columns you want. 
+    PAdat<-Niche_locals[,colnames (Niche_locals) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
+    
+    PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
+    loc_clean<-PAdat[PAdat$Decision=="OK"|PAdat$MapDecision=="OK"|PAdat$MapDecision=="",]
+    loc_clean<-PAdat[PAdat$SpatialCheck=="Y",]
+    
+    sp.loc<-loc_clean[loc_clean$SPECIES %in%  gsub("\\."," ",sp.n),]
+    sp.loc<-SpatialPointsDataFrame(sp.loc[,c("LONGDECDEG","LATDECDEG")],sp.loc)
+    
+    #draw suitability for occurence points
+    site_suit<-extract(niche_ens,sp.loc)
+    suit_cut<-quantile(na.omit(site_suit),threshold)
+    
+    #plot to file
+    print(qplot(site_suit) + geom_vline(aes(xintercept=suit_cut),linetype="dashed",col="Red"))
+    
+    paste("suitability threshold:",suit_cut,"")
+    #Predicted Presence absence Column
+    A_list<-values(niche_ens > suit_cut)*1
+    }
   
   #use a regular expression  to extract names
   species<-str_match(fil_list,pattern=paste(cell_size,"(\\w+.\\w+)/proj_",sep="/"))[,2]
-  
-  
+    
   #Name the rows and columns. 
   colnames(trial)<-species
   rownames(trial)<- as.factor(1:nrow(trial))

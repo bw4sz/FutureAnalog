@@ -8,22 +8,30 @@ require(cluster)
 require(RColorBrewer)
 require(raster)
 require(ggplot2)
+require(phylobase)
+
+droppath<-"C:\\Users\\Ben\\Dropbox\\"
+gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
+
+
+#Load in source functions
+source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
+
+setwd(paste(droppath,"NASA_Anusha\\FutureAnalog",sep=""))
 
 #Load in data
-load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
-#Load in source functions
-source("C:\\Users\\Ben\\Dropbox\\Scripts/Dimensions/AlphaMappingFunctions.R")
+load("AlphaMapping.RData")
 
-setwd("C:/Users/Ben/Dropbox/Shared Ben and Catherine/FutureAnalog")
-#current<-siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),10000),]
-#future<-siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),10000),]
+#If testing the script grab a much smaller chunk?
+current<-siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),500),]
+future<-siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),500),]
 
 #Maybe just grab the middle layer to visualize?
 #current<-siteXspps[[1]][6000:12500,]
 #future<-siteXspps[[3]][6000:12500,]
 
-current<-siteXspps[[1]]
-future<-siteXspps[[3]]
+#current<-siteXspps[[1]]
+#future<-siteXspps[[3]]
 
 #Find within betadiversity
 within.current.dist<-vegdist(current,"bray")
@@ -38,24 +46,64 @@ phylo.future<-future[,colnames(future) %in% trx$tip.label]
 phylo.future<-phylo.future[!apply(phylo.future,1,sum)<=2,]
 
 #Find within Func betadiversity
-Func.current<-current[,colnames(current) %in% tree.func$tip.label]
+Func.current<-current[,colnames(current) %in% colnames(fco)]
 Func.current<-Func.current[!apply(Func.current,1,sum)<=2,]
 
-Func.future<-future[,colnames(future) %in% tree.func$tip.label]
+Func.future<-future[,colnames(future) %in% colnames(fco)]
 Func.future<-Func.future[!apply(Func.future,1,sum)<=2,]
 
 #Within current phylobetadiversity
-system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=7))
+system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=2))
 
 #Within current func betadiversity
-system.time(holt.func<-matpsim(phyl=tree.func,com=Func.current,clust=7))
+#system.time(holt.func<-matpsim(phyl=tree.func,com=Func.current,clust=7))
+
+####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script
+
+source(paste(gitpath,"BenHolttraitDiversity.R",sep=""))
+#source("BenHolttraitDiversity.R")
+
+#create sp.list
+sp.list<-lapply(rownames(Func.current),function(k){
+  x<-Func.current[k,]
+  names(x[which(x==1)])
+})
+
+names(sp.list)<-rownames(Func.current)
+
+dists <- as.matrix(fco)
+
+rownames(dists) <- rownames(fco)
+colnames(dists) <- rownames(fco)
+
+sgtraitMNTD <- sapply(rownames(Func.current),function(i){
+  
+  #Iterator count
+  #print(round(which(rownames(siteXspp_traits)==i)/nrow(siteXspp_traits),3))
+  
+  #set iterator
+  A<-i
+  
+  #
+  out<-lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
+  names(out)<-rownames(Func.current)[1:(which(rownames(Func.current) == i))]
+  return(out)
+})
+
+names(sgtraitMNTD) <- rownames(Func_current)
+melt.MNTD<-melt(sgtraitMNTD)
+
+colnames(melt.MNTD)<-c("MNTD","To","From")
+
 
 #turn into a matrix
 within.current.phylo<-as.matrix(holt.try)
 
+#needs to cast into a matrix to fit old formatting?
+#############needs to be done#######################
 #turn into a matrix
-within.current.func<-as.matrix(holt.func)
-
+#within.current.func<-as.matrix(holt.func)
+#cast()
 
 ##################################
 #Quantile Delination Approach
@@ -96,7 +144,44 @@ beta.time<-analogue::distance(current,future,"bray")
 beta.time.phylo<-as.matrix(matpsim.pairwise(phyl=trx,com.x=phylo.current,com.y=phylo.future,clust=8))
 
 #For Func diversity
-beta.time.func<-as.matrix(matpsim.pairwise(phyl=tree.func,com.x=Func.current,com.y=Func.future,clust=8))
+#beta.time.func<-as.matrix(matpsim.pairwise(phyl=tree.func,com.x=Func.current,com.y=Func.future,clust=8))
+
+#Repeat steps above for within time trait, but replacing Func.current with Func.future
+
+#create sp.list
+sp.list<-lapply(rownames(Func.future),function(k){
+  x<-Func.future[k,]
+  names(x[which(x==1)])
+})
+
+names(sp.list)<-rownames(Func.future)
+
+dists <- as.matrix(fco)
+
+rownames(dists) <- rownames(fco)
+colnames(dists) <- rownames(fco)
+
+sgtraitMNTD <- sapply(rownames(Func.future),function(i){
+  
+  #Iterator count
+  #print(round(which(rownames(siteXspp_traits)==i)/nrow(siteXspp_traits),3))
+  
+  #set iterator
+  A<-i
+  
+  #
+  out<-lapply(rownames(Func.future)[1:(which(rownames(Func.future) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
+  names(out)<-rownames(Func.future)[1:(which(rownames(Func.future) == i))]
+  return(out)
+})
+
+names(sgtraitMNTD) <- rownames(Func_current)
+melt.MNTD<-melt(sgtraitMNTD)
+
+colnames(melt.MNTD)<-c("MNTD","To","From")
+
+#needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
+beta.time.func
 
 #############################################
 ###################ANALOG ANALYSIS

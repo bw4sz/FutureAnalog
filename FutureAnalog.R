@@ -1,6 +1,7 @@
 require(vegan)
 require(picante)
 require(reshape)
+require(reshape2)
 require(analogue)
 require(doSNOW)
 require(ape)
@@ -12,7 +13,6 @@ require(phylobase)
 
 droppath<-"C:\\Users\\Ben\\Dropbox\\"
 gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
-
 
 #Load in source functions
 source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
@@ -53,7 +53,7 @@ Func.future<-future[,colnames(future) %in% colnames(fco)]
 Func.future<-Func.future[!apply(Func.future,1,sum)<=2,]
 
 #Within current phylobetadiversity
-system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=2))
+system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))
 
 #Within current func betadiversity
 #system.time(holt.func<-matpsim(phyl=tree.func,com=Func.current,clust=7))
@@ -90,20 +90,22 @@ sgtraitMNTD <- sapply(rownames(Func.current),function(i){
   return(out)
 })
 
-names(sgtraitMNTD) <- rownames(Func_current)
+names(sgtraitMNTD) <- rownames(Func.current)
 melt.MNTD<-melt(sgtraitMNTD)
 
 colnames(melt.MNTD)<-c("MNTD","To","From")
 
-
-#turn into a matrix
+#turn beta measures into a matrices
 within.current.phylo<-as.matrix(holt.try)
 
 #needs to cast into a matrix to fit old formatting?
 #############needs to be done#######################
 #turn into a matrix
+within.current.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
+rownames(within.current.func)<-within.current.func[,1]
+within.current.func<-within.current.func[,-1]
+
 #within.current.func<-as.matrix(holt.func)
-#cast()
 
 ##################################
 #Quantile Delination Approach
@@ -143,11 +145,7 @@ beta.time<-analogue::distance(current,future,"bray")
 #Between time phylobetadiversity
 beta.time.phylo<-as.matrix(matpsim.pairwise(phyl=trx,com.x=phylo.current,com.y=phylo.future,clust=8))
 
-#For Func diversity
-#beta.time.func<-as.matrix(matpsim.pairwise(phyl=tree.func,com.x=Func.current,com.y=Func.future,clust=8))
-
 #Repeat steps above for within time trait, but replacing Func.current with Func.future
-
 #create sp.list
 sp.list<-lapply(rownames(Func.future),function(k){
   x<-Func.future[k,]
@@ -175,13 +173,17 @@ sgtraitMNTD <- sapply(rownames(Func.future),function(i){
   return(out)
 })
 
-names(sgtraitMNTD) <- rownames(Func_current)
+names(sgtraitMNTD) <- rownames(Func.future)
 melt.MNTD<-melt(sgtraitMNTD)
 
 colnames(melt.MNTD)<-c("MNTD","To","From")
 
 #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
 beta.time.func
+
+beta.time.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
+rownames(beta.time.func)<-beta.time.func[,1]
+beta.time.func<-beta.time.func[,-1]
 
 #############################################
 ###################ANALOG ANALYSIS

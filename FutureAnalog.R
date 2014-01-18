@@ -23,8 +23,8 @@ setwd(paste(droppath,"NASA_Anusha\\FutureAnalog",sep=""))
 load("AlphaMapping.RData")
 
 #If testing the script grab a much smaller chunk?
-current<-siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),500),]
-future<-siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),500),]
+current<-siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),1000),]
+future<-siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),1000),]
 
 #Maybe just grab the middle layer to visualize?
 #current<-siteXspps[[1]][6000:12500,]
@@ -179,8 +179,6 @@ melt.MNTD<-melt(sgtraitMNTD)
 colnames(melt.MNTD)<-c("MNTD","To","From")
 
 #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
-beta.time.func
-
 beta.time.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
 rownames(beta.time.func)<-beta.time.func[,1]
 beta.time.func<-beta.time.func[,-1]
@@ -339,7 +337,7 @@ plot(noAnalogPhylo<-fanalog.phylo < threshold)
 #functional Analogs
 ####################
 n.analogs.func<-sapply(colnames(beta.time.func), function(x){
-  sum(beta.time.func[,colnames(beta.time.func) %in% x] <= arb.thresh)
+  sum(beta.time.func[,colnames(beta.time.func) %in% x] <= arb.thresh,na.rm=TRUE)
 })
 
 future.analog.func<-data.frame(rownames(Func.future),n.analogs.func)
@@ -363,20 +361,24 @@ comp<-list.files(pattern=".tif",full.names=T)
 all.raster<-stack(comp)
 plot(all.raster)
 
-
 ########################
 #Split into clusters, current and future
 ########################
-plot(clusters<-all.raster[[c("TaxonomicClusters","PhylogenticClusters","FunctionalClusters")]],col=rainbow(5))
+
+#####################################
+#naming of clusters is wrong here??
+###################################
+#plot(clusters<-all.raster[[c("TaxonomicClusters","PhylogenticClusters","FunctionalClusters")]],col=rainbow(5))
 plot(current.ras<-all.raster[[c("NumberofCurrentAnalogs_Taxo","NumberofCurrentAnalogs_Phylo","NumberofCurrentAnalogs_Func")]])
+plot(future.ras<-all.raster[[c("NumberofFutureAnalogs_Taxon_ARB","NumberofFutureAnalogs_Phylo_ARB","NumberofFutureAnalogs_Func_ARB")]])
 
 ###########################
 #Correlation among outputs, this currently onlymake sense for the betadiv, the clusters are non-ordinal
 ###########################
 
-cluster.cor<-cor(values(clusters),use="complete.obs")
+#cluster.cor<-cor(values(clusters),use="complete.obs")
 current.cor<-cor(values(current.ras),use="complete.obs")
-future.cor<-cor(values(future),use="complete.obs")
+future.cor<-cor(values(future.ras),use="complete.obs")
 
 #make it a spare matrix
 cluster.cor[upper.tri(cluster.cor)]<-NA
@@ -418,7 +420,7 @@ save.image("FutureAnalog.rData")
 qplot(beta.time[1010,]) + theme_bw() + xlab("Community1010") + geom_vline(xintercept=quantile(beta.time[1010,],.2),col="red",linetype="dashed")
 
 #######################
-#Test number of analogs as a function of the threshold
+#Test number of analogs as a function of the threshold?, needs to be reviewed
 ########################
 
 cl<-makeCluster(3,"SOCK")

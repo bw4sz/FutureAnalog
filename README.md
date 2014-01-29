@@ -1,7 +1,7 @@
 Hummingbird Taxonomic, Phylogenetic and Trait Analogs under Climate Change
 ============
 
-Authors: Ben Weinstein, Sarah R. Supp, Anusha Shankar
+Authors: Ben Weinstein, Sarah R. Supp, Anusha Shankar, Marisa Lim
 
 Code for computing non-analog communities under future climate change.
 

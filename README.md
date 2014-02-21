@@ -36,7 +36,7 @@ Alpha-Diversity
 _AlphaMapping.R_ : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics
 calls _AlphaMappingFunctions.R_ to calculate grid based metrics of alpha diversity on grid cells
 _SDM.R_ which performs the ensemble niche models using biomod
--The input localities are in the Inputdata folder, but the env layers need to help locally, there are > 30GB
+-The input localities are in the Inputdata folder, but the env layers need to be held locally, they are > 30GB
 
 Beta-Diversity
 ------------

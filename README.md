@@ -33,14 +33,16 @@ morphology, and phylogeny.
 
 Alpha-Diversity
 ---------------
-_AlphaMapping.R_ : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics
-calls _AlphaMappingFunctions.R_ to calculate grid based metrics of alpha diversity on grid cells
-_SDM.R_ which performs the ensemble niche models using biomod
+* _AlphaMapping.R_ : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics
+calls 
+* _AlphaMappingFunctions.R_ to calculate grid based metrics of alpha diversity on grid cells
+* _SDM.R_ which performs the ensemble niche models using biomod
 -The input localities are in the Inputdata folder, but the env layers need to be held locally, they are > 30GB
+* _BenHolttraitDiversity.R_ to calculate MNND
 
 Beta-Diversity
 ------------
-_FutureAnalog.R_ computes betametrics between current and future assemblages, needs to be done carefully, 
+* _FutureAnalog.R_ computes betametrics between current and future assemblages, needs to be done carefully, 
 consider how parallelization works on your operating system. 
 
 Figures

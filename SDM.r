@@ -62,7 +62,7 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
 
 #Paths must be changed to local directory! unzip
 #Import environmental data from worldclim, three variables
-## TO DO ###########################
+#Bio1 = annual mean temp, Bio12 = annual precip, Bio15 = precip seasonality
 myExpl <- c("D:\\worldclim_bio1-9_30s_bil\\bio_1.bil",
             "D:\\worldclim_bio1-9_30s_bil\\bio_12.bil",
             "D:\\worldclim_bio1-9_30s_bil\\bio_15.bil")

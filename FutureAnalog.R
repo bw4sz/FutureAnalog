@@ -11,25 +11,25 @@ require(raster)
 require(ggplot2)
 require(phylobase)
 
-droppath<-"C:\\Users\\Ben\\Dropbox\\"
-gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
+##droppath<-"C:\\Users\\Ben\\Dropbox\\"
+##gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
+
+#Load in data
+load("AlphaMapping.RData")
+
+gitpath<-"C:\\Users\\Anusha\\Documents\\FutureAnalog\\"
+droppath<-"D://Dropbox/"
 
 #Load in source functions
 source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
 
 setwd(paste(droppath,"NASA_Anusha\\FutureAnalog",sep=""))
 
-#Load in data
-load("AlphaMapping.RData")
-
-#If testing the script grab a much smaller chunk?
+#If testing the script grab a much smaller chunk
 current<-siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),1000),]
 future<-siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),1000),]
 
-#Maybe just grab the middle layer to visualize?
-#current<-siteXspps[[1]][6000:12500,]
-#future<-siteXspps[[3]][6000:12500,]
-
+#If running the code with full dataset, for the full analysis
 #current<-siteXspps[[1]]
 #future<-siteXspps[[3]]
 
@@ -59,9 +59,9 @@ system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))
 #system.time(holt.func<-matpsim(phyl=tree.func,com=Func.current,clust=7))
 
 ####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script
+# MNNTD = Mean nearest neighbor taxon distance, from Holt et al. 2012. An update of Wallace's zoogeographic regions of the world. Science.
 
 source(paste(gitpath,"BenHolttraitDiversity.R",sep=""))
-#source("BenHolttraitDiversity.R")
 
 #create sp.list
 sp.list<-lapply(rownames(Func.current),function(k){
@@ -98,7 +98,7 @@ colnames(melt.MNTD)<-c("MNTD","To","From")
 #turn beta measures into a matrices
 within.current.phylo<-as.matrix(holt.try)
 
-#needs to cast into a matrix to fit old formatting?
+#needs to cast into a matrix to fit old formatting
 #############needs to be done#######################
 #turn into a matrix
 within.current.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
@@ -108,7 +108,7 @@ within.current.func<-within.current.func[,-1]
 #within.current.func<-as.matrix(holt.func)
 
 ##################################
-#Quantile Delination Approach
+#Quantile Delineation Approach - sensu Strahlberg et al. 2009 - Not Currently Using
 ##################################
 #Find the 5th quantile for each community
 #quant.5<-apply(within.current,1,function(x){
@@ -135,9 +135,6 @@ beta.time<-analogue::distance(current,future,"bray")
 
 #####################
 #CURRENT IS ROWS
-#####################
-
-#####################
 #FUTURE IS COLUMNS
 #####################
 
@@ -184,11 +181,12 @@ rownames(beta.time.func)<-beta.time.func[,1]
 beta.time.func<-beta.time.func[,-1]
 
 #############################################
-###################ANALOG ANALYSIS
+#             ANALOG ANALYSIS
 #############################################
-#Set an arbitrary threshold
+#Set an arbitrary threshold      #TODO: Wrap this code in a function so we can test sensitivity of results to the threshold 
 arb.thresh<-.2
 
+#################################
 #PART I
 #CURRENT ANALOGS IN FUTURE
 #How many current communities have analogs in the future?
@@ -284,7 +282,7 @@ writeRaster(fanalog.Func,"NumberofFutureAnalogs_Func_ARB.tif",overwrite=T)
 #Taxonomic Analogs
 ####################
 
-#For each of the future communities how many future communities are less difference 5th current quantile
+#For each of the future communities how many future communities are less different 5th current quantile
 n.analogs<-sapply(colnames(beta.time), function(x){
   sum(beta.time[,colnames(beta.time) %in% x] <= arb.thresh)
 })
@@ -420,7 +418,7 @@ save.image("FutureAnalog.rData")
 qplot(beta.time[1010,]) + theme_bw() + xlab("Community1010") + geom_vline(xintercept=quantile(beta.time[1010,],.2),col="red",linetype="dashed")
 
 #######################
-#Test number of analogs as a function of the threshold?, needs to be reviewed
+#Test number of analogs as a function of the threshold?  TODO: needs to be reviewed
 ########################
 
 cl<-makeCluster(3,"SOCK")
@@ -497,7 +495,7 @@ save.image("FutureAnalog.rData")
 
 ##############
 #######################
-#Test number of disappears analogs as a function of the threshold
+#Test number of disappearing analogs as a function of the threshold
 ########################
 
 cl<-makeCluster(3,"SOCK")

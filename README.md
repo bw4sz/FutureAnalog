@@ -1,9 +1,9 @@
 Hummingbird Taxonomic, Phylogenetic and Trait Analogs under Climate Change
 ============
 
-Authors: Ben Weinstein, Sarah R. Supp, Anusha Shankar, Marisa Lim, Catherine Graham
+__Authors:__ Ben Weinstein, Sarah R. Supp, Anusha Shankar, Marisa Lim, Catherine Graham
 
-Code for computing non-analog communities under future climate change.
+Code for computing analog and non-analog  hummingbird communities under future climate change scenarios.
 
 License: This code is available under a BSD 2-Clause License.
 
@@ -28,22 +28,23 @@ Contact information Ben Weinstein's email: benweinstein2010@gmail.com
 Contents
 =================================
 
-_Inputdata_ folder contains hummingbird localities for Ecuador and Colombia, the shapefile for the country perimeter of Ecuador
+`Inputdata` folder contains hummingbird localities for Ecuador and Colombia, the shapefile for the country perimeter of Ecuador
 morphology, and phylogeny. 
 
-Alpha-Diversity
+Alpha Diversity
 ---------------
-* _AlphaMapping.R_ : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics
+* `AlphaMapping.R` : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics
 calls 
-* _AlphaMappingFunctions.R_ to calculate grid based metrics of alpha diversity on grid cells
-* _SDM.R_ which performs the ensemble niche models using biomod
+* `AlphaMappingFunctions.R` to calculate grid based metrics of alpha diversity on grid cells
+* `SDM.R` which performs the ensemble niche models using biomod
 -The input localities are in the Inputdata folder, but the env layers need to be held locally, they are > 30GB
-* _BenHolttraitDiversity.R_ to calculate MNND
+* `BenHolttraitDiversity.R` to calculate MNND
 
-Beta-Diversity
+Beta Diversity
 ------------
-* _FutureAnalog.R_ computes betametrics between current and future assemblages, needs to be done carefully, 
+* `FutureAnalog.R` computes betametrics between current and future assemblages, needs to be done carefully, 
 consider how parallelization works on your operating system. 
+* `GDM_hbird.R` computes beta diversity using a generalized dissimilarity modeling (GDM) framework.
 
 Figures
 --------------
@@ -52,7 +53,9 @@ held on dropbox (please contact authors)
 
 Requirements
 ---------------
-R version 2.XX or greater and _Packages:_
+R version 2.XX or greater and 
+__Packages:__
+
 * analogue 
 * ape
 * biomod2

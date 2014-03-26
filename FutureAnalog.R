@@ -11,46 +11,45 @@ require(raster)
 require(ggplot2)
 require(phylobase)
 
-##droppath<-"C:\\Users\\Ben\\Dropbox\\"
-##gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
+#Sarah's
+droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
+gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
+rdata <- paste(output_folder, "\\AlphaMapping.RData", sep="")
 
 #Load in data
-load("AlphaMapping.RData")
-
-gitpath<-"C:\\Users\\Anusha\\Documents\\FutureAnalog\\"
-droppath<-"D://Dropbox/"
+load(rdata)
 
 #Load in source functions
 source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
 
-setwd(paste(droppath,"NASA_Anusha\\FutureAnalog",sep=""))
+setwd(paste(droppath,"FutureAnalog",sep=""))
 
 #If testing the script grab a much smaller chunk
-current<-siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),1000),]
-future<-siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),1000),]
+#current <- siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),1000),]
+#future <- siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),1000),]
 
 #If running the code with full dataset, for the full analysis
-#current<-siteXspps[[1]]
-#future<-siteXspps[[3]]
+current <- siteXspps[[1]]
+future <- siteXspps[[3]]
 
 #Find within betadiversity
-within.current.dist<-vegdist(current,"bray")
-within.current<-as.matrix(within.current.dist)
+within.current.dist <- vegdist(current, "bray")
+within.current <- as.matrix(within.current.dist)
 
 #Find within phylobetadiversity
 #For phylobeta, there needs to be more than 2 species for a rooted tree
-phylo.current<-current[,colnames(current) %in% trx$tip.label]
-phylo.current<-phylo.current[!apply(phylo.current,1,sum)<=2,]
+phylo.current <- current[,colnames(current) %in% trx$tip.label]
+phylo.current <- phylo.current[!apply(phylo.current,1,sum)<=2,]
 
-phylo.future<-future[,colnames(future) %in% trx$tip.label]
-phylo.future<-phylo.future[!apply(phylo.future,1,sum)<=2,]
+phylo.future <- future[,colnames(future) %in% trx$tip.label]
+phylo.future <- phylo.future[!apply(phylo.future,1,sum)<=2,]
 
 #Find within Func betadiversity
-Func.current<-current[,colnames(current) %in% colnames(fco)]
-Func.current<-Func.current[!apply(Func.current,1,sum)<=2,]
+Func.current <- current[,colnames(current) %in% colnames(fco)]
+Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]
 
-Func.future<-future[,colnames(future) %in% colnames(fco)]
-Func.future<-Func.future[!apply(Func.future,1,sum)<=2,]
+Func.future <- future[,colnames(future) %in% colnames(fco)]
+Func.future <- Func.future[!apply(Func.future,1,sum)<=2,]
 
 #Within current phylobetadiversity
 system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))
@@ -59,9 +58,10 @@ system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))
 #system.time(holt.func<-matpsim(phyl=tree.func,com=Func.current,clust=7))
 
 ####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script
-# MNNTD = Mean nearest neighbor taxon distance, from Holt et al. 2012. An update of Wallace's zoogeographic regions of the world. Science.
+# MNNTD = Mean nearest neighbor taxon distance, from Holt et al. 2012. 
+# An update of Wallace's zoogeographic regions of the world. Science.
 
-source(paste(gitpath,"BenHolttraitDiversity.R",sep=""))
+source(paste(gitpath, "BenHolttraitDiversity.R", sep=""))
 
 #create sp.list
 sp.list<-lapply(rownames(Func.current),function(k){
@@ -183,7 +183,10 @@ beta.time.func<-beta.time.func[,-1]
 #############################################
 #             ANALOG ANALYSIS
 #############################################
-#Set an arbitrary threshold      #TODO: Wrap this code in a function so we can test sensitivity of results to the threshold 
+#TODO: Wrap this code in a function so we can test sensitivity of results to the threshold 
+#      Set threshold for 5%, 10%, 50% and 100% - can present alternate results in appendices
+
+#Set an arbitrary threshold      
 arb.thresh<-.2
 
 #################################
@@ -209,7 +212,8 @@ fanalog<-cellVis(cell=current_to_future.analog$cell.number,value=current_to_futu
 hist(current_to_future.analog$numberofanalogs)
 writeRaster(fanalog,"NumberofFutureAnalogs_Taxon_ARB.tif",overwrite=T)
 
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
+#If a am counting the number of cells whose betadiveristy is within the 5th quantile, 
+#the threshold for non analog communities should be the number of sites that oc
 #If there are 5000 cells, then 5000*.05=250
 threshold<-nrow(current)*.005
 
@@ -239,7 +243,8 @@ fanalog.phylo<-cellVis(cell=future.analog.phylo$cell.number,value=future.analog.
 #Write to file
 writeRaster(fanalog.phylo,"NumberofFutureAnalogs_Phylo_ARB.tif",overwrite=T)
 hist(future.analog.phylo$numberofanalogs)
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
+#If I am counting the number of cells whose betadiveristy is within the 5th quantile, 
+#the threshold for non analog communities should be the number of sites that oc
 #If there are 5000 cells, then 5000*.05=250
 
 threshold<-nrow(phylo.current)*.05
@@ -364,24 +369,24 @@ plot(all.raster)
 ########################
 
 #####################################
-#naming of clusters is wrong here??
+#naming of clusters is wrong here??  TODO: What is wrong? FIXME?
 ###################################
 #plot(clusters<-all.raster[[c("TaxonomicClusters","PhylogenticClusters","FunctionalClusters")]],col=rainbow(5))
 plot(current.ras<-all.raster[[c("NumberofCurrentAnalogs_Taxo","NumberofCurrentAnalogs_Phylo","NumberofCurrentAnalogs_Func")]])
 plot(future.ras<-all.raster[[c("NumberofFutureAnalogs_Taxon_ARB","NumberofFutureAnalogs_Phylo_ARB","NumberofFutureAnalogs_Func_ARB")]])
 
 ###########################
-#Correlation among outputs, this currently onlymake sense for the betadiv, the clusters are non-ordinal
+#Correlation among outputs, this currently onlymake sense for the beta diversity, the clusters are non-ordinal
 ###########################
 
-#cluster.cor<-cor(values(clusters),use="complete.obs")
-current.cor<-cor(values(current.ras),use="complete.obs")
-future.cor<-cor(values(future.ras),use="complete.obs")
+#cluster.cor<-cor(values(clusters), use="complete.obs")
+current.cor<-cor(values(current.ras), use="complete.obs")
+future.cor<-cor(values(future.ras), use="complete.obs")
 
 #make it a spare matrix
-cluster.cor[upper.tri(cluster.cor)]<-NA
-current.cor[upper.tri(current.cor)]<-NA
-future.cor[upper.tri(future.cor)]<-NA
+cluster.cor[upper.tri(cluster.cor)] <- NA
+current.cor[upper.tri(current.cor)] <- NA
+future.cor[upper.tri(future.cor)] <- NA
 
 #Plot the correlations?
 
@@ -396,7 +401,7 @@ plot(current_arb<-all.raster[[c("NumberofFutureAnalogs_Taxon_ARB","NumberofFutur
 current_standard<-current_arb/cellStats(current_arb,"max")
 
 #corrlate with richness
-ric<-raster("C://Users/Jorge/Dropbox/Shared Ben and Catherine/FutureAnalog/Alpha/AlphaChange_Richness.tif")
+ric<-raster(paste(gitpath, "Figures\\AlphaChange_Richness.tif", sep=""))
 rc<-cor(values(current_arb[[1]]),values(ric),use="complete.obs")
 
 #Pairwise plots of results, and glms
@@ -557,4 +562,4 @@ names(s.dis)<-sapply(c(2,4,6,8,10),function(x){
 plot(s.dis,nc=3,zlim=c(0,1500))
 
 save.image("FutureAnalog.rData")
-s amnat
+#s amnat

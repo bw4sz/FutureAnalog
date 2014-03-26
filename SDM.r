@@ -63,9 +63,9 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
 #Paths must be changed to local directory! unzip
 #Import environmental data from worldclim, three variables
 #Bio1 = annual mean temp, Bio12 = annual precip, Bio15 = precip seasonality
-myExpl <- c("D:\\worldclim_bio1-9_30s_bil\\bio_1.bil",
-            "D:\\worldclim_bio1-9_30s_bil\\bio_12.bil",
-            "D:\\worldclim_bio1-9_30s_bil\\bio_15.bil")
+myExpl <- c("F:\\ClimateLayers\\worldclim_bio1-9_30s_bil\\bio_1.bil",
+            "F:\\ClimateLayers\\worldclim_bio1-9_30s_bil\\bio_12.bil",
+            "F:\\ClimateLayers\\worldclim_bio1-9_30s_bil\\bio_15.bil")
 
 myExpl<-stack(myExpl)
 
@@ -92,13 +92,11 @@ myExpl<-aggregate(myExpl,fact)
 #Step 3: Climate Scenerios and Futute Climate
 ##############################################
 
-#Bring in future climate layers (need to uncomment here when ready, anusha, and subsequent lines)
+#Bring in future climate layers
 # Modelname_year_emmissionscenario
-#Start with one layer
-##### TO DO ##################
-MICROC_2070_rcp26<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
-#MICROC_2070_rcp85<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
-#MICROC_2070_rcp45<-stack("D:\\Future GCM Layers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp26<-stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp85<-stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp45<-stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
 
 #Step 4 Set the Extent to project *into*. Presence points are still taken from everywhere
 #Avoid projecting into areas where sample size is really low
@@ -111,22 +109,22 @@ exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))
 #Crop by this layer, 
 myExpl.crop<-stack(crop(myExpl,exte))
 MICROC_2070_rcp26.c<-stack(crop(MICROC_2070_rcp26,exte))
-#MICROC_2070_rcp85.c<-stack(crop(MICROC_2070_rcp85,exte))
-#MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp85,exte))
+MICROC_2070_rcp85.c<-stack(crop(MICROC_2070_rcp85,exte))
+MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp85,exte))
 
 names(MICROC_2070_rcp26.c)<-names(myExpl)
-#names(MICROC_2070_rcp85.c)<-names(myExpl)
-#names(MICROC_2070_rcp45.c)<-names(myExpl)
+names(MICROC_2070_rcp85.c)<-names(myExpl)
+names(MICROC_2070_rcp45.c)<-names(myExpl)
 
 #create a list of all env to project into
-#projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rcp85.c)
-projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c)
+projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rcp85.c)
+
 
 #If you are using all climate scenerios
-#names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85")
+names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85")
 
 #Current and one future scenerio
-names(projEnv)<-c("current","MICROC2070rcp26")
+#names(projEnv)<-c("current","MICROC2070rcp26")
 
 #Only current
 #names(projEnv)<-c("current")
@@ -152,9 +150,9 @@ niche<-list.files(getwd(),pattern="TotalConsensus_EMbyROC.gri",full.name=T,recur
 #split into current and future
 #Get current models
 completed_models<-lapply(names(projEnv), function(x){
-run_mod<-niche[grep(x,niche,value=FALSE)]
-if(length(run_mod)==0) return(NA)
-completed<-str_match(run_mod,pattern="Models/(\\w+.\\w+)")[,2]
+  run_mod<-niche[grep(x,niche,value=FALSE)]
+  if(length(run_mod)==0) return(NA)
+  completed<-str_match(run_mod,pattern="Models/(\\w+.\\w+)")[,2]
 })
 
 names(completed_models)<-names(projEnv)
@@ -177,7 +175,7 @@ paste("Species to be modeled",spec,sep=": ")
 
 cl<-makeCluster(8,"SOCK")
 registerDoSNOW(cl)
-system.time(niche_loop<-foreach(x=1:20,.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
+system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
   sink(paste("logs/",paste(spec[[x]],".txt",sep=""),sep=""))
   
   #remove sites that have no valid records
@@ -245,7 +243,7 @@ system.time(niche_loop<-foreach(x=1:20,.packages=c("reshape","biomod2"),.errorha
     
   #Define modeling options
   myBiomodOption <- BIOMOD_ModelingOptions(    
-    MAXENT = list( path_to_maxent.jar = "D:/Niche_Models/maxent.jar",
+    MAXENT = list( path_to_maxent.jar = "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\maxent.jar",
                    maximumiterations = 200,
                    visible = TRUE,
                    linear = TRUE,
@@ -272,18 +270,19 @@ system.time(niche_loop<-foreach(x=1:20,.packages=c("reshape","biomod2"),.errorha
                                      DataSplit=80, 
                                      Yweights=NULL, 
                                      VarImport=3, 
-                                     models.eval.meth = c('ROC'),
+                                     models.eval.meth = c('ROC','TSS'),
                                      SaveObj = TRUE )
   
   # get all models evaluation                                     
-  myBiomodModelEval <- getModelsEvaluations(myBiomodModelOut)
+  myBiomodModelEval <- get_evaluations(myBiomodModelOut)
   
   
   # print the dimnames of this object
   dimnames(myBiomodModelEval)
   
+#TODO: Add TSS score here
   # let's print the ROC and TSS scores of all selected models, get the mean value for all the combined runs.
-  stat<-myBiomodModelEval["ROC","Testing.data",,"Full",]
+  stat<-myBiomodModelEval["ROC", "Testing.data",,"Full",]
   
   #need to write this to file
   filename<-paste(paste(getwd(),gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="/")
@@ -335,7 +334,7 @@ bio_project<-function(GCM,nam){
     new.env = GCM,
     proj.name = nam,
     selected.models = 'all',
-    binary.meth = 'ROC',
+    binary.meth = c('ROC', 'TSS'),
     compress = 'xz',
     clamping.mask = T)
   

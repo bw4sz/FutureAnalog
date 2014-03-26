@@ -27,9 +27,13 @@ require(MASS)
 
 
 #Set dropbox and github paths
+#Sarah's
+droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
+gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
+
 # Ben's
- droppath<-"C:\\Users\\Ben\\Dropbox\\"
- gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
+#  droppath<-"C:\\Users\\Ben\\Dropbox\\"
+#  gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
 
 # Anusha's paths
 #droppath <- "C:\\Users/Anusha/Documents/Dropbox/Hummingbirds/Lab paper 1 Predicted vs observed assemblages/"
@@ -99,25 +103,29 @@ source(paste(gitpath,"SDM.r",sep=""))
 #Before you run the function, go through this checklist
 ########################################################
 #1.Set the Extent (Line 95)
-#The extent was the bounding box we used for another paper and could be set a variable, or changed internally if you like
+#The extent was the bounding box we used for another paper and could be set a variable, or changed internally 
+# if you like
 
 #2. Run for how many species
-#i'd suggest just running on a few species at first, go to line 159 (x=1:length(spec)) and change length(spec) to the total number of species desired, rather than all species
+#i'd suggest just running on a few species at first, go to line 180 (x=1:length(spec)) and change length(spec) 
+# to the total number of species desired, rather than all species
 
-#3 Set the climate scenarios (line 58 for current, 91 for future)
+#3 Set the climate scenarios (line 66 for current, 97 for future)
 
 #There really isn't an elegant way of coding which climate scenerios you want, so please pay close attention to lines 
 #The climate scenerios are very large, and need to be held locally
 
-#In general the script is meant as a helpful wrapper, but attention needs to be paid to alot of the manual details in the setup of BIOMOD, there are simply too many options and dependencies for me to take a all encompassing function
+#In general the script is meant as a helpful wrapper, but attention needs to be paid to alot of the manual details 
+# in the setup of BIOMOD, there are simply too many options and dependencies for me to take an all-encompassing function
 
 ####################################
 #Perform Niche Models
 ####################################
 #Define these variables outside the function so they can be used below.
 # Cell size is in degrees. 1 degree = 112km
-cell_size=.75
-output_folder="C:/Users/Ben/Desktop/Testmod"
+cell_size = 0.75
+output_folder = "C:\\Users\\sarah\\Desktop\\Testmod"
+#output_folder="C:/Users/Ben/Desktop/Testmod"
 #output_folder = "C:/Users/Anusha/Desktop/Testmod"
 SDM_SP(cell_size,output_folder)
 
@@ -133,17 +141,16 @@ niche<-list.files(paste(output_folder,cell_size,sep="/"),pattern="ensemble.gri",
 #Get current models
 current_niche<-niche[grep("current",niche,value=FALSE)]
 
-#Get future models, for now its just, check the SDM.R script
+#Get future models (emissions scenarios),check the SDM.R script
 MICROC2070rcp26_niche<-niche[grep("MICROC2070rcp26",niche,value=FALSE)]
-#MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
-#MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
+MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
+MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
 
 #create list of input rasters
-#input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
-
-input.niche<-list(current_niche,MICROC2070rcp26_niche)
-#names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
-names(input.niche)<-c("current","MICROC2070rcp26")
+input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+#input.niche<-list(current_niche,MICROC2070rcp26_niche)
+names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
+#names(input.niche)<-c("current","MICROC2070rcp26")
 
 
 ###############################################
@@ -154,34 +161,34 @@ ec<-readShapePoly(paste(gitpath,"Inputdata/EcuadorCut.shp",sep=""))
 r<-raster(extent(ec))
 
 #Match cell size above from the SDM_SP function
-res(r)<-cell_size
-plot(ec.r<-rasterize(ec,r))
-niche.crop<-lapply(niche,function(x){
+res(r) <- cell_size
+plot(ec.r <- rasterize(ec,r))
+niche.crop <- lapply(niche,function(x){
   r<-crop(raster(x),extent(ec.r))
-  filnam<-paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
+  filnam <- paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
   writeRaster(r,filnam,overwrite=TRUE)
 })
 
 #get the crop files
-niche.crops<-list.files(paste(output_folder,cell_size,sep="/"),pattern="crop.gri",full.name=T,recursive=T)
+niche.crops <- list.files(paste(output_folder,cell_size,sep="/"),pattern="crop.gri",full.name=T,recursive=T)
 
 #Get current models
-current_niche<-niche.crops[grep("current",niche.crops,value=FALSE)]
+current_niche <- niche.crops[grep("current",niche.crops,value=FALSE)]
 
 #Get future models, for now its just
-MICROC2070rcp26_niche<-niche.crops[grep("MICROC2070rcp26",niche.crops,value=FALSE)]
-#MICROC2070rcp85_niche<-niche.crops[grep("MICROC2070rcp85",niche.crops,value=FALSE)]
-#MICROC2070rcp45_niche<-niche.crops[grep("MICROC2070rcp45",niche.crops,value=FALSE)]
+MICROC2070rcp26_niche <- niche.crops[grep("MICROC2070rcp26",niche.crops,value=FALSE)]
+MICROC2070rcp85_niche <- niche.crops[grep("MICROC2070rcp85",niche.crops,value=FALSE)]
+MICROC2070rcp45_niche <- niche.crops[grep("MICROC2070rcp45",niche.crops,value=FALSE)]
 
 #create list of input rasters
-#input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
-#names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
+input.niche <- list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
-input.niche<-list(current_niche,MICROC2070rcp26_niche)
-names(input.niche)<-c("current","MICROC2070rcp26")
+#input.niche<-list(current_niche,MICROC2070rcp26_niche)
+#names(input.niche)<-c("current","MICROC2070rcp26")
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
-siteXspps<-lapply(input.niche,tableFromRaster,threshold=.05)
+siteXspps <- lapply(input.niche,tableFromRaster,threshold=.05)
 
 ####################################################
 #Niche Models Completed!
@@ -193,7 +200,7 @@ siteXspps<-lapply(input.niche,tableFromRaster,threshold=.05)
 #Functions are sourced from AlphaMappingFunctions.R
 
 ###create a blank raster object of the correct size and extent to have for projecting the cell values
-blank<-raster(niche.crops[[1]])
+blank <- raster(niche.crops[[1]])
 
 #################################
 #########################################
@@ -202,14 +209,13 @@ blank<-raster(niche.crops[[1]])
 
 #Remove communities with less than 1 species in a row
 #just get where diversity > 1, there is no phylgoenetic diversity or functional diversity of species with richness = 1
-
-MPDs<-lapply(siteXspps,AlphaPhylo)
+MPDs <- lapply(siteXspps,AlphaPhylo)
 
 ########################################
 ########## Trait Alpha Tree Diversity (MFD)
 ########################################
 
-MFDs<-lapply(siteXspps,AlphaFunc)
+MFDs <- lapply(siteXspps,AlphaFunc)
 
 ###################################################################
 #Functional Dispersion Metric Lalibert?, E., and P. Legendre (2010)
@@ -229,7 +235,6 @@ cellVisuals<-function(inp.name){
 richness<-cellVis(cells=rownames(siteXspps[names(siteXspps) %in% inp.name][[1]]),value=apply(siteXspps[names(siteXspps) %in% inp.name][[1]],1,sum))
 
 #Phylogenetic richness
-
 MPD.vis<-cellVis(cells=MPDs[names(MPDs) %in% inp.name][[1]]$Cell,value=MPDs[names(MPDs) %in% inp.name][[1]]$MPD)
 
 #Func Tree
@@ -313,4 +318,4 @@ lapply(1:length(diff.raster),function(x){
   writeRaster(diff.raster[[x]],bylayer=TRUE,paste(gitpath,"Figures/AlphaChange.tif",sep=""),overwrite=TRUE,suffix=names(diff.raster[[x]]))
 })
 
-save.image(paste(droppath,"NASA_Anusha\\AlphaMapping.rData",sep=""))
+save.image(paste(output_folder,"AlphaMapping.rData",sep=""))

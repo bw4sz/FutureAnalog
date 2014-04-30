@@ -123,7 +123,7 @@ source(paste(gitpath,"SDM.r",sep=""))
 ####################################
 #Define these variables outside the function so they can be used below.
 # Cell size is in degrees. 1 degree = 112km
-cell_size = 0.75
+cell_size = 0.5
 output_folder = "C:\\Users\\sarah\\Desktop\\Testmod"
 #output_folder="C:/Users/Ben/Desktop/Testmod"
 #output_folder = "C:/Users/Anusha/Desktop/Testmod"
@@ -208,7 +208,7 @@ blank <- raster(niche.crops[[1]])
 #########################################
 
 #Remove communities with less than 1 species in a row
-#just get where diversity > 1, there is no phylgoenetic diversity or functional diversity of species with richness = 1
+#just get where diversity > 1, there is no phylogenetic diversity or functional diversity of species with richness = 1
 MPDs <- lapply(siteXspps,AlphaPhylo)
 
 ########################################
@@ -227,22 +227,7 @@ MFDs <- lapply(siteXspps,AlphaFunc)
 #Visualize Mapping Metrics
 ##########################
 #set to the number of climate scenerios.
-par(mfrow=c(2,2))
-
-cellVisuals<-function(inp.name){
-
-#Taxonomic richness
-richness<-cellVis(cells=rownames(siteXspps[names(siteXspps) %in% inp.name][[1]]),value=apply(siteXspps[names(siteXspps) %in% inp.name][[1]],1,sum))
-
-#Phylogenetic richness
-MPD.vis<-cellVis(cells=MPDs[names(MPDs) %in% inp.name][[1]]$Cell,value=MPDs[names(MPDs) %in% inp.name][[1]]$MPD)
-
-#Func Tree
-MFD.vis<-cellVis(MFDs[names(MFDs) %in% inp.name][[1]]$Cell,MFDs[names(MFDs) %in% inp.name][[1]]$MFD)
-
-out<-list(richness,MPD.vis,MFD.vis)
-names(out)<-c("Richness","Phylogenetic","Trait")
-return(out)}
+par(mfrow=c(4,3))
 
 cell.Rasters<-lapply(names(siteXspps),cellVisuals)
 names(cell.Rasters)<-names(siteXspps)

@@ -1,15 +1,16 @@
 
 #Write a function that gets the siteXspp matrix from an input list of niche_model outputs
 tableFromRaster<-function(fil_list,threshold){
+  
   trial<-foreach(mod=1:length(fil_list),.combine=cbind) %do% {
-    
     #read in the niche models from file
     niche.m<-lapply(fil_list[[mod]],function(x) raster(x))
     
     niche_ens<-niche.m[[1]][[1]]
     
     #get species name
-    sp.n<-strsplit(names(niche_ens),"_")[[1]][1]
+    #This portion is a bit sensitive to file structure, if error calls, check here first!
+    sp.n<-strsplit(niche_ens@file@name,"\\\\")[[1]][[7]]
     
     #Lets go get the presence data on hummingbird distributions
     Niche_locals<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep=""))
@@ -29,7 +30,7 @@ tableFromRaster<-function(fil_list,threshold){
     suit_cut<-quantile(na.omit(site_suit),threshold)
     
     #plot to file
-    print(qplot(site_suit) + geom_vline(aes(xintercept=suit_cut),linetype="dashed",col="Red"))
+    #print(qplot(site_suit) + geom_vline(aes(xintercept=suit_cut),linetype="dashed",col="Red"))
     
     paste("suitability threshold:",suit_cut,"")
     #Predicted Presence absence Column
@@ -61,8 +62,8 @@ chunk<-function(dat,max){
 }
 
 AlphaPhylo<-function(siteXspp.raster){
-    # remove any species not in the phylogeny
-  siteXspp.raster.Phylo<-siteXspp.raster[,colnames(siteXspp.raster) %in% colnames(co)]
+  #remove any species not in the phylogeny
+  siteXspp.raster.Phylo<-siteXspp.raster[ , colnames(siteXspp.raster) %in% colnames(co)]
   
   #Get sum rows
   rowS.Phylo<-apply(siteXspp.raster.Phylo,1,sum,na.rm=TRUE)
@@ -76,8 +77,13 @@ AlphaPhylo<-function(siteXspp.raster){
   #remove untrimmed siteXspp data
   rm(siteXspp.raster.Phylo)
   
+  #remove any species with na
+  toremove<-apply(siteXspp.Phylo,2,sum)
+  
+  siteXspp.Phylo<-siteXspp.Phylo[,colnames(siteXspp.Phylo) %in% names(which(!is.na(toremove)))]
+  
   #mean phylogenetic branch length at each community
-  a<-mpd(siteXspp.Phylo,co)
+  a<-mpd(siteXspp.Phylo,cophenetic(trx))
   
   #Add in cell names and write to file
   MPDcell<-data.frame(rownames(siteXspp.Phylo),a)
@@ -91,12 +97,17 @@ AlphaFunc<-function(siteXspp.raster){
   #Only keep communities with species with functional information and richness > 1
   siteXspp.raster.Func<-siteXspp.raster[,colnames(siteXspp.raster) %in% colnames(fco)]
   
-  rowS.Func<-apply(siteXspp.raster.Func,1,sum)
+  rowS.Func<-apply(siteXspp.raster.Func,1,sum,na.rm=TRUE)
   siteXspp.Func<-siteXspp.raster.Func[rowS.Func > 1,]
+  
+  #remove any species with na
+  toremove<-apply(siteXspp.Func,2,sum)
+  
+  siteXspp.Func<-siteXspp.Func[ ,colnames(siteXspp.Func) %in% names(which(!is.na(toremove)))]
   
   #find mean func neighbor at each assemblage
   a<-mpd(siteXspp.Func,fco)
-  
+    
   #Put the cell numbers so it can be identified as each community
   MFDCell<-data.frame(rownames(siteXspp.Func),a)
   colnames(MFDCell)<-c("Cell","MFD")
@@ -153,6 +164,28 @@ cellVis<-function(cells,value){
   
   return(alpha_structure)
 }
+
+#wrapper function to be called for all types of climate layers and time periods
+cellVisuals<-function(inp.name){
+  
+  #Taxonomic richness
+  richnessvalues<-apply(siteXspps[names(siteXspps) %in% inp.name][[1]],1,sum,na.rm=TRUE)
+  cellP<-rownames(siteXspps[names(siteXspps) %in% inp.name][[1]])
+  richness<-cellVis(cells=cellP,value=richnessvalues)
+  
+  #Phylogenetic richness
+  prichness<-MPDs[names(MPDs) %in% inp.name][[1]]$MPD
+  pcellP<-MPDs[names(MPDs) %in% inp.name][[1]]$Cell
+  MPD.vis<-cellVis(cells=pcellP,value=prichness)
+  
+  #Func Tree
+  fcellP<-MFDs[names(MFDs) %in% inp.name][[1]]$Cell
+  frichness<-MFDs[names(MFDs) %in% inp.name][[1]]$MFD
+  MFD.vis<-cellVis(fcellP,frichness)
+  
+  out<-list(richness,MPD.vis,MFD.vis)
+  names(out)<-c("Richness","Phylogenetic","Trait")
+  return(out)}
 
 ###Parallel Phylosor
 

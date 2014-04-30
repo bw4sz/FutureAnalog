@@ -17,8 +17,9 @@ require(ggplot2)
 require(reshape)
 require(raster)
 require(rgdal)
-require(doSNOW)
 require(stringr)
+require(gbm)
+require(doSNOW)
 
 #set a working directory, where do we want to save files
 #save locally for now
@@ -110,8 +111,23 @@ exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))
 myExpl.crop<-stack(crop(myExpl,exte))
 MICROC_2070_rcp26.c<-stack(crop(MICROC_2070_rcp26,exte))
 MICROC_2070_rcp85.c<-stack(crop(MICROC_2070_rcp85,exte))
-MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp85,exte))
+MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp45,exte))
 
+#TO DO! set cell size for the future layers - this needs to be fixed (as is, the Future models aren't being run...)
+# res(MICROC_2070_rcp26.c)
+# res(MICROC_2070_rcp85.c)
+# res(MICROC_2070_rcp45.c)
+# 
+# fact1<-cell_size/res(MICROC_2070_rcp26.c)
+# fact2<-cell_size/res(MICROC_2070_rcp85.c)
+# fact3<-cell_size/res(MICROC_2070_rcp45.c)
+# 
+# #Set cell size to ~ cell_size degree
+# MICROC_2070_rcp26.c<-aggregate(MICROC_2070_rcp26.c,fact1)
+# MICROC_2070_rcp85.c<-aggregate(MICROC_2070_rcp85.c,fact2)
+# MICROC_2070_rcp45.c<-aggregate(MICROC_2070_rcp45.c,fact3)
+
+# make the names consistent for all 
 names(MICROC_2070_rcp26.c)<-names(myExpl)
 names(MICROC_2070_rcp85.c)<-names(myExpl)
 names(MICROC_2070_rcp45.c)<-names(myExpl)
@@ -175,6 +191,7 @@ paste("Species to be modeled",spec,sep=": ")
 
 cl<-makeCluster(8,"SOCK")
 registerDoSNOW(cl)
+# change x=1:2 back to x=1:length(spec), and change %do% back to %dopar%
 system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
   sink(paste("logs/",paste(spec[[x]],".txt",sep=""),sep=""))
   
@@ -270,7 +287,8 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
                                      DataSplit=80, 
                                      Yweights=NULL, 
                                      VarImport=3, 
-                                     models.eval.meth = c('ROC','TSS'),
+                                     # c('ROC', 'TSS')
+                                     models.eval.meth = c('ROC',"TSS"),
                                      SaveObj = TRUE )
   
   # get all models evaluation                                     
@@ -280,9 +298,9 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   # print the dimnames of this object
   dimnames(myBiomodModelEval)
   
-#TODO: Add TSS score here
+#TODO: Add TSS score here, did we do this correctly? [c("ROC", "TSS"), "Testing.data",, "Full",]
   # let's print the ROC and TSS scores of all selected models, get the mean value for all the combined runs.
-  stat<-myBiomodModelEval["ROC", "Testing.data",,"Full",]
+  stat<-myBiomodModelEval[c("ROC","TSS"), "Testing.data",,"Full",]
   
   #need to write this to file
   filename<-paste(paste(getwd(),gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="/")
@@ -310,8 +328,8 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
     modeling.output = myBiomodModelOut,
     chosen.models = 'all',
     em.by='all',
-    eval.metric = c('ROC','TSS'),
-    eval.metric.quality.threshold = c(0.75, 0.75),
+    eval.metric = c('ROC'),
+    eval.metric.quality.threshold = c(0.75),
     prob.mean = T,
     prob.cv = T,
     prob.ci = T,
@@ -334,7 +352,7 @@ bio_project<-function(GCM,nam){
     new.env = GCM,
     proj.name = nam,
     selected.models = 'all',
-    binary.meth = c('ROC', 'TSS'),
+    binary.meth = c('ROC'),
     compress = 'xz',
     clamping.mask = T)
   
@@ -347,8 +365,8 @@ bio_project<-function(GCM,nam){
   ##################################
   
   #end file output
-  print(paste("End Time is",system.time()))
-  sink()
+print(paste("End Time is",Sys.time()))
+sink()
   return(stat)
 })
 stopCluster(cl)
@@ -367,10 +385,10 @@ model_eval<-melt(model_eval,id.var=c("Model","Species","Stat"))
 
 
 #remove NA's?
-ggplot(model_eval, aes(x=Species,y=Model,fill=Stat)) + geom_tile() + scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + opts(axis.text.x=theme_text(angle=-90))
+ggplot(model_eval, aes(x=Species,y=Model,fill=Stat)) + geom_tile() + scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + theme(axis.text.x=element_text(angle=-90))
 ggsave("ModelEvaluations.jpeg")
 
-ggplot(model_eval, aes(x=Species,y=Model,fill=Stat)) + geom_tile() + scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + opts(axis.text.x=theme_text(angle=-90))
+ggplot(model_eval, aes(x=Species,y=Model,fill=Stat)) + geom_tile() + scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + theme(axis.text.x=element_text(angle=-90))
 
 model_thresh<-sapply(seq(.5,.95,.05),function(x){
   table(model_eval$Stat > x,model_eval$Model)["TRUE",]

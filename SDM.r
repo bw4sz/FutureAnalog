@@ -48,7 +48,7 @@ PA<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep
 #Just take the columns you want. 
 PAdat<-PA[,colnames (PA) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
 
-PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
+PAdat<-PAdat[!PAdat$LONGDECDEG==-6,] #TODO: What is this doing?
 #We are going to use layers that Juan used for his Amnat paper (Parra, McGuire, and Graham 2010). 
   # citation: Parra, J.L., J.A. McGuire, and C.H. Graham. 2010. Incorporating Clade Identity in 
   #           Analyses of Phylogenetic Community Structure: An Example with Hummingbirds.The American 
@@ -90,7 +90,7 @@ fact<-cell_size/res(myExpl) # aggregate() needs it in this format
 myExpl<-aggregate(myExpl,fact)
 
 ##############################################
-#Step 3: Climate Scenerios and Futute Climate
+#Step 3: Climate Scenarios and Futute Climate
 ##############################################
 
 #Bring in future climate layers
@@ -113,19 +113,17 @@ MICROC_2070_rcp26.c<-stack(crop(MICROC_2070_rcp26,exte))
 MICROC_2070_rcp85.c<-stack(crop(MICROC_2070_rcp85,exte))
 MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp45,exte))
 
-#TO DO! set cell size for the future layers - this needs to be fixed (as is, the Future models aren't being run...)
-# res(MICROC_2070_rcp26.c)
-# res(MICROC_2070_rcp85.c)
-# res(MICROC_2070_rcp45.c)
-# 
-# fact1<-cell_size/res(MICROC_2070_rcp26.c)
-# fact2<-cell_size/res(MICROC_2070_rcp85.c)
-# fact3<-cell_size/res(MICROC_2070_rcp45.c)
-# 
-# #Set cell size to ~ cell_size degree
-# MICROC_2070_rcp26.c<-aggregate(MICROC_2070_rcp26.c,fact1)
-# MICROC_2070_rcp85.c<-aggregate(MICROC_2070_rcp85.c,fact2)
-# MICROC_2070_rcp45.c<-aggregate(MICROC_2070_rcp45.c,fact3)
+#set resolution for the future layers equivalent to cell size
+#TODO: check if this works (as is, the Future models aren't being run...)
+
+ fact1<-cell_size/res(MICROC_2070_rcp26.c)
+ fact2<-cell_size/res(MICROC_2070_rcp85.c)
+ fact3<-cell_size/res(MICROC_2070_rcp45.c)
+ 
+ #Set cell size to ~ cell_size degree
+ MICROC_2070_rcp26.c<-aggregate(MICROC_2070_rcp26.c,fact1)
+ MICROC_2070_rcp85.c<-aggregate(MICROC_2070_rcp85.c,fact2)
+ MICROC_2070_rcp45.c<-aggregate(MICROC_2070_rcp45.c,fact3)
 
 # make the names consistent for all 
 names(MICROC_2070_rcp26.c)<-names(myExpl)
@@ -136,10 +134,10 @@ names(MICROC_2070_rcp45.c)<-names(myExpl)
 projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rcp85.c)
 
 
-#If you are using all climate scenerios
+#If you are using all climate scenarios
 names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85")
 
-#Current and one future scenerio
+#Current and one future scenario
 #names(projEnv)<-c("current","MICROC2070rcp26")
 
 #Only current

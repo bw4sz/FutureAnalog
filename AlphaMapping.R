@@ -38,6 +38,7 @@ gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
 # Anusha's paths
 #droppath <- "C:\\Users/Anusha/Documents/Dropbox/Hummingbirds/Lab paper 1 Predicted vs observed assemblages/"
 #gitpath <- "C:\\Users/Anusha/Documents/GitHub/FutureAnalog/"
+
 setwd(droppath)
 #######################################################################################################################
 #Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
@@ -69,7 +70,7 @@ morph.male<-morph[morph$Sex=="Macho",c("SpID","ExpC","Peso","AlCdo")]
 morph.complete<-morph.male[complete.cases(morph.male),]
 
 #aggregate for species
-agg.morph<-aggregate(morph.complete,list(morph.complete$SpID),mean)
+agg.morph<-aggregate(morph.complete,list(morph.complete$SpID),mean) #warnings where it can't take a mean of single value
 mon<-agg.morph[,-2]
 colnames(mon)<-c("Species","Bill","Mass","WingChord")
 rownames(mon)<-gsub(" ",".",mon[,1])
@@ -112,7 +113,7 @@ source(paste(gitpath,"SDM.r",sep=""))
 
 #3 Set the climate scenarios (line 66 for current, 97 for future)
 
-#There really isn't an elegant way of coding which climate scenerios you want, so please pay close attention to lines 
+#There really isn't an elegant way of coding which climate scenarios you want, so please pay close attention to lines 
 #The climate scenerios are very large, and need to be held locally
 
 #In general the script is meant as a helpful wrapper, but attention needs to be paid to alot of the manual details 

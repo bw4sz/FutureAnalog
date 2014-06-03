@@ -297,7 +297,6 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   # print the dimnames of this object
   dimnames(myBiomodModelEval)
   
-#TODO: Add TSS score here, did we do this correctly? [c("ROC", "TSS"), "Testing.data",, "Full",]
   # let's print the ROC and TSS scores of all selected models, get the mean value for all the combined runs.
   stat<-myBiomodModelEval[c("ROC","TSS"), "Testing.data",,"Full",]
   
@@ -323,9 +322,13 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   #The clamping issue is a big one here!
 
     #Ensemble model
+  #FIXME: chosen.models was 'all', now only uses models that did not fail in previous step (myBiomodModelOut)
+  #FIXME: still doesn't run for some species, e.g., spec[16]
+  #FIXME: if !exist myBiomodEM, the next step, mapply fails also. needs the output.
+  #FIXME: does it fail because there aren't multiple models to ensemble? Will/Should this stop the entire program?
   myBiomodEM <- BIOMOD_EnsembleModeling( 
     modeling.output = myBiomodModelOut,
-    chosen.models = 'all',
+    chosen.models =  get_built_models(myBiomodModelOut),
     em.by='all',
     eval.metric = c('ROC'),
     eval.metric.quality.threshold = c(0.75),

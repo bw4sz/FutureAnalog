@@ -322,7 +322,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   #The clamping issue is a big one here!
 
     #Ensemble model
-  #FIXME: chosen.models was 'all', now only uses models that did not fail in previous step (myBiomodModelOut)
+  # only uses models that did not fail in previous step (myBiomodModelOut)
   #FIXME: still doesn't run for some species, e.g., spec[16]
   #FIXME: if !exist myBiomodEM, the next step, mapply fails also. needs the output.
   #FIXME: does it fail because there aren't multiple models to ensemble? Will/Should this stop the entire program?
@@ -397,6 +397,7 @@ model_compare <- cast(model_eval[,1:3], Species~Model)
 
 ggplot(model_compare, aes(TSS, ROC)) + geom_point() + stat_smooth(method="lm") + theme_classic() + 
   theme(text=element_text(size=20))
+lm1=lm(ROC~TSS, data=model_compare)
 ggsave("ModelComparison_ROC-TSS.jpeg")
 
 
@@ -409,7 +410,8 @@ model_thresh<-melt(model_thresh)
 
 names(model_thresh)<-c("Model","ROC_Threshold","Number_of_Species")
 ggplot(model_thresh,aes(x=ROC_Threshold,y=Number_of_Species,col=Model)) + geom_line() + geom_point() + 
-  geom_text(aes(label=Number_of_Species),vjust=4,size=5) + xlab("Model Threshold") + ylab("Number of species included")
+  geom_text(aes(label=Number_of_Species),vjust=4,size=5) + xlab("Model Threshold") + ylab("Number of species included") +
+  theme_classic() + theme(text=element_text(size=20))
 ggsave("ModelThresholding.jpeg",dpi=300,height=8,width=8)
 
 #Get the variable importance from file

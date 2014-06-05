@@ -1,11 +1,11 @@
 [general] 
 creator=R package 'raster' 
-created= 2013-10-30 12:41:56 
+created= 2014-06-05 18:12:42 
 [georeference] 
-nrows= 9 
-ncols= 8 
+nrows= 13 
+ncols= 12 
 xmin= -81.15 
-ymin= -5.48333333333335 
+ymin= -5.23333333333335 
 xmax= -75.15 
 ymax= 1.26666666666667 
 projection= +proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs 
@@ -15,13 +15,12 @@ byteorder= little
 nbands= 1 
 bandorder= BIL 
 categorical= FALSE 
-minvalue= 0.27890221 
-maxvalue= 0.389365786666667 
+minvalue= 0.424160153933333 
+maxvalue= 0.510457138295455 
 nodatavalue= -1.7e+308 
 [legend] 
 legendtype=  
 values=  
 color=  
 [description] 
-layername= Phylogenetic 
-history=  
+layername= layer 

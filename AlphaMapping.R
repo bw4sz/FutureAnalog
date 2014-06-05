@@ -24,6 +24,7 @@ require(parallel)
 require(ecodist)
 require(vegan)
 require(MASS)
+require(HH)
 
 
 #Set dropbox and github paths
@@ -43,7 +44,7 @@ setwd(droppath)
 #######################################################################################################################
 #Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
 #######################################################################################################################
-##
+
 
 #load workspace if needed on reset
 #load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
@@ -149,9 +150,7 @@ MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
 
 #create list of input rasters
 input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
-#input.niche<-list(current_niche,MICROC2070rcp26_niche)
 names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
-#names(input.niche)<-c("current","MICROC2070rcp26")
 
 
 ###############################################
@@ -185,11 +184,8 @@ MICROC2070rcp45_niche <- niche.crops[grep("MICROC2070rcp45",niche.crops,value=FA
 input.niche <- list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
 names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
-#input.niche<-list(current_niche,MICROC2070rcp26_niche)
-#names(input.niche)<-c("current","MICROC2070rcp26")
-
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
-siteXspps <- lapply(input.niche,tableFromRaster,threshold=.05)
+siteXspps <- lapply(input.niche,tableFromRaster, threshold=.05)
 
 ####################################################
 #Niche Models Completed!
@@ -227,7 +223,7 @@ MFDs <- lapply(siteXspps,AlphaFunc)
 ##########################
 #Visualize Mapping Metrics
 ##########################
-#set to the number of climate scenerios.
+#set to the number of climate scenarios.
 par(mfrow=c(4,3))
 
 cell.Rasters<-lapply(names(siteXspps),cellVisuals)
@@ -260,8 +256,8 @@ names(cell.Rasters)<-names(siteXspps)
 
 #
 current<-cell.Rasters[[1]]
-
-plot(stack(current))
+blues <- colorRampPalette(brewer.pal(9,"Blues"))(100)
+plot(stack(current), col=blues)
 
 #Compute Differences
 
@@ -276,15 +272,19 @@ diff.raster<-lapply(2:length(cell.Rasters),function(x){
 names(diff.raster)<-names(siteXspps[-1])
 
 par(mfrow=c(3,2))
-plot(diff.raster[[1]],col=brewer.pal(7,"RdBu"))
-#plot(diff.raster[[2]],col=brewer.pal(7,"RdBu"))
+cols <- colorRampPalette(brewer.pal(7,"RdBu"))(100)
+plot(diff.raster[[1]],col=cols)
+plot(diff.raster[[2]],col=cols)
+plot(diff.raster[[3]], col=cols)
 
 #####################
 #Correlate rasters
 al<-lapply(1:length(diff.raster),function(x){
 within.cor<-cor(values(diff.raster[[x]]),use="complete.obs")
 within.cor<-melt(within.cor)
-a<-qplot(data=within.cor,x=X1,y=X2,fill=value,geom="tile") + xlab("") + ylab("")+ scale_fill_continuous(low="blue",high="red") + geom_text(aes(label=round(value,2)))
+a<-qplot(data=within.cor,x=X1,y=X2,fill=value,geom="tile") + xlab("") + ylab("") + 
+  scale_fill_continuous(low="white",high="red") + geom_text(aes(label=round(value,2))) + 
+  theme(text=element_text(size=20))
 return(a)
 })
 
@@ -292,7 +292,7 @@ al
 #Write difference in alpha out to file.
 
 #############
-#This needs to be inspected, does this work for multiple climate scenerios, need to test?
+#This needs to be inspected, does this work for multiple climate scenarios, need to test?
 #############
 #Write alpha rasters to file
 lapply(1:length(cell.Rasters),function(x){

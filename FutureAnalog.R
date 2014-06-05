@@ -1,3 +1,5 @@
+#This code goes through the results from AlphaMapping.R to determine the 
+# number of analog hummingbird assemblages in Ecuador under future climate scenarios.
 require(vegan)
 require(picante)
 require(reshape)

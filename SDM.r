@@ -84,7 +84,7 @@ res(myExpl)
 
 #Set Cell size
 ####################################
-fact<-cell_size/res(myExpl) # aggregate() needs it in this format
+fact<-cell_size/res(myExpl) # aggregate() needs it in this format, the "factor" to aggregate by
 ####################################
 
 #Set cell size to ~ cell_size degree
@@ -106,9 +106,7 @@ MICROC_2070_rcp45<-stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICRO
 exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))
 #######################################################
 
-#Cut by the extent
-
-#Crop by this layer, 
+#Cut by the extent. Crop by this layer 
 myExpl.crop<-stack(crop(myExpl,exte))
 MICROC_2070_rcp26.c<-stack(crop(MICROC_2070_rcp26,exte))
 MICROC_2070_rcp85.c<-stack(crop(MICROC_2070_rcp85,exte))
@@ -122,9 +120,9 @@ MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp45,exte))
  fact3<-cell_size/res(MICROC_2070_rcp45.c)
  
  #Set cell size to ~ cell_size degree
- MICROC_2070_rcp26.c<-aggregate(MICROC_2070_rcp26.c,fact1)
- MICROC_2070_rcp85.c<-aggregate(MICROC_2070_rcp85.c,fact2)
- MICROC_2070_rcp45.c<-aggregate(MICROC_2070_rcp45.c,fact3)
+ MICROC_2070_rcp26.c<-stack(aggregate(MICROC_2070_rcp26.c,fact1))
+ MICROC_2070_rcp85.c<-stack(aggregate(MICROC_2070_rcp85.c,fact2))
+ MICROC_2070_rcp45.c<-stack(aggregate(MICROC_2070_rcp45.c,fact3))
 
 # make the names consistent for all 
 names(MICROC_2070_rcp26.c)<-names(myExpl)
@@ -138,14 +136,8 @@ projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rc
 #If you are using all climate scenarios
 names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85")
 
-#Current and one future scenario
-#names(projEnv)<-c("current","MICROC2070rcp26")
 
-#Only current
-#names(projEnv)<-c("current")
-
-
-print(paste("Climate Scenarios:",names(projEnv)))
+print(paste("Climate Scenarios:", names(projEnv)))
 
 #######################
 #Which species to run
@@ -154,7 +146,7 @@ print(paste("Climate Scenarios:",names(projEnv)))
 #How many records per species?
 rec<-table(loc_clean$SPECIES)
 
-#let's grab some species that have been checked 
+#let's grab some species that have been checked (species that have more than 10 locations?)
 spec<-names(rec[which(rec >= 10)])
 
 #remove any species that have already been run
@@ -178,8 +170,6 @@ modelXspp<-sapply(spec,function(x){
     gsub(" ",".",x) %in% y
   })
 })
-
-#rownames(modelXspp)<-names(projEnv)
 
 #Only run a species if it is NOT run in all models
 if(length(projEnv)==1){spec<-spec[!(modelXspp*1)==length(projEnv)]}
@@ -258,6 +248,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   plot(myBiomodData)
     
   #Define modeling options
+  #FIXME: Is GBM failing for most species? Why?
   myBiomodOption <- BIOMOD_ModelingOptions(    
     MAXENT = list( path_to_maxent.jar = "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\maxent.jar",
                    maximumiterations = 200,
@@ -286,7 +277,6 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
                                      DataSplit=80, 
                                      Yweights=NULL, 
                                      VarImport=3, 
-                                     # c('ROC', 'TSS')
                                      models.eval.meth = c('ROC',"TSS"),
                                      SaveObj = TRUE )
   
@@ -323,9 +313,6 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
 
     #Ensemble model
   # only uses models that did not fail in previous step (myBiomodModelOut)
-  #FIXME: still doesn't run for some species, e.g., spec[16]
-  #FIXME: if !exist myBiomodEM, the next step, mapply fails also. needs the output.
-  #FIXME: does it fail because there aren't multiple models to ensemble? Will/Should this stop the entire program?
   myBiomodEM <- BIOMOD_EnsembleModeling( 
     modeling.output = myBiomodModelOut,
     chosen.models =  get_built_models(myBiomodModelOut),

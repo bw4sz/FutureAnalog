@@ -16,7 +16,7 @@ require(phylobase)
 #Sarah's
 droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
 gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
-rdata <- paste(output_folder, "\\AlphaMapping.RData", sep="")
+rdata <- paste(output_folder, "0.5\\AlphaMapping.RData", sep="")
 
 #Load in data
 load(rdata)
@@ -32,29 +32,29 @@ setwd(paste(droppath,"FutureAnalog",sep=""))
 
 #If running the code with full dataset, for the full analysis
 current <- siteXspps[[1]]
-future <- siteXspps[[3]]
+future <- siteXspps[[3]]  #FIXME: Note that using this as "future" means you are just looking at RCP 4.5
 
 #Find within betadiversity
-within.current.dist <- vegdist(current, "bray")
+within.current.dist <- vegdist(current, "bray", na.rm=TRUE)  #FIXME: Adding na.rm=TRUE made this work, but we should check that this is OK to ignore NA (e.g. Are NA the ones for which the models failed? NA is different from 0?)
 within.current <- as.matrix(within.current.dist)
 
 #Find within phylobetadiversity
 #For phylobeta, there needs to be more than 2 species for a rooted tree
 phylo.current <- current[,colnames(current) %in% trx$tip.label]
-phylo.current <- phylo.current[!apply(phylo.current,1,sum)<=2,]
+phylo.current <- phylo.current[!apply(phylo.current,1,sum)<=2,]   #FIXME: These are all NA - Why?
 
 phylo.future <- future[,colnames(future) %in% trx$tip.label]
-phylo.future <- phylo.future[!apply(phylo.future,1,sum)<=2,]
+phylo.future <- phylo.future[!apply(phylo.future,1,sum)<=2,]   #FIXME: These are all NA - Why?
 
 #Find within Func betadiversity
 Func.current <- current[,colnames(current) %in% colnames(fco)]
-Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]
+Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]   #FIXME: These are all NA - Why?
 
 Func.future <- future[,colnames(future) %in% colnames(fco)]
-Func.future <- Func.future[!apply(Func.future,1,sum)<=2,]
+Func.future <- Func.future[!apply(Func.future,1,sum)<=2,]   #FIXME: These are all NA - Why?
 
 #Within current phylobetadiversity
-system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))
+system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))  #FIXME: I get an error when trying to run this. Is this the method we are using now? I think the error is because of the NA problem.
 
 #Within current func betadiversity
 #system.time(holt.func<-matpsim(phyl=tree.func,com=Func.current,clust=7))
@@ -65,7 +65,8 @@ system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))
 
 source(paste(gitpath, "BenHolttraitDiversity.R", sep=""))
 
-#create sp.list
+#create sp.list   
+#FIXME: Error in Func.current[k, ] : subscript out of bounds
 sp.list<-lapply(rownames(Func.current),function(k){
   x<-Func.current[k,]
   names(x[which(x==1)])
@@ -92,12 +93,12 @@ sgtraitMNTD <- sapply(rownames(Func.current),function(i){
   return(out)
 })
 
-names(sgtraitMNTD) <- rownames(Func.current)
+names(sgtraitMNTD) <- rownames(Func.current)  #FIXME: do we want these to be rownames? Numeric values. What are they?
 melt.MNTD<-melt(sgtraitMNTD)
 
 colnames(melt.MNTD)<-c("MNTD","To","From")
 
-#turn beta measures into a matrices
+#turn beta measures into a matrix    #FIXME: Doesn't work because of the above NA issue
 within.current.phylo<-as.matrix(holt.try)
 
 #needs to cast into a matrix to fit old formatting
@@ -133,7 +134,7 @@ within.current.func<-within.current.func[,-1]
 #Between time taxonomic betadiversity
 ###########################
 
-beta.time<-analogue::distance(current,future,"bray")
+beta.time<-analogue::distance(current,future,"bray")   #FIXME: Error in dxy(x = x, y = y, DCOEF = DCOEF, weights = weights, R = R, ...) : NA/NaN/Inf in foreign function call (arg 1)
 
 #####################
 #CURRENT IS ROWS
@@ -159,10 +160,6 @@ rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
 sgtraitMNTD <- sapply(rownames(Func.future),function(i){
-  
-  #Iterator count
-  #print(round(which(rownames(siteXspp_traits)==i)/nrow(siteXspp_traits),3))
-  
   #set iterator
   A<-i
   

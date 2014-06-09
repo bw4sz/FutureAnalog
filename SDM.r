@@ -72,7 +72,7 @@ myExpl<-stack(myExpl)
 
 
 #Just get the clean localities
-gooddata <- c("ok", "Ok", "OK", "Y") #FIXME: should we include blank ("") ?
+gooddata <- c("ok", "Ok", "OK", "Y") #note that blanks ("") and REJECT data are excluded
 loc_clean <- PAdat[PAdat$SpatialCheck=="Y" & PAdat$MapDecision %in% gooddata,]
 
 extPoint<-SpatialPoints(loc_clean[,c("LONGDECDEG","LATDECDEG")])
@@ -248,7 +248,6 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   plot(myBiomodData)
     
   #Define modeling options
-  #FIXME: Is GBM failing for most species? Why?
   myBiomodOption <- BIOMOD_ModelingOptions(    
     MAXENT = list( path_to_maxent.jar = "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\maxent.jar",
                    maximumiterations = 200,

@@ -197,6 +197,11 @@ beta.time.func<-lapply(Func.future,function(x){
   beta.time.func<-beta.time.func[,-1]
 })
 
+
+###############################################################
+#BETWEEN TIME
+###############################################################
+
 ###########################
 #Between time taxonomic betadiversity
 ###########################
@@ -205,6 +210,65 @@ beta.time<-lapply(future,function(x){
   analogue::distance(current,x,"bray")
 })
 
+
+###########################
+#Between time phylogenetic
+###########################
+beta.time.phylo<-lapply(phylo.future,function(x){
+  beta.time.phylo<-as.matrix(matpsim.pairwise(phyl=trx,com.x=phylo.current,com.y=x,clust=7))
+})
+
+
+###########################
+#Between time functional
+###########################
+
+#Repeat steps above for within time trait, but replacing Func.current with Func.future
+#
+Beta.time.func<-lapply(Func.future,function(x){
+  
+  sp.list_current<-lapply(rownames(Func.current),function(k){
+    g<-Func.current[k,]
+    names(g[which(g==1)])
+  })
+  
+  names(sp.list_current)<-rownames(Func.current)
+  
+  sp.list_future<-lapply(rownames(x),function(k){
+    g<-x[k,]
+    names(g[which(g==1)])
+  })
+  
+  names(sp.list_future)<-rownames(x)
+  
+  #Get distances from the cophenetic matrix?
+  dists <- as.matrix(fco)
+  
+  rownames(dists) <- rownames(fco)
+  colnames(dists) <- rownames(fco)
+  
+  
+  Beta.time.func<-lapply(rownames(x),function(fu){
+    lapply(rownames(Func.current),function(cur){
+      MNND_fc(fu,cur,sp.list_current,sp.list_future,dists)
+    })
+    
+  })
+  
+  melt.MNTD<-melt(Beta.time.func)
+  
+  colnames(melt.MNTD)<-c("MNTD","To","From")
+  
+  #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
+  beta.time.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
+  rownames(beta.time.func)<-beta.time.func[,1]
+  beta.time.func<-beta.time.func[,-1]
+  
+  
+  rownames(beta.time.func) <- rownames(Func.current)
+  colnames(beta.time.func) <- rownames(x)
+  return(beta.time.func)
+})
 
 #############################################
 #             ANALOG ANALYSIS
@@ -224,84 +288,72 @@ arb.thresh<-.2
 #Taxonomic Analogs
 ###################
 
-#For each of the current communities how many future communities are less difference 5th current quantile
-n.analogs<-sapply(rownames(beta.time), function(x){
-  sum(beta.time[rownames(beta.time) %in% x,] <= arb.thresh)
+#For each of the current communities how many future communities are less different than the threshold
+current_to_future.analog<-lapply(beta.time,function(j){
+  n.analogs<-sapply(rownames(j), function(x){
+    sum(j[rownames(j) %in% x,] <= arb.thresh)
+  })
+  current_to_future.analog<-data.frame(rownames(j),n.analogs)
+  colnames(current_to_future.analog)<-c("cell.number","numberofanalogs")  
+  return(current_to_future.analog)
 })
 
-#Create a dataframe of cell cell numbers and number of analogs
-current_to_future.analog<-data.frame(rownames(beta.time),n.analogs)
-colnames(current_to_future.analog)<-c("cell.number","numberofanalogs")
+c_f_tax<-lapply(current_to_future.analog,function(x){
+  fanalog<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+  hist(x$numberofanalogs)
+  writeRaster(fanalog,"NumberofFutureAnalogs_Taxon_ARB.tif",overwrite=T)
+})
 
-#Visualize raster of analogs
-fanalog<-cellVis(cell=current_to_future.analog$cell.number,value=current_to_future.analog$numberofanalogs)
-hist(current_to_future.analog$numberofanalogs)
-writeRaster(fanalog,"NumberofFutureAnalogs_Taxon_ARB.tif",overwrite=T)
-
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, 
-#the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-threshold<-nrow(current)*.005
-
-sum(current_to_future.analog$numberofanalogs <= threshold)
-plot(noAnalogTax<-fanalog < threshold)
-
-#For each of the currents communities how many future communities are less difference 5th current quantile
-#n.analogs<-sapply(rownames(beta.time), function(x){
-#sum(beta.time[rownames(beta.time) %in% x,] >= quant.5[names(quant.5) %in% x])
-#})
 
 ###################
 #Phylogenetic Analogs
 ####################
-n.analogs.phylo<-sapply(rownames(beta.time.phylo), function(x){
-  sum(beta.time.phylo[rownames(beta.time.phylo) %in% x,] <= arb.thresh)
+
+future.analog.phylo<-lapply(beta.time.phylo,function(j){
+  n.analogs.phylo<-sapply(rownames(j), function(x){
+    sum(j[rownames(j) %in% x,] <= arb.thresh)
+  })
+  
+  #Create a dataframe of the number of analogs and the cellnumber
+  future.analog.phylo<-data.frame(rownames(j),n.analogs.phylo)
+  colnames(future.analog.phylo)<-c("cell.number","numberofanalogs")
+  return(future.analog.phylo)
 })
 
 
-#Create a dataframe of the number of analogs and the cellnumber
-future.analog.phylo<-data.frame(rownames(phylo.current),n.analogs.phylo)
-colnames(future.analog.phylo)<-c("cell.number","numberofanalogs")
-
 #Visualize!
-fanalog.phylo<-cellVis(cell=future.analog.phylo$cell.number,value=future.analog.phylo$numberofanalogs)
-
-#Write to file
-writeRaster(fanalog.phylo,"NumberofFutureAnalogs_Phylo_ARB.tif",overwrite=T)
-hist(future.analog.phylo$numberofanalogs)
-#If I am counting the number of cells whose betadiveristy is within the 5th quantile, 
-#the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-
-threshold<-nrow(phylo.current)*.05
-sum(future.analog.phylo$numberofanalogs <= threshold)
-plot(noAnalogPhylo<-fanalog.phylo < threshold)
+c_f_phylo<-lapply(future.analog.phylo,function(x){
+  fanalog.phylo<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+  hist(x$numberofanalogs)
+  writeRaster(fanalog.phylo,"NumberofFutureAnalogs_Phylo_ARB.tif",overwrite=T)
+})
 
 ###################
 #Functional Analogs
 ####################
-n.analogs.func<-sapply(rownames(beta.time.func), function(x){
-  sum(beta.time.func[rownames(beta.time.func) %in% x,] <= arb.thresh)
+
+future.analog.func<-lapply(Beta.time.func,function(j){
+  n.analogs.func<-sapply(rownames(j), function(x){
+    sum(j[rownames(j) %in% x,] <= arb.thresh)
+  })
+  
+  future.analog.func<-data.frame(rownames(j),n.analogs.func)
+  colnames(future.analog.func)<-c("cell.number","numberofanalogs")
+  return(future.analog.func)
 })
 
-#n.analogs.Func<-sapply(rownames(beta.time.phylo), function(x){
-# sum(beta.time.func[rownames(beta.time.func) %in% x,] <= quant.func.5[names(quant.func.5) %in% x])
-#})
+c_f_func<-lapply(future.analog.func,function(x){
+  fanalog.Func<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+  writeRaster(fanalog.Func,"NumberofFutureAnalogs_Func_ARB.tif",overwrite=T)
+})
 
-future.analog.func<-data.frame(rownames(beta.time.func),n.analogs.func)
-colnames(future.analog.func)<-c("cell.number","numberofanalogs")
 
-fanalog.Func<-cellVis(cell=future.analog.func$cell.number,value=future.analog.func$numberofanalogs)
+#############Visualize all three
+c_f<-stack(c(c_f_tax,c_f_phylo,c_f_func))
 
-hist(future.analog.func$numberofanalogs)
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
+plot(c_f)
 
-threshold<-nrow(Func.current)*.05
-sum(future.analog.func$numberofanalogs <= threshold)
-
-plot(fanalog.Func < threshold)
-writeRaster(fanalog.Func,"NumberofFutureAnalogs_Func_ARB.tif",overwrite=T)
+###Across are the emissions scenerios, down are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
 
 #####################################################
 #PART II
@@ -314,92 +366,92 @@ writeRaster(fanalog.Func,"NumberofFutureAnalogs_Func_ARB.tif",overwrite=T)
 ####################
 
 #For each of the future communities how many future communities are less different 5th current quantile
-n.analogs<-sapply(colnames(beta.time), function(x){
-  sum(beta.time[,colnames(beta.time) %in% x] <= arb.thresh)
+future_to_current.analog<-lapply(beta.time,function(j){
+  n.analogs<-sapply(colnames(j), function(x){
+    sum(j[,colnames(j) %in% x] <= arb.thresh)
+  })
+ future_to_current.analog<-data.frame(colnames(j),n.analogs)
+  colnames(future_to_current.analog)<-c("cell.number","numberofanalogs")  
+  return(future_to_current.analog)
 })
 
-#Create a dataframe of cell cell numbers and number of analogs
-future_to_current.analog<-data.frame(colnames(beta.time),n.analogs)
-colnames(future_to_current.analog)<-c("cell.number","numberofanalogs")
+f_c_tax<-lapply(future_to_current.analog,function(x){
+  fanalog<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+  hist(x$numberofanalogs)
+  writeRaster(fanalog,"NumberofCurrentAnalogs_Taxon_ARB.tif",overwrite=T)
+})
 
-#Visualize raster of analogs
-fanalog<-cellVis(cell=future_to_current.analog$cell.number,value=future_to_current.analog$numberofanalogs)
-#hist(future_to_current.analog$numberofanalogs)
-
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-#threshold<-nrow(current)*.005
-
-
-#sum(future_to_current.analog$numberofanalogs <= threshold)
-#plot(noAnalogTax<-fanalog < threshold)
-
-writeRaster(fanalog,"NumberofCurrentAnalogs_Taxo.tif",overwrite=T)
-
-#For each of the currents communities how many future communities are less difference 5th current quantile
-#n.analogs<-sapply(rownames(beta.time), function(x){
-#sum(beta.time[rownames(beta.time) %in% x,] >= quant.5[names(quant.5) %in% x])
-#})
+#Data check, these should be different
+plot(stack(f_c_tax) - stack(c_f_tax))
 
 ###################
 #Phylogenetic Analogs
 ####################
 
-n.analogs.phylo<-sapply(colnames(beta.time.phylo), function(x){
-  sum(beta.time.phylo[,colnames(beta.time.phylo) %in% x] <= arb.thresh)
+future_to_current.phylo<-lapply(beta.time.phylo,function(j){
+  n.analogs.phylo<-sapply(colnames(j), function(x){
+    sum(j[,colnames(j) %in% x] <= arb.thresh)
+  })
+  
+  #Create a dataframe of the number of analogs and the cellnumber
+  future.analog.phylo<-data.frame(colnames(j),n.analogs.phylo)
+  colnames(future.analog.phylo)<-c("cell.number","numberofanalogs")
+  return(future.analog.phylo)
 })
 
-future.analog.phylo<-data.frame(colnames(beta.time.phylo),n.analogs.phylo)
-colnames(future.analog.phylo)<-c("cell.number","numberofanalogs")
 
-fanalog.phylo<-cellVis(cell=future.analog.phylo$cell.number,value=future.analog.phylo$numberofanalogs)
-hist(future.analog.phylo$numberofanalogs)
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
+#Visualize!
+f_c_phylo<-lapply(future_to_current.phylo,function(x){
+  fanalog.phylo<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+  hist(x$numberofanalogs)
+  writeRaster(fanalog.phylo,"NumberofCurrentAnalogs_Phylo_ARB.tif",overwrite=T)
+})
 
-writeRaster(fanalog.phylo,"NumberofCurrentAnalogs_Phylo.tif",overwrite=T)
-threshold<-nrow(phylo.current)*.05
-sum(future.analog.phylo$numberofanalogs <= threshold)
-plot(noAnalogPhylo<-fanalog.phylo < threshold)
+plot(stack(f_c_phylo) - stack(c_f_phylo))
+
 
 ###################
-#functional Analogs
+#Functional Analogs
 ####################
-n.analogs.func<-sapply(colnames(beta.time.func), function(x){
-  sum(beta.time.func[,colnames(beta.time.func) %in% x] <= arb.thresh,na.rm=TRUE)
+
+future_to_current.func<-lapply(Beta.time.func,function(j){
+  n.analogs.func<-sapply(colnames(j), function(x){
+    sum(j[,colnames(j) %in% x] <= arb.thresh)
+  })
+  
+  future.analog.func<-data.frame(colnames(j),n.analogs.func)
+  colnames(future.analog.func)<-c("cell.number","numberofanalogs")
+  return(future.analog.func)
 })
 
-future.analog.func<-data.frame(rownames(Func.future),n.analogs.func)
-colnames(future.analog.func)<-c("cell.number","numberofanalogs")
-
-fanalog.func<-cellVis(cell=future.analog.func$cell.number,value=future.analog.func$numberofanalogs)
-hist(future.analog.func$numberofanalogs)
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-
-threshold<-nrow(Func.current)*.05
-sum(future.analog.func$numberofanalogs <= threshold)
-plot(fanalog.func < threshold)
-writeRaster(fanalog.func,"NumberofCurrentAnalogs_Func.tif",overwrite=T)
+f_c_func<-lapply(future_to_current.func,function(x){
+  fanalog.Func<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+  writeRaster(fanalog.Func,"NumberofCurrentAnalogs_Func_ARB.tif",overwrite=T)
+})
 
 
-####################
-#Compare outputs
-####################
-comp<-list.files(pattern=".tif",full.names=T)
-all.raster<-stack(comp)
-plot(all.raster)
+#############Visualize all three
+f_c<-stack(c(f_c_tax,f_c_phylo,f_c_func))
 
-########################
-#Split into clusters, current and future
-########################
+#plot novel assemblages
+plot(f_c)
 
-#####################################
-#naming of clusters is wrong here??  TODO: What is wrong? FIXME?
-###################################
-#plot(clusters<-all.raster[[c("TaxonomicClusters","PhylogenticClusters","FunctionalClusters")]],col=rainbow(5))
-plot(current.ras<-all.raster[[c("NumberofCurrentAnalogs_Taxo","NumberofCurrentAnalogs_Phylo","NumberofCurrentAnalogs_Func")]])
-plot(future.ras<-all.raster[[c("NumberofFutureAnalogs_Taxon_ARB","NumberofFutureAnalogs_Phylo_ARB","NumberofFutureAnalogs_Func_ARB")]])
+
+#plot both as a panel, this needs to be improved
+#Just try plotting one emission scenerio across both disappearing and novel
+novel<-f_c[[c(1,4,7)]]
+disappear<-c_f[[c(1,4,7)]]
+
+#This could be named correctly using 
+firstplot<-stack(novel,disappear)
+names(firstplot)<-c(paste("Novel",c("Tax","Phylo","Func")),paste("Disappearing",c("Tax","Phylo","Func")))
+plot(firstplot)
+
+#####################
+#FIX ME: CLEANED UNTIL HERE 7/3/2014
+#The rest should be fairly straightforward, correlating the rasters from above, the f_c raster is the number of future analogs of current assemblages
+#The c_f is the number of current analogs of future assemblages
+
 
 ###########################
 #Correlation among outputs, this currently onlymake sense for the beta diversity, the clusters are non-ordinal

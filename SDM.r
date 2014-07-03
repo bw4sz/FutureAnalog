@@ -113,12 +113,12 @@ MICROC_2070_rcp85.c<-stack(crop(MICROC_2070_rcp85,exte))
 MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp45,exte))
 
 #set resolution for the future layers equivalent to cell size
-#TODO: check if this works (as is, the Future models aren't being run...)
 
+if (!res(MICROC_2070_rcp26)[[1]] == cell_size){
  fact1<-cell_size/res(MICROC_2070_rcp26.c)
  fact2<-cell_size/res(MICROC_2070_rcp85.c)
  fact3<-cell_size/res(MICROC_2070_rcp45.c)
- 
+
  #Set cell size to ~ cell_size degree
  MICROC_2070_rcp26.c<-stack(aggregate(MICROC_2070_rcp26.c,fact1))
  MICROC_2070_rcp85.c<-stack(aggregate(MICROC_2070_rcp85.c,fact2))
@@ -128,10 +128,9 @@ MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp45,exte))
 names(MICROC_2070_rcp26.c)<-names(myExpl)
 names(MICROC_2070_rcp85.c)<-names(myExpl)
 names(MICROC_2070_rcp45.c)<-names(myExpl)
-
+}
 #create a list of all env to project into
 projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rcp85.c)
-
 
 #If you are using all climate scenarios
 names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85")

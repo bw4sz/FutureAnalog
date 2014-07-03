@@ -376,7 +376,7 @@ colnames(model_eval)<-c("Model","Species","Stat")
 ggplot(model_eval, aes(x=Species,y=Model,fill=Stat)) + geom_tile() + 
   scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + 
   theme(axis.text.x=element_text(angle=-90))
-ggsave("ModelEvaluations.jpeg")
+ggsave("ModelEvaluations.jpeg", dpi=600, height = 6, width=11)
 
 #Plot correlation of ROC and TSS scores
 model_compare <- cast(model_eval[,1:3], Species~Model)
@@ -384,7 +384,7 @@ model_compare <- cast(model_eval[,1:3], Species~Model)
 ggplot(model_compare, aes(TSS, ROC)) + geom_point() + stat_smooth(method="lm") + theme_classic() + 
   theme(text=element_text(size=20))
 lm1=lm(ROC~TSS, data=model_compare)
-ggsave("ModelComparison_ROC-TSS.jpeg")
+ggsave("ModelComparison_ROC-TSS.jpeg", dpi=600, height = 6, width=11)
 
 
 model_thresh<-sapply(seq(.5,.95,.05),function(x){
@@ -398,7 +398,7 @@ names(model_thresh)<-c("Model","ROC_Threshold","Number_of_Species")
 ggplot(model_thresh,aes(x=ROC_Threshold,y=Number_of_Species,col=Model)) + geom_line() + geom_point() + 
   geom_text(aes(label=Number_of_Species),vjust=4,size=5) + xlab("Model Threshold") + ylab("Number of species included") +
   theme_classic() + theme(text=element_text(size=20))
-ggsave("ModelThresholding.jpeg",dpi=300,height=8,width=8)
+ggsave("ModelThresholding.jpeg", dpi=600, height=8, width=8)
 
 #Get the variable importance from file
 varI<-list.files(full.name=TRUE,recursive=T,pattern="VarImportance.csv")
@@ -414,7 +414,7 @@ ggplot(mvar, aes(x=Species,y=Bioclim,fill=value)) + geom_tile() +
   scale_fill_gradient(limits=c(0,1),low="blue",high="red",na.value="white") + 
   theme(axis.text.x=element_text(angle=-90)) + facet_grid(Model ~ .)
 
-ggsave("VariableImportance.jpeg")
+ggsave("VariableImportance.jpeg", dpi=600, height = 6, width=11)
 }
 
 

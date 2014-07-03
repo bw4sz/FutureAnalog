@@ -1,6 +1,6 @@
 [general] 
 creator=R package 'raster' 
-created= 2014-06-05 18:12:42 
+created= 2014-07-02 19:20:49 
 [georeference] 
 nrows= 13 
 ncols= 12 
@@ -15,7 +15,7 @@ byteorder= little
 nbands= 1 
 bandorder= BIL 
 categorical= FALSE 
-minvalue= 8.0167831311571 
+minvalue= 6.88962236777333 
 maxvalue= 13.4304092073864 
 nodatavalue= -1.7e+308 
 [legend] 

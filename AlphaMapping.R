@@ -26,19 +26,10 @@ require(vegan)
 require(MASS)
 require(HH)
 
-
 #Set dropbox and github paths
 #Sarah's
 droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
 gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
-
-# Ben's
-#  droppath<-"C:\\Users\\Ben\\Dropbox\\"
-#  gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
-
-# Anusha's paths
-#droppath <- "C:\\Users/Anusha/Documents/Dropbox/Hummingbirds/Lab paper 1 Predicted vs observed assemblages/"
-#gitpath <- "C:\\Users/Anusha/Documents/GitHub/FutureAnalog/"
 
 setwd(droppath)
 #######################################################################################################################
@@ -127,8 +118,6 @@ source(paste(gitpath,"SDM.r",sep=""))
 # Cell size is in degrees. 1 degree = 112km
 cell_size = 0.5
 output_folder = "C:\\Users\\sarah\\Desktop\\Testmod"
-#output_folder="C:/Users/Ben/Desktop/Testmod"
-#output_folder = "C:/Users/Anusha/Desktop/Testmod"
 SDM_SP(cell_size,output_folder)
 
 ##############################
@@ -304,4 +293,4 @@ lapply(1:length(diff.raster),function(x){
   writeRaster(diff.raster[[x]],bylayer=TRUE,paste(gitpath,"Figures/AlphaChange.tif",sep=""),overwrite=TRUE,suffix=names(diff.raster[[x]]))
 })
 
-save.image(paste(output_folder,"AlphaMapping.rData",sep=""))
+save.image(paste(output_folder,"\\AlphaMapping.rData",sep=""))

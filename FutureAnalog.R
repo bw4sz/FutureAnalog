@@ -17,6 +17,7 @@ require(phylobase)
 droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
 gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
 rdata <- paste(output_folder, "0.5\\AlphaMapping.RData", sep="")
+output_folder <- "C:\\Users\\sarah\\Desktop\\Testmod"
 
 #Load in data
 load(rdata)

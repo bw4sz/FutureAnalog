@@ -16,14 +16,14 @@ require(phylobase)
 #Sarah's
 droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
 gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
-rdata <- paste(output_folder, "0.5\\AlphaMapping.RData", sep="")
 output_folder <- "C:\\Users\\sarah\\Desktop\\Testmod"
+rdata <- paste(output_folder, "\\AlphaMapping.RData", sep="")
 
 #Load in data
 load(rdata)
 
 #Load in source functions
-source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
+source(paste(gitpath,"\\AlphaMappingFunctions.R",sep=""))
 
 setwd(paste(droppath,"FutureAnalog",sep=""))
 
@@ -33,10 +33,35 @@ setwd(paste(droppath,"FutureAnalog",sep=""))
 
 #If running the code with full dataset, for the full analysis
 current <- siteXspps[[1]]
-future <- siteXspps[[3]]  #FIXME: Note that using this as "future" means you are just looking at RCP 4.5
+future26 <- siteXspps[[2]]  #FIXME: How to best structure going through future scenarios?
+future45<- siteXspps[[3]]
+future85 <- siteXspps[[4]]
+
+#Remove NAs from siteXspps so we can do the following analyses   #FIXME: Make this less clunky and more streamlined.
+na.test <-  function (x) {
+  w <- apply(x, 2, function(x)all(is.na(x)))
+  if (any(w)) {
+    fails <- names(which(w))
+    print(paste("All NA in columns", paste(names(which(w)), collapse=", ")))
+    return(fails)
+  }
+}
+
+fails <- na.test(current[,])
+current <- current[,!colnames(current) %in% fails]
+
+fails <- na.test(future26[,])
+future26 <- future26[,!colnames(future26) %in% fails]
+
+fails <- na.test(future45[,])
+future45 <- future45[,!colnames(future45) %in% fails]
+
+fails <- na.test(future85[,])
+future85 <- future85[,!colnames(future85) %in% fails]
+
 
 #Find within betadiversity
-within.current.dist <- vegdist(current, "bray", na.rm=TRUE)  #FIXME: Adding na.rm=TRUE made this work, but we should check that this is OK to ignore NA (e.g. Are NA the ones for which the models failed? NA is different from 0?)
+within.current.dist <- vegdist(current, "bray", na.rm=TRUE)  
 within.current <- as.matrix(within.current.dist)
 
 #Find within phylobetadiversity

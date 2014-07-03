@@ -116,7 +116,7 @@ source(paste(gitpath,"SDM.r",sep=""))
 ####################################
 #Define these variables outside the function so they can be used below.
 # Cell size is in degrees. 1 degree = 112km
-cell_size = 0.5
+cell_size = 0.1
 output_folder = "C:\\Users\\sarah\\Desktop\\Testmod"
 SDM_SP(cell_size,output_folder)
 
@@ -174,7 +174,7 @@ input.niche <- list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MI
 names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
-siteXspps <- lapply(input.niche,tableFromRaster, threshold=.05)
+siteXspps <- lapply(input.niche,tableFromRaster, threshold=0.05)
 
 ####################################################
 #Niche Models Completed!

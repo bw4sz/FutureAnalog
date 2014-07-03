@@ -19,15 +19,15 @@ tableFromRaster<-function(fil_list,threshold){
     PAdat<-Niche_locals[,colnames (Niche_locals) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
     
     PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
-    loc_clean<-PAdat[PAdat$Decision=="OK"|PAdat$MapDecision=="OK"|PAdat$MapDecision=="",]
-    loc_clean<-PAdat[PAdat$SpatialCheck=="Y",]
+    gooddata <- c("ok", "Ok", "OK", "Y") #note that blanks ("") and REJECT data are excluded
+    loc_clean <- PAdat[PAdat$SpatialCheck=="Y" & PAdat$MapDecision %in% gooddata,]
     
     sp.loc<-loc_clean[loc_clean$SPECIES %in%  gsub("\\."," ",sp.n),]
     sp.loc<-SpatialPointsDataFrame(sp.loc[,c("LONGDECDEG","LATDECDEG")],sp.loc)
     
     #draw suitability for occurence points
     site_suit<-extract(niche_ens,sp.loc)
-    suit_cut<-quantile(na.omit(site_suit),threshold)
+    suit_cut<-stats::quantile(na.omit(site_suit),threshold)
     
     #plot to file
     #print(qplot(site_suit) + geom_vline(aes(xintercept=suit_cut),linetype="dashed",col="Red"))

@@ -33,11 +33,13 @@ setwd(paste(droppath,"FutureAnalog",sep=""))
 
 #If running the code with full dataset, for the full analysis
 current <- siteXspps[[1]]
+future <- siteXspps[2:4]
 future26 <- siteXspps[[2]]  #FIXME: How to best structure going through future scenarios?
 future45<- siteXspps[[3]]
 future85 <- siteXspps[[4]]
 
-#Remove NAs from siteXspps so we can do the following analyses   #FIXME: Make this less clunky and more streamlined.
+#Remove NAs from siteXspps so we can do the following analyses   
+# Some species do not occur in Ecuador, so they should be removed from analysis here.
 na.test <-  function (x) {
   w <- apply(x, 2, function(x)all(is.na(x)))
   if (any(w)) {
@@ -50,40 +52,42 @@ na.test <-  function (x) {
 fails <- na.test(current[,])
 current <- current[,!colnames(current) %in% fails]
 
-fails <- na.test(future26[,])
-future26 <- future26[,!colnames(future26) %in% fails]
-
-fails <- na.test(future45[,])
-future45 <- future45[,!colnames(future45) %in% fails]
-
-fails <- na.test(future85[,])
-future85 <- future85[,!colnames(future85) %in% fails]
+future <- lapply(future, function(x){
+  fails <- na.test(x)
+  x[,!colnames(x) %in% fails]
+})
 
 
 #Find within betadiversity
-within.current.dist <- vegdist(current, "bray", na.rm=TRUE)  
+within.current.dist <- vegdist(current, "bray")  
 within.current <- as.matrix(within.current.dist)
 
 #Find within phylobetadiversity
 #For phylobeta, there needs to be more than 2 species for a rooted tree
 phylo.current <- current[,colnames(current) %in% trx$tip.label]
-phylo.current <- phylo.current[!apply(phylo.current,1,sum)<=2,]   #FIXME: These are all NA - Why?
+phylo.current <- phylo.current[!apply(phylo.current,1,sum)<=2,]   
 
-phylo.future <- future[,colnames(future) %in% trx$tip.label]
-phylo.future <- phylo.future[!apply(phylo.future,1,sum)<=2,]   #FIXME: These are all NA - Why?
+phylo.future <- lapply(future, function(x){
+  matched <- x[,colnames(x) %in% trx$tip.label]
+  matched[!apply(matched,1,sum)<=2,] 
+})
+
 
 #Find within Func betadiversity
 Func.current <- current[,colnames(current) %in% colnames(fco)]
-Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]   #FIXME: These are all NA - Why?
+Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]  
 
-Func.future <- future[,colnames(future) %in% colnames(fco)]
-Func.future <- Func.future[!apply(Func.future,1,sum)<=2,]   #FIXME: These are all NA - Why?
+Func.future <- lapply(future, function(x){
+  matched <- x[,colnames(x) %in% colnames(fco)]
+  matched[!apply(matched,1,sum)<=2,]   
+})
+
 
 #Within current phylobetadiversity
-system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))  #FIXME: I get an error when trying to run this. Is this the method we are using now? I think the error is because of the NA problem.
+system.time(holt.try <- matpsim(phyl=trx,com=phylo.current,clust=3))  
+#turn beta measures into a matrix   
+within.current.phylo<-as.matrix(holt.try)
 
-#Within current func betadiversity
-#system.time(holt.func<-matpsim(phyl=tree.func,com=Func.current,clust=7))
 
 ####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script
 # MNNTD = Mean nearest neighbor taxon distance, from Holt et al. 2012. 
@@ -92,7 +96,6 @@ system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))  #FIXME: I ge
 source(paste(gitpath, "BenHolttraitDiversity.R", sep=""))
 
 #create sp.list   
-#FIXME: Error in Func.current[k, ] : subscript out of bounds
 sp.list<-lapply(rownames(Func.current),function(k){
   x<-Func.current[k,]
   names(x[which(x==1)])
@@ -106,35 +109,29 @@ rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
 sgtraitMNTD <- sapply(rownames(Func.current),function(i){
-  
   #Iterator count
   #print(round(which(rownames(siteXspp_traits)==i)/nrow(siteXspp_traits),3))
   
   #set iterator
   A<-i
   
-  #
   out<-lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
   names(out)<-rownames(Func.current)[1:(which(rownames(Func.current) == i))]
   return(out)
 })
 
-names(sgtraitMNTD) <- rownames(Func.current)  #FIXME: do we want these to be rownames? Numeric values. What are they?
+names(sgtraitMNTD) <- rownames(Func.current)  #rownames are site ID numbers
 melt.MNTD<-melt(sgtraitMNTD)
 
 colnames(melt.MNTD)<-c("MNTD","To","From")
 
-#turn beta measures into a matrix    #FIXME: Doesn't work because of the above NA issue
-within.current.phylo<-as.matrix(holt.try)
-
-#needs to cast into a matrix to fit old formatting
 #############needs to be done#######################
 #turn into a matrix
-within.current.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
+within.current.func<-cast(melt.MNTD,To~From,value="MNTD")
 rownames(within.current.func)<-within.current.func[,1]
 within.current.func<-within.current.func[,-1]
 
-#within.current.func<-as.matrix(holt.func)
+within.current.func[lower.tri(within.current.func)]<-t(within.current.func[upper.tri(within.current.func)])
 
 ##################################
 #Quantile Delineation Approach - sensu Strahlberg et al. 2009 - Not Currently Using
@@ -156,54 +153,58 @@ within.current.func<-within.current.func[,-1]
 #rm(within.current,within.current.dist,holt.func,holt.try,within.current.func,within.current.phylo)
 #gc()
 
-###########################
-#Between time taxonomic betadiversity
-###########################
+###Within future functional beta 
 
-beta.time<-analogue::distance(current,future,"bray")   #FIXME: Error in dxy(x = x, y = y, DCOEF = DCOEF, weights = weights, R = R, ...) : NA/NaN/Inf in foreign function call (arg 1)
-
-#####################
-#CURRENT IS ROWS
-#FUTURE IS COLUMNS
-#####################
-
-#For phylobetadiversity
-#Between time phylobetadiversity
-beta.time.phylo<-as.matrix(matpsim.pairwise(phyl=trx,com.x=phylo.current,com.y=phylo.future,clust=8))
-
-#Repeat steps above for within time trait, but replacing Func.current with Func.future
 #create sp.list
-sp.list<-lapply(rownames(Func.future),function(k){
-  x<-Func.future[k,]
-  names(x[which(x==1)])
+sp.list<-lapply(Func.future,function(x){
+  a<-lapply(rownames(x),function(k){
+    x<-x[k,]
+    names(x[which(x==1)])
+  })
+  names(a)<-rownames(x)
 })
 
-names(sp.list)<-rownames(Func.future)
 
+##Turn cophenetic distance to matrix
 dists <- as.matrix(fco)
 
 rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
-sgtraitMNTD <- sapply(rownames(Func.future),function(i){
-  #set iterator
-  A<-i
+
+
+#Within future functional betadiversity
+
+beta.time.func<-lapply(Func.future,function(x){
+  sgtraitMNTD <- sapply(rownames(x),function(i){
+    #set iterator
+    A<-i
+    
+    #
+    out<-lapply(rownames(x)[1:(which(rownames(x) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
+    names(out)<-rownames(x)[1:(which(rownames(x) == i))]
+    return(out)
+  })
   
-  #
-  out<-lapply(rownames(Func.future)[1:(which(rownames(Func.future) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
-  names(out)<-rownames(Func.future)[1:(which(rownames(Func.future) == i))]
-  return(out)
+  names(sgtraitMNTD) <- rownames(x)
+  melt.MNTD<-melt(sgtraitMNTD)
+  
+  colnames(melt.MNTD)<-c("MNTD","To","From")
+  
+  #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
+  beta.time.func<-cast(melt.MNTD,To~From,value="MNTD")
+  rownames(beta.time.func)<-beta.time.func[,1]
+  beta.time.func<-beta.time.func[,-1]
 })
 
-names(sgtraitMNTD) <- rownames(Func.future)
-melt.MNTD<-melt(sgtraitMNTD)
+###########################
+#Between time taxonomic betadiversity
+###########################
 
-colnames(melt.MNTD)<-c("MNTD","To","From")
+beta.time<-lapply(future,function(x){
+  analogue::distance(current,x,"bray")
+})
 
-#needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
-beta.time.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
-rownames(beta.time.func)<-beta.time.func[,1]
-beta.time.func<-beta.time.func[,-1]
 
 #############################################
 #             ANALOG ANALYSIS

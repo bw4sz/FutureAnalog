@@ -14,7 +14,7 @@ require(ggplot2)
 require(phylobase)
 
 #Sarah's
-droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
+droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\" #Is this where we want the results to go?
 gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
 output_folder <- "C:\\Users\\sarah\\Desktop\\Testmod"
 rdata <- paste(output_folder, "\\AlphaMapping.RData", sep="")

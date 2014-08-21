@@ -123,12 +123,18 @@ if (!res(MICROC_2070_rcp26)[[1]] == cell_size){
  MICROC_2070_rcp26.c<-stack(aggregate(MICROC_2070_rcp26.c,fact1))
  MICROC_2070_rcp85.c<-stack(aggregate(MICROC_2070_rcp85.c,fact2))
  MICROC_2070_rcp45.c<-stack(aggregate(MICROC_2070_rcp45.c,fact3))
+}
 
 # make the names consistent for all 
-names(MICROC_2070_rcp26.c)<-names(myExpl)
-names(MICROC_2070_rcp85.c)<-names(myExpl)
-names(MICROC_2070_rcp45.c)<-names(myExpl)
-}
+names(MICROC_2070_rcp26.c) <- names(myExpl)
+names(MICROC_2070_rcp85.c) <- names(myExpl)
+names(MICROC_2070_rcp45.c) <- names(myExpl)
+
+# make the names consistent for all 
+names(MICROC_2070_rcp26) <- names(myExpl)
+names(MICROC_2070_rcp85) <- names(myExpl)
+names(MICROC_2070_rcp45) <- names(myExpl)
+
 #create a list of all env to project into
 projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rcp85.c)
 
@@ -216,7 +222,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   #name the columns
   colnames(p_a)<-c("Locality","Response","LONGDECDEG","LATDECDEG")
   
-  p_a[p_a$Response > 1,"Response"]<-1
+  p_a[p_a$Response > 1,"Response"] <- 1
   p_a<-p_a[!p_a$Locality=="",]
   p_a<-aggregate(p_a,list(p_a$Locality),FUN=mean)
   
@@ -244,7 +250,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
                                        resp.name = gsub(" ","_",spec[x]),
   )
   
-  plot(myBiomodData)
+  #plot(myBiomodData)
     
   #Define modeling options
   myBiomodOption <- BIOMOD_ModelingOptions(    
@@ -267,7 +273,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   )
    
   #Give current project a name, so we can go get the files later
-  projnam<-'current'
+  projnam <- 'current'
   myBiomodModelOut<-BIOMOD_Modeling( myBiomodData, 
                                      models = c("GLM","GBM","MAXENT"), 
                                      models.options = myBiomodOption, 
@@ -286,23 +292,23 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   dimnames(myBiomodModelEval)
   
   # let's print the ROC and TSS scores of all selected models, get the mean value for all the combined runs.
-  stat<-myBiomodModelEval[c("ROC","TSS"), "Testing.data",,"Full",]
+  stat <- myBiomodModelEval[c("ROC","TSS"), "Testing.data",,"Full",]
   
   #need to write this to file
-  filename<-paste(paste(getwd(),gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="/")
+  filename <- paste(paste(getwd(),gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="/")
   write.csv(cbind(spec[x],stat),filename)
   
   #Let's look at variable importance
-  m.var<-melt(getModelsVarImport(myBiomodModelOut)[,,"Full",])
-  c.var<-cast(m.var,X1~X2)
+  m.var <- melt(getModelsVarImport(myBiomodModelOut)[,,"Full",])
+  c.var <- cast(m.var,X1~X2)
   
   #Write variable importance to file
-  filename<-paste(paste(getwd(),gsub(" ",".",spec[x]),sep="/"),"VarImportance.csv",sep="/")
+  filename <- paste(paste(getwd(),gsub(" ",".",spec[x]),sep="/"),"VarImportance.csv",sep="/")
   write.csv(cbind(c.var,spec[x]),filename)
   
   #Ensemble model outputs
   
-  # get evaluation scores??, as is see it i want the data for the full runs of the ensemble mean value
+  # get evaluation scores??, as I see it I want the data for the full runs of the ensemble mean value
   #ens_stat<-melt(getEMeval(myBiomodEM))
   #ens_stat[ens_stat$x3=="em.mean",]
   
@@ -334,7 +340,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
 bio_project<-function(GCM,nam){
   paste("Running Env", nam)
   if(!gsub(" ",".",spec[x]) %in% completed_models[[nam]]){
-  myBiomodProjection<- BIOMOD_Projection(
+  myBiomodProjection <- BIOMOD_Projection(
     modeling.output = myBiomodModelOut,
     new.env = GCM,
     proj.name = nam,
@@ -347,8 +353,12 @@ bio_project<-function(GCM,nam){
   EnsBas<-BIOMOD_EnsembleForecasting(projection.output = myBiomodProjection, EM.output = myBiomodEM)
   }}
   
+  for (i in 1:length(projEnv)){
+    bio_project(projEnv[[i]], names(projEnv[i]))
+  }
   
-  mapply(bio_project,projEnv,names(projEnv))
+  #mapply(bio_project,projEnv,names(projEnv))
+
   ##################################
   
   #end file output

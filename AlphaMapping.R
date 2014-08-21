@@ -152,6 +152,7 @@ r<-raster(extent(ec))
 #Match cell size above from the SDM_SP function
 res(r) <- cell_size
 plot(ec.r <- rasterize(ec,r))
+
 niche.crop <- lapply(niche,function(x){
   r<-crop(raster(x),extent(ec.r))
   filnam <- paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
@@ -260,26 +261,27 @@ diff.raster<-lapply(2:length(cell.Rasters),function(x){
 
 names(diff.raster)<-names(siteXspps[-1])
 
+#plot the differences between current and future alpha diversity for each of the scenarios (Richness, Phylogenetic, and Functional)
 par(mfrow=c(3,2))
 cols <- colorRampPalette(brewer.pal(7,"RdBu"))(100)
-plot(diff.raster[[1]],col=cols)
-plot(diff.raster[[2]],col=cols)
+plot(diff.raster[[1]], col=cols)
+plot(diff.raster[[2]], col=cols)
 plot(diff.raster[[3]], col=cols)
 
 #####################
 #Correlate rasters
-al<-lapply(1:length(diff.raster),function(x){
-within.cor<-cor(values(diff.raster[[x]]),use="complete.obs")
-within.cor<-melt(within.cor)
-a<-qplot(data=within.cor,x=X1,y=X2,fill=value,geom="tile") + xlab("") + ylab("") + 
-  scale_fill_continuous(low="white",high="red") + geom_text(aes(label=round(value,2))) + 
+al <- lapply(1:length(diff.raster), function(x){
+within.cor <- cor(values(diff.raster[[x]]), use="complete.obs")
+within.cor <- melt(within.cor)
+a <- qplot(data=within.cor, x=X1, y=X2, fill=value, geom="tile") + xlab("") + ylab("") + 
+  scale_fill_continuous(low="white", high="red") + geom_text(aes(label=round(value,2))) + 
   theme(text=element_text(size=20))
 return(a)
 })
 
 al
-#Write difference in alpha out to file.
 
+#Write difference in alpha out to file. 
 #############
 #This needs to be inspected, does this work for multiple climate scenarios, need to test?
 #############

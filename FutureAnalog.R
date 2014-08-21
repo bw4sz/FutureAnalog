@@ -34,9 +34,9 @@ setwd(paste(droppath,"FutureAnalog",sep=""))
 #If running the code with full dataset, for the full analysis
 current <- siteXspps[[1]]
 future <- siteXspps[2:4]
-future26 <- siteXspps[[2]]  #FIXME: How to best structure going through future scenarios?
-future45<- siteXspps[[3]]
-future85 <- siteXspps[[4]]
+# future26 <- siteXspps[[2]]  #FIXME: How to best structure going through future scenarios?
+# future45<- siteXspps[[3]]
+# future85 <- siteXspps[[4]]
 
 #Remove NAs from siteXspps so we can do the following analyses   
 # Some species do not occur in Ecuador, so they should be removed from analysis here.
@@ -84,9 +84,9 @@ Func.future <- lapply(future, function(x){
 
 
 #Within current phylobetadiversity
-system.time(holt.try <- matpsim(phyl=trx,com=phylo.current,clust=3))  
+system.time(holt.try <- matpsim(phyl=trx, com=phylo.current, clust=3))  
 #turn beta measures into a matrix   
-within.current.phylo<-as.matrix(holt.try)
+within.current.phylo <- as.matrix(holt.try)
 
 
 ####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script

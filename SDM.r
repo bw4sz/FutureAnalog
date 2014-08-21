@@ -256,7 +256,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   myBiomodOption <- BIOMOD_ModelingOptions(    
     MAXENT = list( path_to_maxent.jar = "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\maxent.jar",
                    maximumiterations = 200,
-                   visible = TRUE,
+                   visible = FALSE,
                    linear = TRUE,
                    quadratic = TRUE,
                    product = TRUE,

@@ -85,20 +85,14 @@ within.future.phylo <- lapply(phylo.future, function(x){
 
 
 #---------------- Find within FUNC BETA DIVERSITY
+
+#----- Within current functional beta diversity
 Func.current <- current[,colnames(current) %in% colnames(fco)]
 Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]  
 
-Func.future <- lapply(future, function(x){
-  matched <- x[,colnames(x) %in% colnames(fco)]
-  matched[!apply(matched,1,sum)<=2,]   
-})
-
-####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script
+####MNNTD method for integrating trait beta, used in the DimDiv script    TODO:  needs to be checked (@BenWeinstein)
 #   MNNTD = Mean nearest neighbor taxon distance
 #   Holt et al. 2012. An update of Wallace's zoogeographic regions of the world. Science.
-
-#within current
-#create sp.list   
 sp.list<-lapply(rownames(Func.current),function(k){
   x<-Func.current[k,]
   names(x[which(x==1)])
@@ -109,7 +103,7 @@ dists <- as.matrix(fco)
 rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
-sgtraitMNTD <- sapply(rownames(Func.current),function(i){
+sgtraitMNTD <- sapply(rownames(Func.current),function(i){                    #TODO: why does this take so long!?
   A<-i   #set iterator
   out<-lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {
     MNND(A,B,sp.list=sp.list,dists=dists)
@@ -122,91 +116,54 @@ names(sgtraitMNTD) <- rownames(Func.current)  #rownames are site ID numbers
 melt.MNTD <- melt(sgtraitMNTD)
 colnames(melt.MNTD) <- c("MNTD","To","From")
 
+# Turn new results into a matrix
+within.current.func <- cast(melt.MNTD,To ~ From, value="MNTD")
+rownames(within.current.func) <- within.current.func[,1]
+within.current.func <- within.current.func[,-1]
 
-# within future
-sgtraitMNTD.future <- lapply(Func.future, function(x){
-  #create sp.list   
-  sp.list<-lapply(rownames(x),function(k){
-    x<-Func.current[k,]
+within.current.func[lower.tri(within.current.func)] <- t(within.current.func[upper.tri(within.current.func)])
+
+
+#----- Within future functional beta          TODO: TEST that this works
+Func.future <- lapply(future, function(x){
+  matched <- x[,colnames(x) %in% colnames(fco)]
+  matched[!apply(matched,1,sum)<=2,]   
+})
+
+sp.list <- lapply(Func.future,function(x){
+  a <- lapply(rownames(x),function(k){
+    x <- x[k,]
     names(x[which(x==1)])
   })
-  
-  names(sp.list) <- rownames(x)
-  dists <- as.matrix(fco)
-  rownames(dists) <- rownames(fco)
-  colnames(dists) <- rownames(fco)
-  
-  sgtraitMNTD <- sapply(rownames(x),function(i){
-    A<-i   #set iterator
-    out<-lapply(rownames(x)[1:(which(rownames(x) == i))], function(B) {
-      MNND(A,B,sp.list=sp.list,dists=dists)
-    })
-    
-    names(out) <- rownames(x)[1:(which(rownames(x) == i))]
-    return(out)
-  })
-  names(sgtraitMNTD) <- rownames(x)  #rownames are site ID numbers
-  return(sgtraitMNTD)
+  names(a) <- rownames(x)
 })
-
-melt.MNTD.future <- lapply(sgtraitMNTD.future, function(x){
-  melt.MNTD <- melt(x)
-  colnames(melt.MNTD) <- c("MNTD","To","From")
-  return(melt.MNTD)
-})
-
-
-############# TODO #######################
-#---------------- Turn new results into a matrix
-within.current.func<-cast(melt.MNTD,To~From,value="MNTD")
-rownames(within.current.func)<-within.current.func[,1]
-within.current.func<-within.current.func[,-1]
-
-within.current.func[lower.tri(within.current.func)]<-t(within.current.func[upper.tri(within.current.func)])
-
-
-###Within future functional beta 
-
-#create sp.list
-sp.list<-lapply(Func.future,function(x){
-  a<-lapply(rownames(x),function(k){
-    x<-x[k,]
-    names(x[which(x==1)])
-  })
-  names(a)<-rownames(x)
-})
-
 
 ##Turn cophenetic distance to matrix
 dists <- as.matrix(fco)
-
 rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
-
-
-#Within future functional betadiversity
-
-beta.time.func<-lapply(Func.future,function(x){
+within.future.func <- lapply(Func.future,function(x){
   sgtraitMNTD <- sapply(rownames(x),function(i){
-    #set iterator
-    A<-i
-    
-    #
-    out<-lapply(rownames(x)[1:(which(rownames(x) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
-    names(out)<-rownames(x)[1:(which(rownames(x) == i))]
+    A<-i    #set iterator
+    out<-lapply(rownames(x)[1:(which(rownames(x) == i))], function(B) {
+      MNND(A, B, sp.list=sp.list, dists=dists)
+      })
+    names(out) <- rownames(x)[1:(which(rownames(x) == i))]
     return(out)
   })
   
   names(sgtraitMNTD) <- rownames(x)
-  melt.MNTD<-melt(sgtraitMNTD)
-  
-  colnames(melt.MNTD)<-c("MNTD","To","From")
+  melt.MNTD <- melt(sgtraitMNTD)
+  colnames(melt.MNTD) <- c("MNTD","To","From")
   
   #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
-  beta.time.func<-cast(melt.MNTD,To~From,value="MNTD")
-  rownames(beta.time.func)<-beta.time.func[,1]
-  beta.time.func<-beta.time.func[,-1]
+  within.future.func <- cast(melt.MNTD,To ~ From, value="MNTD")
+  rownames(within.future.func) <- beta.time.func[,1]
+  within.future.func <- within.future.func[,-1]
+  within.future.func[lower.tri(within.future.func)] <- t(within.future.func[upper.tri(within.future.func)])
+  
+  return(within.future.func)
 })
 
 

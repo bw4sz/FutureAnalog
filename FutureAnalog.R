@@ -27,16 +27,10 @@ source(paste(gitpath,"\\AlphaMappingFunctions.R",sep=""))
 
 setwd(paste(droppath,"FutureAnalog",sep=""))
 
-#If testing the script grab a much smaller chunk
-#current <- siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),1000),]
-#future <- siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),1000),]
 
 #If running the code with full dataset, for the full analysis
 current <- siteXspps[[1]]
 future <- siteXspps[2:4]
-# future26 <- siteXspps[[2]]  #FIXME: How to best structure going through future scenarios?
-# future45<- siteXspps[[3]]
-# future85 <- siteXspps[[4]]
 
 #Remove NAs from siteXspps so we can do the following analyses   
 # Some species do not occur in Ecuador, so they should be removed from analysis here.
@@ -62,6 +56,11 @@ future <- lapply(future, function(x){
 within.current.dist <- vegdist(current, "bray")  
 within.current <- as.matrix(within.current.dist)
 
+within.future <- lapply(future, function(x){
+  dist <- vegdist(x, "bray")
+  as.matrix(dist)
+})
+
 #Find within phylobetadiversity
 #For phylobeta, there needs to be more than 2 species for a rooted tree
 phylo.current <- current[,colnames(current) %in% trx$tip.label]
@@ -71,7 +70,6 @@ phylo.future <- lapply(future, function(x){
   matched <- x[,colnames(x) %in% trx$tip.label]
   matched[!apply(matched,1,sum)<=2,] 
 })
-
 
 #Find within Func betadiversity
 Func.current <- current[,colnames(current) %in% colnames(fco)]

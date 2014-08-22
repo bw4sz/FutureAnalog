@@ -167,8 +167,8 @@ current_niche <- niche.crops[grep("current",niche.crops,value=FALSE)]
 
 #Get future models, for now its just
 MICROC2070rcp26_niche <- niche.crops[grep("MICROC2070rcp26",niche.crops,value=FALSE)]
-MICROC2070rcp85_niche <- niche.crops[grep("MICROC2070rcp85",niche.crops,value=FALSE)]
 MICROC2070rcp45_niche <- niche.crops[grep("MICROC2070rcp45",niche.crops,value=FALSE)]
+MICROC2070rcp85_niche <- niche.crops[grep("MICROC2070rcp85",niche.crops,value=FALSE)]
 
 #create list of input rasters
 input.niche <- list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
@@ -216,10 +216,10 @@ MFDs <- lapply(siteXspps,AlphaFunc)
 #set to the number of climate scenarios.
 par(mfrow=c(4,3))
 
-cell.Rasters<-lapply(names(siteXspps),cellVisuals)
-names(cell.Rasters)<-names(siteXspps)
-##FD Functional Divergence, discontiuned, proceed at own risk. 
+cell.Rasters <- lapply(names(siteXspps),cellVisuals)
+names(cell.Rasters) <- names(siteXspps)
 
+##FD Functional Divergence, discontiuned, proceed at own risk. 
 ##############
 #apply visualization to all columns
 #FD_metrics<-lapply(FDs,function(x){
@@ -243,11 +243,12 @@ names(cell.Rasters)<-names(siteXspps)
 ################################################
 #Calculate differences among climate projections
 ################################################
-
 #
+pdf(file="current_alpha.pdf", height=4.2, width=7)
 current<-cell.Rasters[[1]]
 blues <- colorRampPalette(brewer.pal(9,"Blues"))(100)
 plot(stack(current), col=blues)
+dev.off()
 
 #Compute Differences
 
@@ -262,11 +263,13 @@ diff.raster<-lapply(2:length(cell.Rasters),function(x){
 names(diff.raster)<-names(siteXspps[-1])
 
 #plot the differences between current and future alpha diversity for each of the scenarios (Richness, Phylogenetic, and Functional)
-par(mfrow=c(3,2))
+pdf(file="compare_alpha.pdf", height=8.5, width=11)
+#par(mfrow=c(3,3))
 cols <- colorRampPalette(brewer.pal(7,"RdBu"))(100)
 plot(diff.raster[[1]], col=cols)
 plot(diff.raster[[2]], col=cols)
 plot(diff.raster[[3]], col=cols)
+dev.off()
 
 #####################
 #Correlate rasters
@@ -275,7 +278,7 @@ within.cor <- cor(values(diff.raster[[x]]), use="complete.obs")
 within.cor <- melt(within.cor)
 a <- qplot(data=within.cor, x=X1, y=X2, fill=value, geom="tile") + xlab("") + ylab("") + 
   scale_fill_continuous(low="white", high="red") + geom_text(aes(label=round(value,2))) + 
-  theme(text=element_text(size=20))
+  theme(text=element_text(size=20)) + ggtitle(names(diff.raster[x]))
 return(a)
 })
 
@@ -287,12 +290,14 @@ al
 #############
 #Write alpha rasters to file
 lapply(1:length(cell.Rasters),function(x){
-  writeRaster(stack(cell.Rasters[[x]]),paste(paste(gitpath,"Figures/",sep=""),names(cell.Rasters)[x],sep=""),overwrite=TRUE,bylayer=TRUE,suffix='names')
+  writeRaster(stack(cell.Rasters[[x]]), paste(paste(gitpath,"Figures/",sep=""), names(cell.Rasters)[x],sep=""),
+              overwrite=TRUE,bylayer=TRUE,suffix='names')
 })
 
 #Write difference raster to file
 lapply(1:length(diff.raster),function(x){
-  writeRaster(diff.raster[[x]],bylayer=TRUE,paste(gitpath,"Figures/AlphaChange.tif",sep=""),overwrite=TRUE,suffix=names(diff.raster[[x]]))
+  writeRaster(diff.raster[[x]], bylayer=TRUE, paste(gitpath,"Figures/AlphaChange.tif",sep=""),
+              overwrite=TRUE,suffix=names(diff.raster[[x]]))
 })
 
 save.image(paste(output_folder,"\\AlphaMapping.rData",sep=""))

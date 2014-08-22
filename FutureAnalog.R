@@ -107,8 +107,8 @@ dists <- as.matrix(fco)
 rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
-sgtraitMNTD <- sapply(rownames(Func.current), function(i){                    #TODO: why does this take so long!?
-  A <- i   #set iterator
+sgtraitMNTD <- sapply(rownames(Func.current), function(i){                    
+  A <- i   #set iterator, takes a long time to run
   print(i)
   out <- lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {
     MNND(A, B, sp.list=sp.list, dists=dists)
@@ -164,7 +164,7 @@ within.future.func <- lapply(Func.future,function(x){
   
   #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
   within.future.func <- cast(melt.MNTD,To ~ From, value="MNTD")
-  rownames(within.future.func) <- beta.time.func[,1]
+  rownames(within.future.func) <- within.future.func[,1]
   within.future.func <- within.future.func[,-1]
   within.future.func[lower.tri(within.future.func)] <- t(within.future.func[upper.tri(within.future.func)])
   
@@ -399,9 +399,11 @@ firstplot <- stack(novel,disappear)
 names(firstplot) <- c(paste("Novel",c("Tax","Phylo","Func")), paste("Disappearing",c("Tax","Phylo","Func")))
 plot(firstplot)
 
+
 #####################
 #FIXME: CLEANED UNTIL HERE 7/3/2014 
-#The rest should be fairly straightforward, correlating the rasters from above, the f_c raster is the number of future analogs of current assemblages
+#The rest should be fairly straightforward, correlating the rasters from above, 
+#the f_c raster is the number of future analogs of current assemblages
 #The c_f is the number of current analogs of future assemblages
 
 
@@ -410,8 +412,8 @@ plot(firstplot)
 ###########################
 
 #cluster.cor<-cor(values(clusters), use="complete.obs")
-current.cor<-cor(values(current.ras), use="complete.obs")
-future.cor<-cor(values(future.ras), use="complete.obs")
+current.cor <- cor(values(current.ras), use="complete.obs")
+future.cor <- cor(values(future.ras), use="complete.obs")
 
 #make it a spare matrix
 cluster.cor[upper.tri(cluster.cor)] <- NA
@@ -425,14 +427,15 @@ future.cor[upper.tri(future.cor)] <- NA
 #p<-p+coord_flip() + scale_x_reverse() + xlab("") + ylab("") + scale_x_discrete(labels=c("Taxonomic","Phylogenetic","Trait")) + scale_y_discrete(labels=c("Taxonomic","Phylogenetic","Trait"))
 #p+scale_fill_continuous("Pearson Correlation",high="red",low="blue")
 
-plot(current_arb<-all.raster[[c("NumberofFutureAnalogs_Taxon_ARB","NumberofFutureAnalogs_Phylo_ARB","NumberofFutureAnalogs_Func_ARB")]])
+plot(current_arb <- all.raster[[c("NumberofFutureAnalogs_Taxon_ARB", "NumberofFutureAnalogs_Phylo_ARB", 
+                                  "NumberofFutureAnalogs_Func_ARB")]])
 
 #standardize
-current_standard<-current_arb/cellStats(current_arb,"max")
+current_standard <- current_arb/cellStats(current_arb, "max")
 
 #corrlate with richness
-ric<-raster(paste(gitpath, "Figures\\AlphaChange_Richness.tif", sep=""))
-rc<-cor(values(current_arb[[1]]),values(ric),use="complete.obs")
+ric <- raster(paste(gitpath, "Figures\\AlphaChange_Richness.tif", sep=""))
+rc <- cor(values(current_arb[[1]]), values(ric), use="complete.obs")
 
 #Pairwise plots of results, and glms
 #Create giant dataframe

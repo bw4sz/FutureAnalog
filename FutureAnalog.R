@@ -132,25 +132,6 @@ within.current.func<-within.current.func[,-1]
 
 within.current.func[lower.tri(within.current.func)]<-t(within.current.func[upper.tri(within.current.func)])
 
-##################################
-#Quantile Delineation Approach - sensu Strahlberg et al. 2009 - Not Currently Using
-##################################
-#Find the 5th quantile for each community
-#quant.5<-apply(within.current,1,function(x){
-  #quantile(x,.95)})
-#names(quant.5)<-rownames(within.current)
-
-#quant.phylo.5<-apply(within.current.phylo,1,function(x){
-  #quantile(x,.95)})
-#names(quant.phylo.5)<-rownames(within.current.phylo)
-
-#quant.func.5<-apply(within.current.func,1,function(x){
-  #quantile(x,.95)})
-#names(quant.func.5)<-rownames(within.current.func)
-
-#Once the clusters have been set, we can remove the large within current filezs
-#rm(within.current,within.current.dist,holt.func,holt.try,within.current.func,within.current.phylo)
-#gc()
 
 ###Within future functional beta 
 

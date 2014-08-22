@@ -53,6 +53,10 @@ future <- lapply(future, function(x){
 })
 
 
+###############################################################
+#     WITHIN TIME
+###############################################################
+
 #---------------- Find within SPECIES BETA DIVERSITY
 within.current.dist <- vegdist(current, "bray")  
 within.current <- as.matrix(within.current.dist)
@@ -168,47 +172,38 @@ within.future.func <- lapply(Func.future,function(x){
 
 
 ###############################################################
-#BETWEEN TIME
+#     BETWEEN TIME (compare current witih each future scenario)
 ###############################################################
 
-###########################
-#Between time taxonomic betadiversity
-###########################
-
-beta.time<-lapply(future,function(x){
-  analogue::distance(current,x,"bray")
+#---------------- Find between TAXONOMIC BETA DIVERSITY
+beta.time <- lapply(future, function(x){
+  analogue::distance(current, x, "bray")
 })
 
 
-###########################
-#Between time phylogenetic
-###########################
-beta.time.phylo<-lapply(phylo.future,function(x){
-  beta.time.phylo<-as.matrix(matpsim.pairwise(phyl=trx,com.x=phylo.current,com.y=x,clust=7))
+#---------------- Find between PHYLO BETA DIVERSITY
+beta.time.phylo <- lapply(phylo.future, function(x){
+  beta.time.phylo <- as.matrix(matpsim.pairwise(phyl=trx, com.x=phylo.current, com.y=x, clust=7))
 })
 
 
-###########################
-#Between time functional
-###########################
-
+#---------------- Find between FUNC BETA DIVERSITY
 #Repeat steps above for within time trait, but replacing Func.current with Func.future
-#
-Beta.time.func<-lapply(Func.future,function(x){
+Beta.time.func <- lapply(Func.future, function(x){
   
-  sp.list_current<-lapply(rownames(Func.current),function(k){
-    g<-Func.current[k,]
+  sp.list_current <- lapply(rownames(Func.current), function(k){
+    g <- Func.current[k,]
     names(g[which(g==1)])
   })
   
-  names(sp.list_current)<-rownames(Func.current)
+  names(sp.list_current) <- rownames(Func.current)
   
-  sp.list_future<-lapply(rownames(x),function(k){
-    g<-x[k,]
+  sp.list_future <- lapply(rownames(x), function(k){
+    g <- x[k,]
     names(g[which(g==1)])
   })
   
-  names(sp.list_future)<-rownames(x)
+  names(sp.list_future) <- rownames(x)
   
   #Get distances from the cophenetic matrix?
   dists <- as.matrix(fco)
@@ -239,90 +234,84 @@ Beta.time.func<-lapply(Func.future,function(x){
   return(beta.time.func)
 })
 
+
 #############################################
-#             ANALOG ANALYSIS
+#     ANALOG ANALYSIS
 #############################################
 #TODO: Wrap this code in a function so we can test sensitivity of results to the threshold 
 #      Set threshold for 5%, 10%, 50% and 100% - can present alternate results in appendices
 
 #Set an arbitrary threshold      
-arb.thresh<-.2
+arb.thresh <- 0.2
 
 #################################
 #PART I
 #CURRENT ANALOGS IN FUTURE
 #How many current communities have analogs in the future?
 #These are akin to communities which will disappear, "Disappearing"
-###################
-#Taxonomic Analogs
-###################
 
+#---------------- TAXONOMIC ANALOGS - DISAPPEARING COMMUNITIES
 #For each of the current communities how many future communities are less different than the threshold
-current_to_future.analog<-lapply(beta.time,function(j){
-  n.analogs<-sapply(rownames(j), function(x){
+current_to_future.analog <- lapply(beta.time, function(j){
+  n.analogs <- sapply(rownames(j), function(x){
     sum(j[rownames(j) %in% x,] <= arb.thresh)
   })
-  current_to_future.analog<-data.frame(rownames(j),n.analogs)
-  colnames(current_to_future.analog)<-c("cell.number","numberofanalogs")  
+  current_to_future.analog <- data.frame(rownames(j), n.analogs)
+  colnames(current_to_future.analog) <- c("cell.number", "numberofanalogs")  
   return(current_to_future.analog)
 })
 
-c_f_tax<-lapply(current_to_future.analog,function(x){
-  fanalog<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+c_f_tax <- lapply(current_to_future.analog, function(x){
+  fanalog <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog,"NumberofFutureAnalogs_Taxon_ARB.tif",overwrite=T)
+  writeRaster(fanalog, "NumberofFutureAnalogs_Taxon_ARB.tif", overwrite=T)
 })
 
 
-###################
-#Phylogenetic Analogs
-####################
-
-future.analog.phylo<-lapply(beta.time.phylo,function(j){
-  n.analogs.phylo<-sapply(rownames(j), function(x){
+#---------------- PHYLO ANALOGS - DISAPPEARING COMMUNITIES
+future.analog.phylo <- lapply(beta.time.phylo, function(j){
+  n.analogs.phylo <- sapply(rownames(j), function(x){
     sum(j[rownames(j) %in% x,] <= arb.thresh)
   })
   
   #Create a dataframe of the number of analogs and the cellnumber
-  future.analog.phylo<-data.frame(rownames(j),n.analogs.phylo)
-  colnames(future.analog.phylo)<-c("cell.number","numberofanalogs")
+  future.analog.phylo <- data.frame(rownames(j), n.analogs.phylo)
+  colnames(future.analog.phylo) <- c("cell.number", "numberofanalogs")
   return(future.analog.phylo)
 })
 
 
 #Visualize!
-c_f_phylo<-lapply(future.analog.phylo,function(x){
-  fanalog.phylo<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+c_f_phylo <- lapply(future.analog.phylo, function(x){
+  fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog.phylo,"NumberofFutureAnalogs_Phylo_ARB.tif",overwrite=T)
+  writeRaster(fanalog.phylo, "NumberofFutureAnalogs_Phylo_ARB.tif", overwrite=T)
 })
 
-###################
-#Functional Analogs
-####################
 
-future.analog.func<-lapply(Beta.time.func,function(j){
-  n.analogs.func<-sapply(rownames(j), function(x){
+#---------------- FUNC ANALOGS - DISAPPEARING COMMUNITIES
+future.analog.func <- lapply(Beta.time.func, function(j){
+  n.analogs.func <- sapply(rownames(j), function(x){
     sum(j[rownames(j) %in% x,] <= arb.thresh)
   })
   
-  future.analog.func<-data.frame(rownames(j),n.analogs.func)
-  colnames(future.analog.func)<-c("cell.number","numberofanalogs")
+  future.analog.func <- data.frame(rownames(j), n.analogs.func)
+  colnames(future.analog.func) <- c("cell.number", "numberofanalogs")
   return(future.analog.func)
 })
 
-c_f_func<-lapply(future.analog.func,function(x){
-  fanalog.Func<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
-  writeRaster(fanalog.Func,"NumberofFutureAnalogs_Func_ARB.tif",overwrite=T)
+c_f_func <- lapply(future.analog.func, function(x){
+  fanalog.Func <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
+  writeRaster(fanalog.Func, "NumberofFutureAnalogs_Func_ARB.tif", overwrite=T)
 })
 
 
-#############Visualize all three
-c_f<-stack(c(c_f_tax,c_f_phylo,c_f_func))
+#############Visualize all three analog axes together
+c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
 
 plot(c_f)
 
-###Across are the emissions scenerios, down are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
+###Across are the emissions scenarios, down are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
 
 #####################################################
 #PART II
@@ -330,100 +319,93 @@ plot(c_f)
 #How many current communities have analogs in the future?
 ######################################################
 
-###################
-#Taxonomic Analogs
-####################
-
+#---------------- TAXONOMIC NON-ANALOGS - NOVEL COMMUNITIES
 #For each of the future communities how many future communities are less different 5th current quantile
-future_to_current.analog<-lapply(beta.time,function(j){
-  n.analogs<-sapply(colnames(j), function(x){
+future_to_current.analog <- lapply(beta.time, function(j){
+  n.analogs <- sapply(colnames(j), function(x){
     sum(j[,colnames(j) %in% x] <= arb.thresh)
   })
- future_to_current.analog<-data.frame(colnames(j),n.analogs)
-  colnames(future_to_current.analog)<-c("cell.number","numberofanalogs")  
+  
+ future_to_current.analog <- data.frame(colnames(j), n.analogs)
+  colnames(future_to_current.analog) <- c("cell.number", "numberofanalogs")  
   return(future_to_current.analog)
 })
 
-f_c_tax<-lapply(future_to_current.analog,function(x){
-  fanalog<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+f_c_tax <- lapply(future_to_current.analog, function(x){
+  fanalog <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog,"NumberofCurrentAnalogs_Taxon_ARB.tif",overwrite=T)
+  writeRaster(fanalog, "NumberofCurrentAnalogs_Taxon_ARB.tif", overwrite=T)
 })
 
 #Data check, these should be different
 plot(stack(f_c_tax) - stack(c_f_tax))
 
-###################
-#Phylogenetic Analogs
-####################
 
-future_to_current.phylo<-lapply(beta.time.phylo,function(j){
-  n.analogs.phylo<-sapply(colnames(j), function(x){
+#---------------- PHYLO NON-ANALOGS - NOVEL COMMUNITIES
+future_to_current.phylo <- lapply(beta.time.phylo, function(j){
+  n.analogs.phylo <- sapply(colnames(j), function(x){
     sum(j[,colnames(j) %in% x] <= arb.thresh)
   })
   
   #Create a dataframe of the number of analogs and the cellnumber
-  future.analog.phylo<-data.frame(colnames(j),n.analogs.phylo)
-  colnames(future.analog.phylo)<-c("cell.number","numberofanalogs")
+  future.analog.phylo <- data.frame(colnames(j), n.analogs.phylo)
+  colnames(future.analog.phylo) <- c("cell.number", "numberofanalogs")
   return(future.analog.phylo)
 })
 
 
 #Visualize!
-f_c_phylo<-lapply(future_to_current.phylo,function(x){
-  fanalog.phylo<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
+f_c_phylo <- lapply(future_to_current.phylo, function(x){
+  fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog.phylo,"NumberofCurrentAnalogs_Phylo_ARB.tif",overwrite=T)
+  writeRaster(fanalog.phylo, "NumberofCurrentAnalogs_Phylo_ARB.tif", overwrite=T)
 })
 
 plot(stack(f_c_phylo) - stack(c_f_phylo))
 
 
-###################
-#Functional Analogs
-####################
-
-future_to_current.func<-lapply(Beta.time.func,function(j){
-  n.analogs.func<-sapply(colnames(j), function(x){
+#---------------- FUNC NON-ANALOGS - NOVEL COMMUNITIES
+future_to_current.func <- lapply(Beta.time.func, function(j){
+  n.analogs.func <- sapply(colnames(j), function(x){
     sum(j[,colnames(j) %in% x] <= arb.thresh)
   })
   
-  future.analog.func<-data.frame(colnames(j),n.analogs.func)
-  colnames(future.analog.func)<-c("cell.number","numberofanalogs")
+  future.analog.func <- data.frame(colnames(j), n.analogs.func)
+  colnames(future.analog.func) <- c("cell.number", "numberofanalogs")
   return(future.analog.func)
 })
 
-f_c_func<-lapply(future_to_current.func,function(x){
-  fanalog.Func<-cellVis(cell=x$cell.number,value=x$numberofanalogs)
-  writeRaster(fanalog.Func,"NumberofCurrentAnalogs_Func_ARB.tif",overwrite=T)
+f_c_func <- lapply(future_to_current.func, function(x){
+  fanalog.Func <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
+  writeRaster(fanalog.Func, "NumberofCurrentAnalogs_Func_ARB.tif", overwrite=T)
 })
 
 
-#############Visualize all three
-f_c<-stack(c(f_c_tax,f_c_phylo,f_c_func))
+#############Visualize all three NON-ANALOGS together
+f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
 
 #plot novel assemblages
 plot(f_c)
 
 
-#plot both as a panel, this needs to be improved
+#plot both as a panel              TODO: this needs to be improved
 #Just try plotting one emission scenerio across both disappearing and novel
-novel<-f_c[[c(1,4,7)]]
-disappear<-c_f[[c(1,4,7)]]
+novel <- f_c[[c(1,4,7)]]
+disappear <- c_f[[c(1,4,7)]]
 
 #This could be named correctly using 
-firstplot<-stack(novel,disappear)
-names(firstplot)<-c(paste("Novel",c("Tax","Phylo","Func")),paste("Disappearing",c("Tax","Phylo","Func")))
+firstplot <- stack(novel,disappear)
+names(firstplot) <- c(paste("Novel",c("Tax","Phylo","Func")), paste("Disappearing",c("Tax","Phylo","Func")))
 plot(firstplot)
 
 #####################
-#FIX ME: CLEANED UNTIL HERE 7/3/2014
+#FIXME: CLEANED UNTIL HERE 7/3/2014 
 #The rest should be fairly straightforward, correlating the rasters from above, the f_c raster is the number of future analogs of current assemblages
 #The c_f is the number of current analogs of future assemblages
 
 
 ###########################
-#Correlation among outputs, this currently onlymake sense for the beta diversity, the clusters are non-ordinal
+#Correlation among outputs, this currently only makes sense for the beta diversity, the clusters are non-ordinal
 ###########################
 
 #cluster.cor<-cor(values(clusters), use="complete.obs")

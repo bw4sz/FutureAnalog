@@ -24,6 +24,7 @@ load(rdata)
 
 #Load in source functions
 source(paste(gitpath,"\\AlphaMappingFunctions.R",sep=""))
+source(paste(gitpath, "BenHolttraitDiversity.R", sep=""))
 
 setwd(paste(droppath,"FutureAnalog",sep=""))
 
@@ -52,7 +53,7 @@ future <- lapply(future, function(x){
 })
 
 
-#Find within betadiversity
+#---------------- Find within SPECIES BETA DIVERSITY
 within.current.dist <- vegdist(current, "bray")  
 within.current <- as.matrix(within.current.dist)
 
@@ -61,7 +62,7 @@ within.future <- lapply(future, function(x){
   as.matrix(dist)
 })
 
-#Find within phylobetadiversity
+#--------------- Find within PHYLO BETA DIVERSITY
 #For phylobeta, there needs to be more than 2 species for a rooted tree
 phylo.current <- current[,colnames(current) %in% trx$tip.label]
 phylo.current <- phylo.current[!apply(phylo.current,1,sum)<=2,]   
@@ -71,7 +72,19 @@ phylo.future <- lapply(future, function(x){
   matched[!apply(matched,1,sum)<=2,] 
 })
 
-#Find within Func betadiversity
+
+#Within current phylobetadiversity
+system.time(holt.try <- matpsim(phyl=trx, com=phylo.current, clust=3))  
+#turn beta measures into a matrix   
+within.current.phylo <- as.matrix(holt.try)
+
+within.future.phylo <- lapply(phylo.future, function(x){
+  holt.try <- matpsim(phyl=trx, com=x, clust=3)
+  as.matrix(holt.try)
+})
+
+
+#---------------- Find within FUNC BETA DIVERSITY
 Func.current <- current[,colnames(current) %in% colnames(fco)]
 Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]  
 
@@ -80,18 +93,9 @@ Func.future <- lapply(future, function(x){
   matched[!apply(matched,1,sum)<=2,]   
 })
 
-
-#Within current phylobetadiversity
-system.time(holt.try <- matpsim(phyl=trx, com=phylo.current, clust=3))  
-#turn beta measures into a matrix   
-within.current.phylo <- as.matrix(holt.try)
-
-
 ####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script
 # MNNTD = Mean nearest neighbor taxon distance, from Holt et al. 2012. 
 # An update of Wallace's zoogeographic regions of the world. Science.
-
-source(paste(gitpath, "BenHolttraitDiversity.R", sep=""))
 
 #create sp.list   
 sp.list<-lapply(rownames(Func.current),function(k){
@@ -107,21 +111,18 @@ rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
 sgtraitMNTD <- sapply(rownames(Func.current),function(i){
-  #Iterator count
-  #print(round(which(rownames(siteXspp_traits)==i)/nrow(siteXspp_traits),3))
-  
-  #set iterator
-  A<-i
-  
-  out<-lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
-  names(out)<-rownames(Func.current)[1:(which(rownames(Func.current) == i))]
+  A<-i   #set iterator
+  out<-lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {
+    MNND(A,B,sp.list=sp.list,dists=dists)
+    })
+  names(out) <- rownames(Func.current)[1:(which(rownames(Func.current) == i))]
   return(out)
 })
 
 names(sgtraitMNTD) <- rownames(Func.current)  #rownames are site ID numbers
-melt.MNTD<-melt(sgtraitMNTD)
+melt.MNTD <- melt(sgtraitMNTD)
+colnames(melt.MNTD) <- c("MNTD","To","From")
 
-colnames(melt.MNTD)<-c("MNTD","To","From")
 
 #############needs to be done#######################
 #turn into a matrix

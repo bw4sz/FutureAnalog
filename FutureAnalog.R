@@ -94,19 +94,18 @@ Func.future <- lapply(future, function(x){
 })
 
 ####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script
-# MNNTD = Mean nearest neighbor taxon distance, from Holt et al. 2012. 
-# An update of Wallace's zoogeographic regions of the world. Science.
+#   MNNTD = Mean nearest neighbor taxon distance
+#   Holt et al. 2012. An update of Wallace's zoogeographic regions of the world. Science.
 
+#within current
 #create sp.list   
 sp.list<-lapply(rownames(Func.current),function(k){
   x<-Func.current[k,]
   names(x[which(x==1)])
 })
 
-names(sp.list)<-rownames(Func.current)
-
+names(sp.list) <- rownames(Func.current)
 dists <- as.matrix(fco)
-
 rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
@@ -124,8 +123,41 @@ melt.MNTD <- melt(sgtraitMNTD)
 colnames(melt.MNTD) <- c("MNTD","To","From")
 
 
-#############needs to be done#######################
-#turn into a matrix
+# within future
+sgtraitMNTD.future <- lapply(Func.future, function(x){
+  #create sp.list   
+  sp.list<-lapply(rownames(x),function(k){
+    x<-Func.current[k,]
+    names(x[which(x==1)])
+  })
+  
+  names(sp.list) <- rownames(x)
+  dists <- as.matrix(fco)
+  rownames(dists) <- rownames(fco)
+  colnames(dists) <- rownames(fco)
+  
+  sgtraitMNTD <- sapply(rownames(x),function(i){
+    A<-i   #set iterator
+    out<-lapply(rownames(x)[1:(which(rownames(x) == i))], function(B) {
+      MNND(A,B,sp.list=sp.list,dists=dists)
+    })
+    
+    names(out) <- rownames(x)[1:(which(rownames(x) == i))]
+    return(out)
+  })
+  names(sgtraitMNTD) <- rownames(x)  #rownames are site ID numbers
+  return(sgtraitMNTD)
+})
+
+melt.MNTD.future <- lapply(sgtraitMNTD.future, function(x){
+  melt.MNTD <- melt(x)
+  colnames(melt.MNTD) <- c("MNTD","To","From")
+  return(melt.MNTD)
+})
+
+
+############# TODO #######################
+#---------------- Turn new results into a matrix
 within.current.func<-cast(melt.MNTD,To~From,value="MNTD")
 rownames(within.current.func)<-within.current.func[,1]
 within.current.func<-within.current.func[,-1]

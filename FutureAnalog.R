@@ -97,8 +97,8 @@ Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]
 ####MNNTD method for integrating trait beta, used in the DimDiv script    TODO:  needs to be checked (@BenWeinstein)
 #   MNNTD = Mean nearest neighbor taxon distance
 #   Holt et al. 2012. An update of Wallace's zoogeographic regions of the world. Science.
-sp.list<-lapply(rownames(Func.current),function(k){
-  x<-Func.current[k,]
+sp.list <- lapply(rownames(Func.current), function(k){
+  x <- Func.current[k,]
   names(x[which(x==1)])
 })
 
@@ -107,10 +107,11 @@ dists <- as.matrix(fco)
 rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
-sgtraitMNTD <- sapply(rownames(Func.current),function(i){                    #TODO: why does this take so long!?
-  A<-i   #set iterator
-  out<-lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {
-    MNND(A,B,sp.list=sp.list,dists=dists)
+sgtraitMNTD <- sapply(rownames(Func.current), function(i){                    #TODO: why does this take so long!?
+  A <- i   #set iterator
+  print(i)
+  out <- lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {
+    MNND(A, B, sp.list=sp.list, dists=dists)
     })
   names(out) <- rownames(Func.current)[1:(which(rownames(Func.current) == i))]
   return(out)
@@ -246,11 +247,11 @@ arb.thresh <- 0.2
 
 #################################
 #PART I
-#CURRENT ANALOGS IN FUTURE
-#How many current communities have analogs in the future?
+#CURRENT COMMUNITIES THAT DO NOT HAVE ANALOGS IN FUTURE
+#How many current communities have do not have analogs in the future?
 #These are akin to communities which will disappear, "Disappearing"
 
-#---------------- TAXONOMIC ANALOGS - DISAPPEARING COMMUNITIES
+#---------------- TAXONOMIC NON-ANALOGS - DISAPPEARING COMMUNITIES
 #For each of the current communities how many future communities are less different than the threshold
 current_to_future.analog <- lapply(beta.time, function(j){
   n.analogs <- sapply(rownames(j), function(x){
@@ -268,7 +269,7 @@ c_f_tax <- lapply(current_to_future.analog, function(x){
 })
 
 
-#---------------- PHYLO ANALOGS - DISAPPEARING COMMUNITIES
+#---------------- PHYLO NON-ANALOGS - DISAPPEARING COMMUNITIES
 future.analog.phylo <- lapply(beta.time.phylo, function(j){
   n.analogs.phylo <- sapply(rownames(j), function(x){
     sum(j[rownames(j) %in% x,] <= arb.thresh)
@@ -289,7 +290,7 @@ c_f_phylo <- lapply(future.analog.phylo, function(x){
 })
 
 
-#---------------- FUNC ANALOGS - DISAPPEARING COMMUNITIES
+#---------------- FUNC NON-ANALOGS - DISAPPEARING COMMUNITIES
 future.analog.func <- lapply(Beta.time.func, function(j){
   n.analogs.func <- sapply(rownames(j), function(x){
     sum(j[rownames(j) %in% x,] <= arb.thresh)
@@ -310,13 +311,13 @@ c_f_func <- lapply(future.analog.func, function(x){
 c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
 
 plot(c_f)
-
 ###Across are the emissions scenarios, down are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
 
 #####################################################
 #PART II
-#FUTURE ANALOGS IN CURRENT - NON-analog communities ("Novel")
-#How many current communities have analogs in the future?
+#FUTURE COMMUNITIES THAT DO NOT HAVE ANALOGS IN CURRENT
+#How many future communities do not have analogs in the current time?
+#These are akin to communities that are novel, "Novel"
 ######################################################
 
 #---------------- TAXONOMIC NON-ANALOGS - NOVEL COMMUNITIES
@@ -459,7 +460,7 @@ cl<-makeCluster(3,"SOCK")
 registerDoSNOW(cl)
 
 #Create a range of arb thresholds, output the number of analogs in each dimensions
-novel.frame<-foreach(arb.thresh=seq(0,.5,.05)) %dopar% {
+novel.frame<-foreach(arb.thresh=seq(0, 0.5, 0.05)) %dopar% {
   require(reshape2)
 
   #Taxonomic

@@ -129,7 +129,7 @@ within.current.func <- within.current.func[,-1]
 within.current.func[lower.tri(within.current.func)] <- t(within.current.func[upper.tri(within.current.func)])
 
 
-#----- Within future functional beta          TODO: TEST that this works
+#----- Within future functional beta          
 Func.future <- lapply(future, function(x){
   matched <- x[,colnames(x) %in% colnames(fco)]
   matched[!apply(matched,1,sum)<=2,]   
@@ -189,7 +189,6 @@ beta.time.phylo <- lapply(phylo.future, function(x){
 
 
 #---------------- Find between FUNC BETA DIVERSITY
-#Repeat steps above for within time trait, but replacing Func.current with Func.future
 Beta.time.func <- lapply(Func.future, function(x){
   
   sp.list_current <- lapply(rownames(Func.current), function(k){
@@ -213,21 +212,21 @@ Beta.time.func <- lapply(Func.future, function(x){
   colnames(dists) <- rownames(fco)
   
   
-  Beta.time.func<-lapply(rownames(x),function(fu){
-    lapply(rownames(Func.current),function(cur){
-      MNND_fc(fu,cur,sp.list_current,sp.list_future,dists)
+  Beta.time.func <- lapply(rownames(x), function(fu){
+    lapply(rownames(Func.current), function(cur){
+      MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
     })
     
   })
   
-  melt.MNTD<-melt(Beta.time.func)
+  melt.MNTD <- melt(Beta.time.func)
   
-  colnames(melt.MNTD)<-c("MNTD","To","From")
+  colnames(melt.MNTD) <- c("MNTD","To","From")
   
   #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
-  beta.time.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
-  rownames(beta.time.func)<-beta.time.func[,1]
-  beta.time.func<-beta.time.func[,-1]
+  beta.time.func <- dcast(melt.MNTD,To ~ From, value.var="MNTD")
+  rownames(beta.time.func) <- beta.time.func[,1]
+  beta.time.func <- beta.time.func[,-1]
   
   
   rownames(beta.time.func) <- rownames(Func.current)
@@ -236,7 +235,7 @@ Beta.time.func <- lapply(Func.future, function(x){
 })
 
 
-#############################################
+#############################################     #TODO MONDAY: check dfs and start here
 #     ANALOG ANALYSIS
 #############################################
 #TODO: Wrap this code in a function so we can test sensitivity of results to the threshold 

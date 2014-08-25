@@ -154,7 +154,7 @@ res(r) <- cell_size
 plot(ec.r <- rasterize(ec,r))
 
 niche.crop <- lapply(niche,function(x){
-  r<-crop(raster(x),extent(ec.r))
+  r <- crop(raster(x),extent(ec.r))
   filnam <- paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
   writeRaster(r,filnam,overwrite=TRUE)
 })
@@ -175,7 +175,7 @@ input.niche <- list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MI
 names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
-siteXspps <- lapply(input.niche,tableFromRaster, threshold=0.05)
+siteXspps <- lapply(input.niche, tableFromRaster, threshold=0.05)
 
 ####################################################
 #Niche Models Completed!

@@ -94,11 +94,11 @@ myExpl<-aggregate(myExpl,fact)
 #Step 3: Climate Scenarios and Futute Climate
 ##############################################
 
-#Bring in future climate layers
+#Bring in future climate layers       #TODO: add new climate layers that we downloaded.
 # Modelname_year_emmissionscenario
-MICROC_2070_rcp26<-stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
-MICROC_2070_rcp85<-stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
-MICROC_2070_rcp45<-stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp26 <- stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp85 <- stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp45 <- stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
 
 #Step 4 Set the Extent to project *into*. Presence points are still taken from everywhere
 #Avoid projecting into areas where sample size is really low

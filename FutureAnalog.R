@@ -177,7 +177,7 @@ within.future.func <- lapply(Func.future,function(x){
 ###############################################################
 
 #---------------- Find between TAXONOMIC BETA DIVERSITY
-beta.time <- lapply(future, function(x){
+beta.time.taxa <- lapply(future, function(x){
   analogue::distance(current, x, "bray")
 })
 
@@ -251,10 +251,10 @@ arb.thresh <- 0.2
 #These are akin to communities which will disappear, "Disappearing"
 
 #---------------- TAXONOMIC NON-ANALOGS - DISAPPEARING COMMUNITIES
-#For each of the current communities how many future communities are less different than the threshold
-current_to_future.analog <- lapply(beta.time, function(j){
+#For each of the current communities how many future communities fall below the threshold (e.g., are analogous; 0 = similar, 1 = different)
+current_to_future.analog <- lapply(beta.time.taxa, function(j){
   n.analogs <- sapply(rownames(j), function(x){
-    sum(j[rownames(j) %in% x,] <= arb.thresh)
+    sum(j[rownames(j) %in% x,] <= arb.thresh) #counts the number of assemblages with beta div values less than arb.thresh
   })
   current_to_future.analog <- data.frame(rownames(j), n.analogs)
   colnames(current_to_future.analog) <- c("cell.number", "numberofanalogs")  
@@ -264,7 +264,8 @@ current_to_future.analog <- lapply(beta.time, function(j){
 c_f_tax <- lapply(current_to_future.analog, function(x){
   fanalog <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog, "NumberofFutureAnalogs_Taxon_ARB.tif", overwrite=T)
+  writeRaster(fanalog, "NumberofFutureAnalogs_Taxon_ARB.tif", overwrite=TRUE)   #TODO: Not saving the tif file?
+  return(fanalog)
 })
 
 
@@ -285,7 +286,8 @@ future.analog.phylo <- lapply(beta.time.phylo, function(j){
 c_f_phylo <- lapply(future.analog.phylo, function(x){
   fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog.phylo, "NumberofFutureAnalogs_Phylo_ARB.tif", overwrite=T)
+  writeRaster(fanalog.phylo, "NumberofFutureAnalogs_Phylo_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  return(fanalog.phylo)
 })
 
 
@@ -302,15 +304,18 @@ future.analog.func <- lapply(Beta.time.func, function(j){
 
 c_f_func <- lapply(future.analog.func, function(x){
   fanalog.Func <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
-  writeRaster(fanalog.Func, "NumberofFutureAnalogs_Func_ARB.tif", overwrite=T)
+  writeRaster(fanalog.Func, "NumberofFutureAnalogs_Func_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  return(fanalog.Func)
 })
 
 
 #############Visualize all three analog axes together
+# Columns are the emissions scenarios, 
+# Rows are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
 c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
 
-plot(c_f)
-###Across are the emissions scenarios, down are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
+blues <- colorRampPalette(brewer.pal(9,"Blues"))(100) #TODO: All appear to be the same - is it looping through the scenarios correctly?
+plot(c_f, col=blues)
 
 
 #####################################################
@@ -321,8 +326,8 @@ plot(c_f)
 ######################################################
 
 #---------------- TAXONOMIC NON-ANALOGS - NOVEL COMMUNITIES
-#For each of the future communities how many future communities are less different 5th current quantile
-future_to_current.analog <- lapply(beta.time, function(j){
+#For each of the future communities how many future communities are analogous (< arb.thresh). Things that are different are "novel"
+future_to_current.analog <- lapply(beta.time.taxa, function(j){
   n.analogs <- sapply(colnames(j), function(x){
     sum(j[,colnames(j) %in% x] <= arb.thresh)
   })
@@ -335,11 +340,13 @@ future_to_current.analog <- lapply(beta.time, function(j){
 f_c_tax <- lapply(future_to_current.analog, function(x){
   fanalog <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog, "NumberofCurrentAnalogs_Taxon_ARB.tif", overwrite=T)
+  writeRaster(fanalog, "NumberofCurrentAnalogs_Taxon_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  return(fanalog)
 })
 
 #Data check, these should be different
-plot(stack(f_c_tax) - stack(c_f_tax))
+RdBu <- colorRampPalette(brewer.pal(7,"RdBu"))(100)
+plot(stack(f_c_tax) - stack(c_f_tax), col=RdBu)
 
 
 #---------------- PHYLO NON-ANALOGS - NOVEL COMMUNITIES
@@ -359,10 +366,11 @@ future_to_current.phylo <- lapply(beta.time.phylo, function(j){
 f_c_phylo <- lapply(future_to_current.phylo, function(x){
   fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog.phylo, "NumberofCurrentAnalogs_Phylo_ARB.tif", overwrite=T)
+  writeRaster(fanalog.phylo, "NumberofCurrentAnalogs_Phylo_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  return(fanalog.phylo)
 })
 
-plot(stack(f_c_phylo) - stack(c_f_phylo))
+plot(stack(f_c_phylo) - stack(c_f_phylo), col=RdBu)
 
 
 #---------------- FUNC NON-ANALOGS - NOVEL COMMUNITIES
@@ -378,7 +386,8 @@ future_to_current.func <- lapply(Beta.time.func, function(j){
 
 f_c_func <- lapply(future_to_current.func, function(x){
   fanalog.Func <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
-  writeRaster(fanalog.Func, "NumberofCurrentAnalogs_Func_ARB.tif", overwrite=T)
+  writeRaster(fanalog.Func, "NumberofCurrentAnalogs_Func_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  return(fanalog.Func)
 })
 
 
@@ -386,22 +395,32 @@ f_c_func <- lapply(future_to_current.func, function(x){
 f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
 
 #plot novel assemblages
-plot(f_c)
+plot(f_c, col=blues)
 
 
-#plot both as a panel              TODO: this needs to be improved
-#Just try plotting one emission scenerio across both disappearing and novel
+#plot both as a panel              TODO: this needs to be improved - loop through emissions scenarios, plot in diff colors
+#Just try plotting one emission scenario across both disappearing and novel
 novel <- f_c[[c(1,4,7)]]
 disappear <- c_f[[c(1,4,7)]]
 
 #This could be named correctly using 
 firstplot <- stack(novel,disappear)
 names(firstplot) <- c(paste("Novel",c("Tax","Phylo","Func")), paste("Disappearing",c("Tax","Phylo","Func")))
-plot(firstplot)
+cols = c(blues, blues, blues, reds, reds, reds)
+
+blues <- colorRampPalette(brewer.pal(9,"Blues"))(100)
+reds <- colorRampPalette(brewer.pal(9,"Reds"))(100)
+plot(novel, col=rev(blues))
+plot(disappear, col=rev(reds))
 
 
 #####################
-#FIXME: CLEANED UNTIL HERE 7/3/2014 
+#FIXME: CLEANED UNTIL HERE 8/25/2014 
+#TODO: determine what the object names refer to - add loops? Finish code.
+#TODO: The next sections appears to run some correlation tests and test the sensitivity of the analysis for 
+#      the arbitrary threshold.  It also saves several output plots. Determine what we need, streamline and test it.
+#       save results and make sure it could be run on many more scenarios.
+
 #The rest should be fairly straightforward, correlating the rasters from above, 
 #the f_c raster is the number of future analogs of current assemblages
 #The c_f is the number of current analogs of future assemblages
@@ -439,8 +458,8 @@ rc <- cor(values(current_arb[[1]]), values(ric), use="complete.obs")
 
 #Pairwise plots of results, and glms
 #Create giant dataframe
-current_val<-data.frame(values(ric),values(current_arb))
-colnames(current_val)<-c("Richness","Tax","Phylo","Trait")
+current_val <- data.frame(values(ric),values(current_arb))
+colnames(current_val) <- c("Richness","Tax","Phylo","Trait")
 
 ggplot(current_val,aes(Richness,Tax))+geom_point() + theme_bw()
 ggplot(current_val,aes(Richness,Phylo))+geom_point() + theme_bw()

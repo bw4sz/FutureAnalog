@@ -94,8 +94,8 @@ within.future.phylo <- lapply(phylo.future, function(x){
 Func.current <- current[,colnames(current) %in% colnames(fco)]
 Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]  
 
-####MNNTD method for integrating trait beta, used in the DimDiv script    TODO:  needs to be checked (@BenWeinstein)
-#   MNNTD = Mean nearest neighbor taxon distance
+####MNNTD method for integrating trait beta, used in the DimDiv script    
+#   MNNTD = Mean nearest neighbor taxon distance                          TODO: recommend parallelizing all the func code in this script - takes HOURS to run on the fast desktop
 #   Holt et al. 2012. An update of Wallace's zoogeographic regions of the world. Science.
 sp.list <- lapply(rownames(Func.current), function(k){
   x <- Func.current[k,]
@@ -311,6 +311,7 @@ c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
 
 plot(c_f)
 ###Across are the emissions scenarios, down are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
+
 
 #####################################################
 #PART II

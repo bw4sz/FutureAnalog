@@ -431,5 +431,8 @@ plot(f_c, col=rev(reds))
 #    Maybe specify the gcm layer as a folder, ie each gcm is made up of three files, which are in their own folder, 
 #     and it takes the folder name as input. 
 
+#TODO: Make code that outputs main tables and figures for manuscript. Mean effects across all GCMs, 
+#      plotted by scenario and dimension of biodiv (novel and disappearing; correlation table)
+
 save.image("FutureAnalog.rData")
 #s amnat

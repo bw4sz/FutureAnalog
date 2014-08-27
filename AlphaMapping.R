@@ -118,7 +118,7 @@ source(paste(gitpath,"SDM.r",sep=""))
 # Cell size is in degrees. 1 degree = 112km
 cell_size = 0.1
 output_folder = "C:\\Users\\sarah\\Desktop\\Testmod"
-SDM_SP(cell_size,output_folder)
+SDM_SP(cell_size,output_folder)  #TODO: There are plces in SDM.R that call MICROC directly - will need to add new GCMS, or autodetect names to loop through
 
 
 ##############################

@@ -22,7 +22,7 @@ rdata <- paste(output_folder, "\\AlphaMapping.RData", sep="")
 
 #Load in data
 load(rdata)
-#load("C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\FutureAnalog\\FutureAnalog.rData")
+#load("C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\FutureAnalog\\FutureAnalog.rData") #if you want Rdata up through the last few lines (before output)
 
 #Load in source functions
 source(paste(gitpath,"\\AlphaMappingFunctions.R",sep=""))
@@ -265,7 +265,7 @@ current_to_future.analog <- lapply(beta.time.taxa, function(j){
 c_f_tax <- lapply(current_to_future.analog, function(x){
   fanalog <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog, "NumberofFutureAnalogs_Taxon_ARB.tif", overwrite=TRUE)   #TODO: Not saving the tif file?
+  writeRaster(fanalog, "NumberofFutureAnalogs_Taxon_ARB.tif", overwrite=TRUE)   
   return(fanalog)
 })
 
@@ -287,7 +287,7 @@ future.analog.phylo <- lapply(beta.time.phylo, function(j){
 c_f_phylo <- lapply(future.analog.phylo, function(x){
   fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog.phylo, "NumberofFutureAnalogs_Phylo_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  writeRaster(fanalog.phylo, "NumberofFutureAnalogs_Phylo_ARB.tif", overwrite=T)  
   return(fanalog.phylo)
 })
 
@@ -305,7 +305,7 @@ future.analog.func <- lapply(Beta.time.func, function(j){
 
 c_f_func <- lapply(future.analog.func, function(x){
   fanalog.Func <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
-  writeRaster(fanalog.Func, "NumberofFutureAnalogs_Func_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  writeRaster(fanalog.Func, "NumberofFutureAnalogs_Func_ARB.tif", overwrite=T)  
   return(fanalog.Func)
 })
 
@@ -315,7 +315,7 @@ c_f_func <- lapply(future.analog.func, function(x){
 # Rows are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
 c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
 
-blues <- colorRampPalette(brewer.pal(9,"Blues"))(100) #TODO: All appear to be the same - is it looping through the scenarios correctly?
+blues <- colorRampPalette(brewer.pal(9,"Blues"))(100) 
 plot(c_f, col=blues)
 
 
@@ -341,7 +341,7 @@ future_to_current.analog <- lapply(beta.time.taxa, function(j){
 f_c_tax <- lapply(future_to_current.analog, function(x){
   fanalog <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog, "NumberofCurrentAnalogs_Taxon_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  writeRaster(fanalog, "NumberofCurrentAnalogs_Taxon_ARB.tif", overwrite=T)  
   return(fanalog)
 })
 
@@ -367,7 +367,7 @@ future_to_current.phylo <- lapply(beta.time.phylo, function(j){
 f_c_phylo <- lapply(future_to_current.phylo, function(x){
   fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog.phylo, "NumberofCurrentAnalogs_Phylo_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  writeRaster(fanalog.phylo, "NumberofCurrentAnalogs_Phylo_ARB.tif", overwrite=T)  
   return(fanalog.phylo)
 })
 
@@ -387,7 +387,7 @@ future_to_current.func <- lapply(Beta.time.func, function(j){
 
 f_c_func <- lapply(future_to_current.func, function(x){
   fanalog.Func <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
-  writeRaster(fanalog.Func, "NumberofCurrentAnalogs_Func_ARB.tif", overwrite=T)  #TODO: Not saving the tif file?
+  writeRaster(fanalog.Func, "NumberofCurrentAnalogs_Func_ARB.tif", overwrite=T)  
   return(fanalog.Func)
 })
 
@@ -396,8 +396,8 @@ f_c_func <- lapply(future_to_current.func, function(x){
 f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
 
 #plot novel and disappearing assemblages
-plot(f_c, col=rev(blues))
-plot(f_c, col=rev(reds))
+plot(f_c, col=rev(blues))  #novel
+plot(f_c, col=rev(reds))   #disappearing
 
 # #plot both as a panel              TODO: this needs to be improved - loop through emissions scenarios, plot in diff colors
 # #Just try plotting one emission scenario across both disappearing and novel

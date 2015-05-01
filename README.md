@@ -73,3 +73,7 @@ __Packages:__
 * rgdal
 * stringr
 * vegan
+
+## Workflow
+- AlphaMapping.R (calls AlphaMappingFunctions.r and SDM.R) -> FutureAnalog.R
+- The GDM_hbird.R is a seperate idea for the moment.

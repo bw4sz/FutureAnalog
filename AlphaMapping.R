@@ -8,32 +8,27 @@
 
 #October 16th 2012 - Ben Weinstein. Stony Brook University
 
-#require packages for alpha analysis
-require(RColorBrewer)
-require(biomod2)
-require(maptools)
-require(ggplot2)
-require(reshape)
-require(raster)
-require(rgdal)
-require(doSNOW)
-require(ape)
-require(stringr)
-require(picante)
-require(parallel)
-require(ecodist)
-require(vegan)
-require(MASS)
-require(HH)
+#require packages for alpha analysis - any packages not already installed will be installed
+packages <- c("RColorBrewer", "biomod2", "maptools", "ggplot2", "reshape", 
+              "raster", "rgdal", "doSNOW", "ape", "stringr", "picante", 
+              "parallel", "ecodist", "vegan", "MASS", "HH")
+
+for(p in packages) {
+  if (!p %in% installed.packages()) {
+    install.packages(p)
+  }
+  require(p, character.only = TRUE)
+}
 
 #Set dropbox and github paths
 #Sarah's
-droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
-gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
+#droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
+#gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
 
-setwd(droppath)
+#setwd(droppath)
 #######################################################################################################################
 #Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
+# Update: paths changed to relative to make code more portable. Make sure run from project directory
 #######################################################################################################################
 
 
@@ -41,11 +36,11 @@ setwd(droppath)
 #load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
 
 #source in all the Alpha Mapping functions
-source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
+source("AlphaMappingFunctions.R")
 
 #Bring in Phylogenetic Data
-trx<-read.nexus(paste(gitpath,"InputData/ColombiaPhylogenyUM.tre",sep=""))
-spnames<-read.table(paste(gitpath,"InputData/SpNameTree.txt",sep="") , sep = "\t", header = TRUE)
+trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
+spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
 
 #Replace tip.label with Spnames#
 #replace the tiplabels with periods, which is the biomod default
@@ -55,7 +50,7 @@ co<-cophenetic(trx)
 
 #Bring in morphology
 ###Bring in trait data
-morph <- read.csv(paste(gitpath,"InputData/MorphologyShort.csv",sep=""),na.strings="9999")
+morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
 
 #just get males & the 3 traits of interest
 morph.male<-morph[morph$Sex=="Macho",c("SpID","ExpC","Peso","AlCdo")]
@@ -86,7 +81,7 @@ fco <- as.matrix(dist(z.scores, method = "euclidean"))
 #########################################################################################
 
 #source SDM function
-source(paste(gitpath,"SDM.r",sep=""))
+source("SDM.r")
 
 #Function computes ensemble niche models with default methods (Models=GLM,GBM,MAXENT) and paramters (background draws, keep ROC > .75)
 #The SDM function could be tweaked to take in any set of parameters, but given the enormous number of options, start simple. 
@@ -117,7 +112,10 @@ source(paste(gitpath,"SDM.r",sep=""))
 #Define these variables outside the function so they can be used below.
 # Cell size is in degrees. 1 degree = 112km
 cell_size = 0.1
-output_folder = "C:\\Users\\sarah\\Desktop\\Testmod"
+output_folder = "../FutureAnalog_output/"
+
+# create an output folder outside of the main folder if it doesn't already exist
+if(dir.exists(output_folder) == FALSE) dir.create(output_folder)
 SDM_SP(cell_size,output_folder)  #TODO: There are plces in SDM.R that call MICROC directly - will need to add new GCMS, or autodetect names to loop through
 
 
@@ -147,7 +145,7 @@ names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070
 #Clip to Extent and shape of desired countries (Ecuador for now)
 ###############################################
 
-ec<-readShapePoly(paste(gitpath,"Inputdata/EcuadorCut.shp",sep=""))
+ec<-readShapePoly("Inputdata/EcuadorCut.shp")
 r<-raster(extent(ec))
 
 #Match cell size above from the SDM_SP function
@@ -291,13 +289,13 @@ al
 #############
 #Write alpha rasters to file
 lapply(1:length(cell.Rasters),function(x){
-  writeRaster(stack(cell.Rasters[[x]]), paste(paste(gitpath,"Figures/",sep=""), names(cell.Rasters)[x],sep=""),
+  writeRaster(stack(cell.Rasters[[x]]), "Figures/", names(cell.Rasters)[x],sep=""),
               overwrite=TRUE,bylayer=TRUE,suffix='names')
 })
 
 #Write difference raster to file
 lapply(1:length(diff.raster),function(x){
-  writeRaster(diff.raster[[x]], bylayer=TRUE, paste(gitpath,"Figures/AlphaChange.tif",sep=""),
+  writeRaster(diff.raster[[x]], bylayer=TRUE, "Figures/AlphaChange.tif",
               overwrite=TRUE,suffix=names(diff.raster[[x]]))
 })
 

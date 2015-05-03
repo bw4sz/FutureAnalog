@@ -23,13 +23,9 @@ require(doSNOW)
 
 #set a working directory, where do we want to save files
 #save locally for now
-dir.create(output_folder)
-setwd(output_folder)
-
-dir.create(paste(getwd(),cell_size,sep="/"))
-setwd(paste(getwd(),cell_size,sep="/"))
-
-dir.create("logs")
+out_path <- paste(output_folder, cell_size, sep = "/")
+if(!dir.exists(out_path)) dir.create(out_path)
+if(!dir.exists(paste(out_path, "logs", sep = "/"))) dir.create(paste(out_path, "logs", sep = "/")
 
 print("Directory Created")
 #To perform the biomod, you must have three pieces of data
@@ -44,7 +40,7 @@ print("Directory Created")
 #1) presence absence data matrix for the desired species
 
 #Lets go get the presence data on hummingbird distributions
-PA<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep=""))
+PA<-read.csv("InputData/MASTER_POINTLOCALITYarcmap_review.csv")
 #Just take the columns you want. 
 PAdat<-PA[,colnames (PA) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
 
@@ -64,9 +60,9 @@ PAdat<-PAdat[!PAdat$LONGDECDEG==-6,] #TODO: What is this doing?
 #Paths must be changed to local directory! unzip
 #Import environmental data from worldclim, three variables
 #Bio1 = annual mean temp, Bio12 = annual precip, Bio15 = precip seasonality
-myExpl <- c("F:\\ClimateLayers\\worldclim_bio1-9_30s_bil\\bio_1.bil",
-            "F:\\ClimateLayers\\worldclim_bio1-9_30s_bil\\bio_12.bil",
-            "F:\\ClimateLayers\\worldclim_bio1-9_30s_bil\\bio_15.bil")
+myExpl <- c("../worldclim_data/bio1-9_30s_bil/bio_1.bil",
+            "../worldclim_data/bio10-19_30s_bil/bio_12.bil",
+            "../worldclim_data/bio10-19_30s_bil/bio_15.bil")
 
 myExpl<-stack(myExpl)
 
@@ -157,7 +153,7 @@ spec<-names(rec[which(rec >= 10)])
 #remove any species that have already been run
 #name the list with the correct species names from file
 #get all the niche model data
-niche<-list.files(getwd(),pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
+niche<-list.files(out_path,pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
 
 #split into current and future
 #Get current models
@@ -187,7 +183,7 @@ cl<-makeCluster(8,"SOCK")
 registerDoSNOW(cl)
 # change x=1:2 back to x=1:length(spec), and change %do% back to %dopar%
 system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
-  sink(paste("logs/",paste(spec[[x]],".txt",sep=""),sep=""))
+  sink(paste("../FutureAnalog_output/", cell_size, "/logs/",paste(spec[[x]],".txt",sep=""),sep=""))
   
   #remove sites that have no valid records
   #For the moment, only get the clean records from Decision, or the cleaned map localities. 
@@ -254,7 +250,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
     
   #Define modeling options
   myBiomodOption <- BIOMOD_ModelingOptions(    
-    MAXENT = list( path_to_maxent.jar = "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\maxent.jar",
+    MAXENT = list( path_to_maxent.jar = "maxent.jar",
                    maximumiterations = 200,
                    visible = FALSE,
                    linear = TRUE,
@@ -295,7 +291,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   stat <- myBiomodModelEval[c("ROC","TSS"), "Testing.data",,"Full",]
   
   #need to write this to file
-  filename <- paste(paste(getwd(),gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="/")
+  filename <- paste(paste(out_path, gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="/")
   write.csv(cbind(spec[x],stat),filename)
   
   #Let's look at variable importance
@@ -303,7 +299,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   c.var <- cast(m.var,X1~X2)
   
   #Write variable importance to file
-  filename <- paste(paste(getwd(),gsub(" ",".",spec[x]),sep="/"),"VarImportance.csv",sep="/")
+  filename <- paste(paste(out_path, gsub(" ",".",spec[x]),sep="/"),"VarImportance.csv",sep="/")
   write.csv(cbind(c.var,spec[x]),filename)
   
   #Ensemble model outputs
@@ -374,7 +370,7 @@ print("ModelsComplete")
 ###########################
 
 #Get the model evaluation from file
-model_eval<-list.files(full.name=TRUE,recursive=T,pattern="Eval.csv")
+model_eval<-list.files(paste(out_path, sep = "/"), full.name=TRUE,recursive=T,pattern="Eval.csv")
 model_eval<-rbind.fill(lapply(model_eval,read.csv))
 colnames(model_eval)<-c("Model","Species","Stat")
 #model_eval<-melt(model_eval,id.var=c("Model","Species","Stat"))
@@ -385,7 +381,7 @@ colnames(model_eval)<-c("Model","Species","Stat")
 ggplot(model_eval, aes(x=Species,y=Model,fill=Stat)) + geom_tile() + 
   scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + 
   theme(axis.text.x=element_text(angle=-90))
-ggsave("ModelEvaluations.jpeg", dpi=600, height = 6, width=11)
+ggsave(paste(out_path, "ModelEvaluations.jpeg", sep = "/"), dpi=600, height = 6, width=11)
 
 #Plot correlation of ROC and TSS scores
 model_compare <- cast(model_eval[,1:3], Species~Model)
@@ -393,7 +389,7 @@ model_compare <- cast(model_eval[,1:3], Species~Model)
 ggplot(model_compare, aes(TSS, ROC)) + geom_point() + stat_smooth(method="lm") + theme_classic() + 
   theme(text=element_text(size=20))
 lm1=lm(ROC~TSS, data=model_compare)
-ggsave("ModelComparison_ROC-TSS.jpeg", dpi=600, height = 6, width=11)
+ggsave(paste(out_path, "ModelComparison_ROC-TSS.jpeg", sep = "/"), dpi=600, height = 6, width=11)
 
 
 model_thresh<-sapply(seq(.5,.95,.05),function(x){
@@ -407,10 +403,10 @@ names(model_thresh)<-c("Model","ROC_Threshold","Number_of_Species")
 ggplot(model_thresh,aes(x=ROC_Threshold,y=Number_of_Species,col=Model)) + geom_line() + geom_point() + 
   geom_text(aes(label=Number_of_Species),vjust=4,size=5) + xlab("Model Threshold") + ylab("Number of species included") +
   theme_classic() + theme(text=element_text(size=20))
-ggsave("ModelThresholding.jpeg", dpi=600, height=8, width=8)
+ggsave(paste(out_path, "ModelThresholding.jpeg", sep = "/"), dpi=600, height=8, width=8)
 
 #Get the variable importance from file
-varI<-list.files(full.name=TRUE,recursive=T,pattern="VarImportance.csv")
+varI<-list.files(paste(out_path, sep = "/"), full.name=TRUE,recursive=T,pattern="VarImportance.csv")
 varI<-rbind.fill(lapply(varI,read.csv))
 varI<-varI[,-1]
 
@@ -423,9 +419,7 @@ ggplot(mvar, aes(x=Species,y=Bioclim,fill=value)) + geom_tile() +
   scale_fill_gradient(limits=c(0,1),low="blue",high="red",na.value="white") + 
   theme(axis.text.x=element_text(angle=-90)) + facet_grid(Model ~ .)
 
-ggsave("VariableImportance.jpeg", dpi=600, height = 6, width=11)
+ggsave(paste(out_path, "VariableImportance.jpeg", sep = "/"), dpi=600, height = 6, width=11)
 }
 
-
 print("SDM Function Defined")
-setwd(gitpath)

@@ -92,9 +92,15 @@ myExpl<-aggregate(myExpl,fact)
 
 #Bring in future climate layers       #TODO: add new climate layers that we downloaded.
 # Modelname_year_emmissionscenario
-MICROC_2070_rcp26 <- stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp26\\biovars.grd")[[c(1,12,15)]]
-MICROC_2070_rcp85 <- stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp85\\biovars.grd")[[c(1,12,15)]]
-MICROC_2070_rcp45 <- stack("F:\\ClimateLayers\\FutureGCMLayers\\MICROC 2070\\MICROCrcp45\\biovars.grd")[[c(1,12,15)]]
+MICROC_2070_rcp26 <- stack("../worldclim_data/mc26bi70/mc26bi701.tif",
+                           "../worldclim_data/mc26bi70/mc26bi7012.tif",
+                           "../worldclim_data/mc26bi70/mc26bi7015.tif")
+MICROC_2070_rcp85 <- stack("../worldclim_data/mc85bi70/mc85bi701.tif",
+                           "../worldclim_data/mc85bi70/mc85bi7012.tif",
+                           "../worldclim_data/mc85bi70/mc85bi7015.tif")
+MICROC_2070_rcp45 <- stack("../worldclim_data/mc45bi70/mc45bi701.tif",
+                           "../worldclim_data/mc45bi70/mc45bi7012.tif",
+                           "../worldclim_data/mc45bi70/mc45bi7015.tif")
 
 #Step 4 Set the Extent to project *into*. Presence points are still taken from everywhere
 #Avoid projecting into areas where sample size is really low

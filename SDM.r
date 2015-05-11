@@ -393,28 +393,30 @@ print("ModelsComplete")
 
 #Get the model evaluation from file
 model_eval<-list.files(full.name=TRUE,recursive=T,pattern="Eval.csv")
-model_eval<-rbind_all(lapply(model_eval,read.csv))
+model_eval<-rbind_all(lapply(model_eval, function(x) read.csv(x, stringsAsFactors = FALSE)))
 colnames(model_eval)[1:2] <- c("Stat", "Species")
-model_eval <- gather(model_eval, Model, )
-#colnames(model_eval)<-c("Model","Species","Stat")
+model_eval  <- gather(data.frame(model_eval), Model, value, -Stat, -Species)
+colnames(model_eval)<-c("Stat", "Species", "Model", "Value")
+
 #model_eval<-melt(model_eval,id.var=c("Model","Species","Stat"))
 #model_eval<-cast(model_eval,Species~Model)
 
 
 #remove NA's?
-ggplot(model_eval, aes(x=Species,y=Model,fill=Stat)) + geom_tile() + 
+ggplot(model_eval, aes(x=Model,y=Stat,fill=Value)) + geom_tile() + 
   scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + 
   theme(axis.text.x=element_text(angle=-90))
-ggsave(paste(out_path, "ModelEvaluations.jpeg", sep = "/"), dpi=600, height = 6, width=11)
+ggsave("ModelEvaluations.jpeg", dpi=600, height = 6, width=11)
 
 #Plot correlation of ROC and TSS scores
 model_compare <- cast(model_eval[,1:3], Species~Model)
-
+model_compare <- spread(model_eval, Stat, Value)
 ggplot(model_compare, aes(TSS, ROC)) + geom_point() + stat_smooth(method="lm") + theme_classic() + 
   theme(text=element_text(size=20))
 lm1=lm(ROC~TSS, data=model_compare)
-ggsave(paste(out_path, "ModelComparison_ROC-TSS.jpeg", sep = "/"), dpi=600, height = 6, width=11)
+ggsave("ModelComparison_ROC-TSS.jpeg", dpi=600, height = 6, width=11)
 
+# THINK CODE IS OKAY UP TO HERE - NEED TO LOOK INTO BELOW
 
 model_thresh<-sapply(seq(.5,.95,.05),function(x){
   table(model_eval$Stat > x,model_eval$Model)["TRUE",]

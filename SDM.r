@@ -20,12 +20,13 @@ require(rgdal)
 require(stringr)
 require(gbm)
 require(doSNOW)
+require(dplyr)
 
 #set a working directory, where do we want to save files
 #save locally for now
 out_path <- paste(output_folder, cell_size, sep = "/")
 if(!dir.exists(out_path)) dir.create(out_path)
-if(!dir.exists(paste(out_path, "logs", sep = "/"))) dir.create(paste(out_path, "logs", sep = "/")
+if(!dir.exists(paste(out_path, "logs", sep = "/"))) dir.create(paste(out_path, "logs", sep = "/"))
 
 print("Directory Created")
 #To perform the biomod, you must have three pieces of data
@@ -189,7 +190,7 @@ cl<-makeCluster(8,"SOCK")
 registerDoSNOW(cl)
 # change x=1:2 back to x=1:length(spec), and change %do% back to %dopar%
 system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"),.errorhandling="pass") %dopar% {
-  sink(paste("../FutureAnalog_output/", cell_size, "/logs/",paste(spec[[x]],".txt",sep=""),sep=""))
+  sink(paste(out_path, "/logs/",paste(spec[[x]],".txt",sep=""),sep=""))
   
   #remove sites that have no valid records
   #For the moment, only get the clean records from Decision, or the cleaned map localities. 
@@ -203,33 +204,46 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   #Have the species names as a vector that will helpful later
   spname<-levels(factor((PA_species$SPECIES)))
   
-  #get unique localities
+  #get unique localities - this isn't used again
   pts<-aggregate(PA_species,list(PA_species$LOCALITY),FUN=mean)
   
   #The format required is x,y,presence columns as their "response"
   #response<-cbind(PA_species[,c("LONGDECDEG","LATDECDEG")],1)
   #colnames(response)<-c("x","y",spname)
   
-  #########################The above gets you presence only records
-  #To get presence/psuedoabscence  
-  #Get the presence absence matrix
-  loc_matrix<-table(loc_clean$LOCALITY,loc_clean$SPECIES)
+  #########################The above gets you presence only records To get
+  #presence/psuedoabscence - have slightly updated the below code to make this
+  #step unnecessary 
+  #Get the presence absence matrix 
+  #loc_matrix<-table(loc_clean$LOCALITY,loc_clean$SPECIES)
  
   #Select the species you'd like
-  sp_matrix<-as.data.frame(melt(loc_matrix[,spec[x]]))
+  #sp_matrix<-as.data.frame(melt(loc_matrix[,spec[x]]))
+  
+  # get unique locations
   unique.loc<-unique(loc_clean[,c("LOCALITY","LONGDECDEG","LATDECDEG")])
-  p_a<-merge(sp_matrix,unique.loc,by.x="row.names",by.y="LOCALITY")
-  p_a<-p_a[!duplicated(p_a),]
+  
+  # create the presence data for the species, select necessary columns
+  p_species <- filter(loc_clean, SPECIES == spec[x]) %>%
+    select(LOCALITY, LONGDECDEG, LATDECDEG) %>%
+    mutate(PRES = 1)
+  p_species <- unique(p_species) # remove duplicate records
+  
+  # join onto the unique locations keeping all locations (pseudoabsences will
+  # automatically be NA)
+  p_a <- merge(unique.loc, p_species, all.x = TRUE)
+  #p_a<-merge(sp_matrix,unique.loc,by.x="row.names",by.y="LOCALITY")
+  #p_a<-p_a[!duplicated(p_a),]
   
   #name the columns
-  colnames(p_a)<-c("Locality","Response","LONGDECDEG","LATDECDEG")
+  colnames(p_a)<-c("Locality", "LONGDECDEG", "LATDECDEG", "Response")
   
-  p_a[p_a$Response > 1,"Response"] <- 1
+  #p_a[p_a$Response > 1,"Response"] <- 1
   p_a<-p_a[!p_a$Locality=="",]
   p_a<-aggregate(p_a,list(p_a$Locality),FUN=mean)
   
   #the 0 are not true absences, they are NA's psuedoabsences
-  p_a[p_a$Response == 0,"Response"]<-NA
+  #p_a[p_a$Response == 0,"Response"]<-NA
   
   #we want 2000 psuedoabsences, randomly pick 2000 NA rows. 
   if(length(which(is.na(p_a$Response))) < 2000){
@@ -256,7 +270,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
     
   #Define modeling options
   myBiomodOption <- BIOMOD_ModelingOptions(    
-    MAXENT = list( path_to_maxent.jar = "maxent.jar",
+    MAXENT = list( path_to_maxent.jar = ".",
                    maximumiterations = 200,
                    visible = FALSE,
                    linear = TRUE,
@@ -297,15 +311,15 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   stat <- myBiomodModelEval[c("ROC","TSS"), "Testing.data",,"Full",]
   
   #need to write this to file
-  filename <- paste(paste(out_path, gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="/")
+  filename <- paste(paste(out_path, gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="")
   write.csv(cbind(spec[x],stat),filename)
   
   #Let's look at variable importance
-  m.var <- melt(getModelsVarImport(myBiomodModelOut)[,,"Full",])
+  m.var <- melt(get_variables_importance(myBiomodModelOut)[,,"Full",])
   c.var <- cast(m.var,X1~X2)
   
   #Write variable importance to file
-  filename <- paste(paste(out_path, gsub(" ",".",spec[x]),sep="/"),"VarImportance.csv",sep="/")
+  filename <- paste(paste(out_path, gsub(" ",".",spec[x]),sep="/"),"VarImportance.csv",sep="")
   write.csv(cbind(c.var,spec[x]),filename)
   
   #Ensemble model outputs
@@ -378,7 +392,9 @@ print("ModelsComplete")
 #Get the model evaluation from file
 model_eval<-list.files(paste(out_path, sep = "/"), full.name=TRUE,recursive=T,pattern="Eval.csv")
 model_eval<-rbind.fill(lapply(model_eval,read.csv))
-colnames(model_eval)<-c("Model","Species","Stat")
+colnames(model_eval)[1:2] <- c("Stat", "Species")
+model_eval <- gather(model_eval, Model, )
+#colnames(model_eval)<-c("Model","Species","Stat")
 #model_eval<-melt(model_eval,id.var=c("Model","Species","Stat"))
 #model_eval<-cast(model_eval,Species~Model)
 

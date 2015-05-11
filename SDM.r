@@ -21,6 +21,7 @@ require(stringr)
 require(gbm)
 require(doSNOW)
 require(dplyr)
+require(tidyr)
 
 #set a working directory, where do we want to save files
 #save locally for now
@@ -147,9 +148,10 @@ names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85
 
 print(paste("Climate Scenarios:", names(projEnv)))
 
-#######################
-#Which species to run
-#######################
+####################### Which species to run ###################### the biomod
+#output will go into the working folder - need to make sure this is the output
+#folder
+setwd(out_path)
 
 #How many records per species?
 rec<-table(loc_clean$SPECIES)
@@ -160,7 +162,7 @@ spec<-names(rec[which(rec >= 10)])
 #remove any species that have already been run
 #name the list with the correct species names from file
 #get all the niche model data
-niche<-list.files(out_path,pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
+niche<-list.files(".",pattern="TotalConsensus_EMbyROC.gri",full.name=T,recursive=T)
 
 #split into current and future
 #Get current models
@@ -270,7 +272,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
     
   #Define modeling options
   myBiomodOption <- BIOMOD_ModelingOptions(    
-    MAXENT = list( path_to_maxent.jar = ".",
+    MAXENT = list( path_to_maxent.jar = "../../FutureAnalog/maxent.jar",
                    maximumiterations = 200,
                    visible = FALSE,
                    linear = TRUE,
@@ -311,7 +313,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   stat <- myBiomodModelEval[c("ROC","TSS"), "Testing.data",,"Full",]
   
   #need to write this to file
-  filename <- paste(paste(out_path, gsub(" ",".",spec[x]),sep="/"),"ModelEval.csv",sep="")
+  filename <- paste(gsub(" ",".",spec[x]), "ModelEval.csv", sep="")
   write.csv(cbind(spec[x],stat),filename)
   
   #Let's look at variable importance
@@ -319,7 +321,7 @@ system.time(niche_loop<-foreach(x=1:length(spec),.packages=c("reshape","biomod2"
   c.var <- cast(m.var,X1~X2)
   
   #Write variable importance to file
-  filename <- paste(paste(out_path, gsub(" ",".",spec[x]),sep="/"),"VarImportance.csv",sep="")
+  filename <- paste(gsub(" ",".",spec[x]),"VarImportance.csv",sep="")
   write.csv(cbind(c.var,spec[x]),filename)
   
   #Ensemble model outputs
@@ -390,8 +392,8 @@ print("ModelsComplete")
 ###########################
 
 #Get the model evaluation from file
-model_eval<-list.files(paste(out_path, sep = "/"), full.name=TRUE,recursive=T,pattern="Eval.csv")
-model_eval<-rbind.fill(lapply(model_eval,read.csv))
+model_eval<-list.files(full.name=TRUE,recursive=T,pattern="Eval.csv")
+model_eval<-rbind_all(lapply(model_eval,read.csv))
 colnames(model_eval)[1:2] <- c("Stat", "Species")
 model_eval <- gather(model_eval, Model, )
 #colnames(model_eval)<-c("Model","Species","Stat")

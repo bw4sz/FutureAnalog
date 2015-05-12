@@ -4,7 +4,8 @@
 # (ensemble and projections).
 
 # load required packages (installing if not already done)
-packages <- c("raster", "dplyr", "tidyr", "doSNOW", "stringr")
+packages <- c("raster", "dplyr", "tidyr", "doSNOW", "stringr", "ape", "picante",
+              "RColorBrewer")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -255,3 +256,130 @@ names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC20
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
 siteXspps <- lapply(input.niche, tableFromRaster, threshold=0.05)
+
+# Step 9) Alpha Cell Statistics ################################################
+# find the taxonomic, phylgoenetic and trait diversity at each cell
+
+# Bring in Phylogenetic Data
+trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
+spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
+
+# Replace tip.label with Spnames, replace the tiplabels with periods, which is
+# the biomod default Cophenetic distance is the distance between all pairs of
+# species- measure of relatedness
+trx$tip.label <- gsub("_",".",as.character(spnames$SpName))
+co<-cophenetic(trx)
+
+# Bring in morphology
+# Bring in trait data
+morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
+
+#just get males & the 3 traits of interest
+mon <- filter(morph, Sex == "Macho") %>%
+  select(SpID, ExpC, Peso, AlCdo) %>%
+  group_by(SpID) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) %>%
+  filter(complete.cases(.))
+
+mon <- data.frame(mon)
+colnames(mon) <- c("Species","Bill","Mass","WingChord")
+rownames(mon) <- gsub(" ",".",mon$Species)
+mon <- mon[,-1]
+
+#principal component traits and get euclidean distance matrix
+means <- apply(mon, 2, mean)
+
+Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
+Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
+WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
+
+z.scores <- data.frame(Bill, Mass, WingChord)
+rownames(z.scores) <- rownames(mon)
+
+fco <- as.matrix(dist(z.scores, method = "euclidean"))
+
+# create a blank raster object of the correct size and extent to have for
+# projecting the cell values
+blank <- raster(niche.crops[[1]])
+
+# a) Phylogenetic Alpha Diversity (MPD) ########################################
+
+#Remove communities with less than 1 species in a row
+#just get where diversity > 1, there is no phylogenetic diversity or functional
+#diversity of species with richness = 1
+MPDs <- lapply(siteXspps,AlphaPhylo) # CHECK THIS FUNCTION
+
+# b) Trait Alpha Tree Diversity (MFD) ##########################################
+
+MFDs <- lapply(siteXspps,AlphaFunc) # CHECK THIS FUNCTION
+
+#Visualize Mapping Metrics
+#set to the number of climate scenarios.
+par(mfrow=c(4,3))
+
+# something weird going on with current - need to check...
+cell.Rasters <- lapply(names(siteXspps),cellVisuals) # CHECK THIS FUNCTION
+names(cell.Rasters) <- names(siteXspps)
+
+# NEEDS CHECKING FROM HERE #####################################################
+################################################
+#Calculate differences among climate projections
+################################################
+#
+pdf(file="current_alpha.pdf", height=4.2, width=7)
+current<-cell.Rasters[[1]]
+blues <- colorRampPalette(brewer.pal(9,"Blues"))(100)
+plot(stack(current), col=blues)
+dev.off()
+
+#Compute Differences
+
+diff.raster<-lapply(2:length(cell.Rasters),function(x){
+  out<-stack(current[[1]]-cell.Rasters[[x]][[1]],
+             current[[2]]-cell.Rasters[[x]][[2]],
+             current[[3]]-cell.Rasters[[x]][[3]])
+  names(out)<-c("Richness","Phylo","Func")
+  return(out)}
+)
+
+names(diff.raster)<-names(siteXspps[-1])
+
+#plot the differences between current and future alpha diversity for each of the scenarios (Richness, Phylogenetic, and Functional)
+pdf(file="compare_alpha.pdf", height=8.5, width=11)
+#par(mfrow=c(3,3))
+cols <- colorRampPalette(brewer.pal(7,"RdBu"))(100)
+plot(diff.raster[[1]], col=cols)
+plot(diff.raster[[2]], col=cols)
+plot(diff.raster[[3]], col=cols)
+dev.off()
+
+#####################
+#Correlate rasters
+al <- lapply(1:length(diff.raster), function(x){
+  within.cor <- cor(values(diff.raster[[x]]), use="complete.obs")
+  within.cor <- melt(within.cor)
+  a <- qplot(data=within.cor, x=X1, y=X2, fill=value, geom="tile") + xlab("") + ylab("") + 
+    scale_fill_continuous(low="white", high="red") + geom_text(aes(label=round(value,2))) + 
+    theme(text=element_text(size=20)) + ggtitle(names(diff.raster[x]))
+  return(a)
+})
+
+al
+
+#Write difference in alpha out to file. 
+#############
+#This needs to be inspected, does this work for multiple climate scenarios, need to test?
+#############
+#Write alpha rasters to file
+lapply(1:length(cell.Rasters),function(x){
+  writeRaster(stack(cell.Rasters[[x]]), "Figures/", names(cell.Rasters)[x],sep=""),
+  overwrite=TRUE,bylayer=TRUE,suffix='names')
+})
+
+#Write difference raster to file
+lapply(1:length(diff.raster),function(x){
+  writeRaster(diff.raster[[x]], bylayer=TRUE, "Figures/AlphaChange.tif",
+              overwrite=TRUE,suffix=names(diff.raster[[x]]))
+})
+
+save.image(paste(output_folder,"\\AlphaMapping.rData",sep=""))

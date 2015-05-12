@@ -4,7 +4,7 @@
 # (ensemble and projections).
 
 # load required packages (installing if not already done)
-packages <- c("raster", "dplyr", "tidyr")
+packages <- c("raster", "dplyr", "tidyr", "doSNOW", "stringr")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -12,6 +12,10 @@ for(p in packages) {
   }
   require(p, character.only = TRUE)
 }
+
+# bring in functions (AlphaMappingFunctions and fnSDM)
+source("AlphaMappingFunctions.R")
+source("fnSDM.R")
 
 # set the cell size for the analysis - **DECISION**
 cell_size = 0.1 
@@ -120,14 +124,13 @@ spec <- table(loc_clean$SPECIES)
 spec <- names(spec[which(spec >= 10)])
 
 # Step 6) Run SDM_SP ###########################################################
-source("fnSDM.R")
 setwd(out_path)
 for(x in 4:10) {
   SDM_SP(spec[x], loc_clean, myExpl, projEnv, out_path)
 }
 setwd("../../FutureAnalog")
 
-# create evaluation plots ######################################################
+# Step 7) create evaluation plots ######################################################
 #Get the model evaluation from file
 model_eval<-list.files(out_path, full.name=TRUE,recursive=T,pattern="Eval.csv")
 model_eval<-rbind_all(lapply(model_eval, 
@@ -198,3 +201,57 @@ ggplot(mvar, aes(x=Species,y=Bioclim,fill=value)) +
 
 ggsave(paste(out_path, "VariableImportance.jpeg", sep = "/"), 
        dpi=600, height = 6, width=11)
+
+# Step 8) Bring in completed model data ########################################
+
+# Bring in niche models, from the output directory specified above.
+# get all the niche model data
+niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
+
+#split into current and future
+#Get current models
+current_niche <- niche[grep("current",niche,value=FALSE)]
+
+#Get future models (emissions scenarios),check the SDM.R script
+MICROC2070rcp26_niche<-niche[grep("MICROC2070rcp26",niche,value=FALSE)]
+MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
+MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
+
+# create list of input rasters
+input.niche<-list(current_niche, MICROC2070rcp26_niche, MICROC2070rcp45_niche,
+                  MICROC2070rcp85_niche)
+names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
+
+
+# Clip to Extent and shape of desired countries (Ecuador for now)
+ec<-readOGR("InputData", "EcuadorCut")
+r<-raster(extent(ec))
+
+#Match cell size above from the SDM_SP function
+res(r) <- cell_size
+plot(ec.r <- rasterize(ec,r))
+
+niche.crop <- lapply(niche,function(x){
+  r <- crop(raster(x),extent(ec.r))
+  filnam <- paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
+  writeRaster(r,filnam,overwrite=TRUE)
+})
+
+#get the crop files
+niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
+
+#Get current models
+current_niche <- niche.crops[grep("current",niche.crops,value=FALSE)]
+
+#Get future models, for now its just
+MICROC2070rcp26_niche <- niche.crops[grep("MICROC2070rcp26",niche.crops,value=FALSE)]
+MICROC2070rcp45_niche <- niche.crops[grep("MICROC2070rcp45",niche.crops,value=FALSE)]
+MICROC2070rcp85_niche <- niche.crops[grep("MICROC2070rcp85",niche.crops,value=FALSE)]
+
+#create list of input rasters
+input.niche <- list(current_niche, MICROC2070rcp26_niche, MICROC2070rcp45_niche, 
+                    MICROC2070rcp85_niche)
+names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
+
+#Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
+siteXspps <- lapply(input.niche, tableFromRaster, threshold=0.05)

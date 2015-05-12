@@ -1,6 +1,5 @@
-################################################################################
 # Code to run the SDMs ---------------------------------------------------------
-################################################################################
+
 
 # Input: loc_clean, spec, myExpl, out_path, projEnv 
 
@@ -17,8 +16,9 @@ SDM_SP <- function(spec, loc_clean, myExpl, projEnv, out_path) {
     }
     require(p, character.only = TRUE)
   }
-
-  # Step 1) Get presence/pseudo-absence records for species -------------------------------------
+  print(paste0("Modelling for ", spec))
+  strt <- Sys.time()
+  # Step 1) Get presence/pseudo-absence records for species --------------------
   
   # get the presence data for the species, select necessary columns
   p_species <- filter(loc_clean, SPECIES == spec) %>%
@@ -39,8 +39,8 @@ SDM_SP <- function(spec, loc_clean, myExpl, projEnv, out_path) {
   # Make sure all locations have the same lat long (created as the mean of all lat
   # longs for that location) - 
   # NB. I'M REALLY NOT SURE ABOUT THIS STEP - NEED TO CHECK.
-  p_a<-group_by(p_a, Locality) %>%
-    summarise_each("mean")
+  #p_a<-group_by(p_a, Locality) %>%
+  #  summarise_each("mean")
   
   #we want 2000 psuedoabsences, randomly pick 2000 NA rows. 
   if(length(which(is.na(p_a$Response))) < 2000){
@@ -135,7 +135,6 @@ SDM_SP <- function(spec, loc_clean, myExpl, projEnv, out_path) {
     prob.mean.weight = T,
     prob.mean.weight.decay = 'proportional' )
   
-  #################
   # Project SDM into env projections ---------------------------------------------
   #All the gcm and current worldclim layer (first) are put together in a list
   bio_project<-function(GCM,nam){
@@ -157,4 +156,6 @@ SDM_SP <- function(spec, loc_clean, myExpl, projEnv, out_path) {
   for (i in 1:length(projEnv)){
     bio_project(projEnv[[i]], names(projEnv[i]))
   }
+  
+  print(Sys.time() - strt)
 }

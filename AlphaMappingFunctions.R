@@ -17,20 +17,20 @@ tableFromRaster<-function(fil_list,threshold){
     sp.n <- substr(niche_ens@file@name, sp.start + 1, sp.end - 1)
     
     #Lets go get the presence data on hummingbird distributions
-    Niche_locals<-read.csv("InputData/MASTER_POINTLOCALITYarcmap_review.csv")
+    Niche_locals <- read.csv("InputData/MASTER_POINTLOCALITYarcmap_review.csv")
 
     #Just take the columns you want. 
-    PAdat<-Niche_locals[,colnames (Niche_locals) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
+    PAdat <- select(Niche_locals, RECORD_ID, SPECIES, COUNTRY, LOCALITY, LATDECDEG,
+                  LONGDECDEG, Decision, SpatialCheck, MapDecision)
     
-    PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
     gooddata <- c("ok", "Ok", "OK", "Y") #note that blanks ("") and REJECT data are excluded
-    loc_clean <- PAdat[PAdat$SpatialCheck=="Y" & PAdat$MapDecision %in% gooddata,]
+    loc_clean <- filter(PAdat, SpatialCheck=="Y", MapDecision %in% gooddata)
     
-    sp.loc<-loc_clean[loc_clean$SPECIES %in%  gsub("\\."," ",sp.n),]
+    sp.loc <- filter(loc_clean, SPECIES %in%  gsub("\\."," ",sp.n))
     sp.loc<-SpatialPointsDataFrame(sp.loc[,c("LONGDECDEG","LATDECDEG")],sp.loc)
     
     #draw suitability for occurence points
-    site_suit<-extract(niche_ens,sp.loc)
+    site_suit<-raster::extract(niche_ens,sp.loc)
     suit_cut<-stats::quantile(na.omit(site_suit),threshold)
     
     #plot to file
@@ -41,8 +41,8 @@ tableFromRaster<-function(fil_list,threshold){
     A_list<-values(niche_ens > suit_cut)*1
     }
   
-  #use a regular expression  to extract names
-  species<-str_match(fil_list,pattern=paste(cell_size,"(\\w+.\\w+)/proj_",sep="/"))[,2]
+  #use a regular expression to extract names
+  species <- str_match(fil_list,pattern=paste(cell_size,"(\\w+.\\w+)/proj_",sep="/"))[,2]
     
   #Name the rows and columns. 
   colnames(trial)<-species

@@ -10,10 +10,14 @@ tableFromRaster<-function(fil_list,threshold){
     
     #get species name
     #This portion is a bit sensitive to file structure, if error calls, check here first!
-    sp.n<-strsplit(niche_ens@file@name,"\\\\")[[1]][[7]]
+    # Fixed so not so sensitive to file structure
+    us.pos <- gregexpr(pattern = "_", niche_ens@file@name) # pos of underscores
+    sp.start <- us.pos[[1]][[length(us.pos[[1]]) - 1]] # pos of penultimate us
+    sp.end <- us.pos[[1]][[length(us.pos[[1]])]] # pos of last us
+    sp.n <- substr(niche_ens@file@name, sp.start + 1, sp.end - 1)
     
     #Lets go get the presence data on hummingbird distributions
-    Niche_locals<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep=""))
+    Niche_locals<-read.csv("InputData/MASTER_POINTLOCALITYarcmap_review.csv")
 
     #Just take the columns you want. 
     PAdat<-Niche_locals[,colnames (Niche_locals) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]

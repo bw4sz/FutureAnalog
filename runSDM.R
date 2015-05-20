@@ -330,12 +330,9 @@ par(mfrow=c(4,3))
 cell.Rasters <- lapply(names(siteXspps),cellVisuals) 
 names(cell.Rasters) <- names(siteXspps)
 
-# NEEDS CHECKING FROM HERE #####################################################
-################################################
-#Calculate differences among climate projections
-################################################
-#
-pdf(file="current_alpha.pdf", height=4.2, width=7)
+# Step 10) Calculate differences among climate projections ---------------------
+
+pdf(file=paste(out_path, "current_alpha.pdf", sep = "/"), height=4.2, width=7)
 current<-cell.Rasters[[1]]
 blues <- colorRampPalette(brewer.pal(9,"Blues"))(100)
 plot(stack(current), col=blues)
@@ -354,7 +351,7 @@ diff.raster<-lapply(2:length(cell.Rasters),function(x){
 names(diff.raster)<-names(siteXspps[-1])
 
 #plot the differences between current and future alpha diversity for each of the scenarios (Richness, Phylogenetic, and Functional)
-pdf(file="compare_alpha.pdf", height=8.5, width=11)
+pdf(file=paste(out_path, "compare_alpha.pdf", sep="/"), height=8.5, width=11)
 #par(mfrow=c(3,3))
 cols <- colorRampPalette(brewer.pal(7,"RdBu"))(100)
 plot(diff.raster[[1]], col=cols)
@@ -362,18 +359,19 @@ plot(diff.raster[[2]], col=cols)
 plot(diff.raster[[3]], col=cols)
 dev.off()
 
-#####################
-#Correlate rasters
+#I'm not entirely sure of the purpose of this section - need to find out.
+#Leaving as is for now 
+
+# Correlate rasters
 al <- lapply(1:length(diff.raster), function(x){
   within.cor <- cor(values(diff.raster[[x]]), use="complete.obs")
+  #within.cor <- data.frame(id = rownames(within.cor), within.cor)
   within.cor <- melt(within.cor)
-  a <- qplot(data=within.cor, x=X1, y=X2, fill=value, geom="tile") + xlab("") + ylab("") + 
+  a <- qplot(data=within.cor, x=Var1, y=Var2, fill=value, geom="tile") + xlab("") + ylab("") + 
     scale_fill_continuous(low="white", high="red") + geom_text(aes(label=round(value,2))) + 
     theme(text=element_text(size=20)) + ggtitle(names(diff.raster[x]))
   return(a)
 })
-
-al
 
 #Write difference in alpha out to file. 
 #############
@@ -381,7 +379,7 @@ al
 #############
 #Write alpha rasters to file
 lapply(1:length(cell.Rasters),function(x){
-  writeRaster(stack(cell.Rasters[[x]]), "Figures/", names(cell.Rasters)[x],sep=""),
+  writeRaster(stack(cell.Rasters[[x]]), "/Figures/", names(cell.Rasters)[x],sep=""),
   overwrite=TRUE,bylayer=TRUE,suffix='names')
 })
 
@@ -391,4 +389,4 @@ lapply(1:length(diff.raster),function(x){
               overwrite=TRUE,suffix=names(diff.raster[[x]]))
 })
 
-save.image(paste(output_folder,"\\AlphaMapping.rData",sep=""))
+save.image(paste(out_path,"\\AlphaMapping.rData",sep=""))

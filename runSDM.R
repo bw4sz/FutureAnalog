@@ -44,12 +44,16 @@ loc_clean <- filter(PAdat, SpatialCheck=="Y", MapDecision %in% gooddata)
 
 # Step 2) Load climate data #################################################### 
 
-# The Paths to the climate layers must be changed. The layers are too large to
+# The Paths to the climate layers must be changed. The layers are too large to 
 # hang out on dropbox and github (40gb) Unzip the files to a local directory and
-# change the paths.
+# change the paths. 
 
-# Import environmental data from worldclim, three variables
-# Bio1 = annual mean temp, Bio12 = annual precip, Bio15 = precip seasonality
+# Laura's note (change to above) - if the climate layers are in a folder called
+# "worldclim_data" in the same level as the project folder, only the references
+# to the individual climate data sets need changing here
+
+# Import environmental data from worldclim, three variables Bio1 = annual mean
+# temp, Bio12 = annual precip, Bio15 = precip seasonality
 myExpl <- c("../worldclim_data/bio1-9_30s_bil/bio_1.bil",
             "../worldclim_data/bio10-19_30s_bil/bio_12.bil",
             "../worldclim_data/bio10-19_30s_bil/bio_15.bil")
@@ -68,10 +72,16 @@ fact <- cell_size/res(myExpl) # the "factor" to aggregate by
 # Set cell size to ~ cell_size degree
 myExpl <- aggregate(myExpl,fact)
 
-# Step 3) Climate Scenarios and Futute Climate ################################# 
+# Step 3) Climate Scenarios and Futute Climate #################################
+# TO DO: Once code is working fully, update the climate scenarios loading to
+# collate all climate scenarios in the folder - this will involve searching the
+# "worldclim_data" folder, creating a list, and 'listifying' all of the climate
+# layer bits and pieces. Should be straightforward and will make automation
+# easier. Also, think about removing climate scenarios which have already been
+# run from the list?
 
 # Bring in future climate layers (change here to add in more scenarios - all
-# below code will need adapting to include new scenarios) 
+# below code will need adapting to include new scenarios)
 # Modelname_year_emmissionscenario
 MICROC_2070_rcp26 <- stack("../worldclim_data/mc26bi70/mc26bi701.tif",
                            "../worldclim_data/mc26bi70/mc26bi7012.tif",

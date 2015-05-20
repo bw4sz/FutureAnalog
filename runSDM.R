@@ -317,18 +317,17 @@ blank <- raster(niche.crops[[1]])
 #Remove communities with less than 1 species in a row
 #just get where diversity > 1, there is no phylogenetic diversity or functional
 #diversity of species with richness = 1
-MPDs <- lapply(siteXspps,AlphaPhylo) # CHECK THIS FUNCTION
+MPDs <- lapply(siteXspps,AlphaPhylo) 
 
 # b) Trait Alpha Tree Diversity (MFD) ##########################################
 
-MFDs <- lapply(siteXspps,AlphaFunc) # CHECK THIS FUNCTION
+MFDs <- lapply(siteXspps,AlphaFunc) 
 
 #Visualize Mapping Metrics
 #set to the number of climate scenarios.
 par(mfrow=c(4,3))
 
-# something weird going on with current - need to check...
-cell.Rasters <- lapply(names(siteXspps),cellVisuals) # CHECK THIS FUNCTION
+cell.Rasters <- lapply(names(siteXspps),cellVisuals) 
 names(cell.Rasters) <- names(siteXspps)
 
 # NEEDS CHECKING FROM HERE #####################################################

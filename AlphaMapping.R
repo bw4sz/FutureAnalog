@@ -266,7 +266,8 @@ names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC20
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
 siteXspps <- lapply(input.niche, tableFromRaster, threshold=0.05) # **DECISION**
-
+save(siteXspps, file = paste(out_path, "siteXspps.rda", sep = "/"))
+     
 # Step 9) Alpha Cell Statistics ################################################
 # find the taxonomic, phylgoenetic and trait diversity at each cell
 
@@ -279,6 +280,7 @@ spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
 # species- measure of relatedness
 trx$tip.label <- gsub("_",".",as.character(spnames$SpName))
 co<-cophenetic(trx)
+save(trx, file=paste(out_path, "trx.rda", sep = "/"))
 
 # Bring in morphology
 # Bring in trait data
@@ -307,7 +309,7 @@ z.scores <- data.frame(Bill, Mass, WingChord)
 rownames(z.scores) <- rownames(mon)
 
 fco <- as.matrix(dist(z.scores, method = "euclidean"))
-
+save(fco, file=paste(out_path, "fco.rda", sep = "/"))
 # create a blank raster object of the correct size and extent to have for
 # projecting the cell values
 blank <- raster(niche.crops[[1]])

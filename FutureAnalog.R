@@ -1,41 +1,36 @@
+# FutureAnalog.R ---------------------------------------------------------------
+
 #This code goes through the results from AlphaMapping.R to determine the 
 # number of analog hummingbird assemblages in Ecuador under future climate scenarios.
-require(vegan)
-require(picante)
-require(reshape)
-require(reshape2)
-require(analogue)
-require(doSNOW)
-require(ape)
-require(cluster)
-require(RColorBrewer)
-require(raster)
-require(ggplot2)
-require(phylobase)
-require(rgdal)
+packages <- c("vegan", "picante", "reshape", "reshape2", "analogue", "doSNOW", "ape", "cluster", 
+         "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal")
 
-#Sarah's
-droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\" #Is this where we want the results to go?
-gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
-output_folder <- "C:\\Users\\sarah\\Desktop\\Testmod"
-rdata <- paste(output_folder, "\\AlphaMapping.RData", sep="")
-
-#Load in data
-load(rdata)
-#load("C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\FutureAnalog\\FutureAnalog.rData") #if you want Rdata up through the last few lines (before output)
+for(p in packages) {
+  if (!p %in% installed.packages()) {
+    install.packages(p)
+  }
+  require(p, character.only = TRUE)
+}
 
 #Load in source functions
-source(paste(gitpath,"\\AlphaMappingFunctions.R",sep=""))
-source(paste(gitpath, "BenHolttraitDiversity.R", sep=""))
+source("AlphaMappingFunctions.R")
+source("BenHolttraitDiversity.R")
 
-setwd(paste(droppath,"FutureAnalog",sep=""))
+# Set output folder
+# set the cell size for the analysis - **DECISION**
+cell_size = 0.1 
 
-#If running the code with full dataset, for the full analysis
+# create folders to output the models to
+output_folder = "../FutureAnalog_output" 
+out_path <- paste(output_folder, cell_size, sep = "/")
+
+# Step 1) Load results from AlphaMapping.R -------------------------------------
+load(paste(out_path, "siteXspps.rda", sep = "/"))
 current <- siteXspps[[1]]
 future <- siteXspps[2:4]
 
-#Remove NAs from siteXspps so we can do the following analyses   
-# Some species do not occur in Ecuador, so they should be removed from analysis here.
+#Remove NAs from siteXspps so we can do the following analyses. Some species do
+#not occur in Ecuador, so they should be removed from analysis here.
 na.test <-  function (x) {
   w <- apply(x, 2, function(x)all(is.na(x)))
   if (any(w)) {
@@ -45,7 +40,7 @@ na.test <-  function (x) {
   }
 }
 
-fails <- na.test(current[,])
+fails <- na.test(current)
 current <- current[,!colnames(current) %in% fails]
 
 future <- lapply(future, function(x){
@@ -53,13 +48,9 @@ future <- lapply(future, function(x){
   x[,!colnames(x) %in% fails]
 })
 
-
-###############################################################
-#     WITHIN TIME
-###############################################################
-
-#---------------- Find within SPECIES BETA DIVERSITY
-within.current.dist <- vegdist(current, "bray")  
+# Step 2) Within time beta diversity -------------------------------------------
+# Step 2a) Find within time SPECIES BETA DIVERSITY -----------------------------
+within.current.dist <- vegdist(current, "bray")  # **DECISION** why Bray Curtis?
 within.current <- as.matrix(within.current.dist)
 
 within.future <- lapply(future, function(x){

@@ -80,9 +80,10 @@ within.future.phylo <- lapply(phylo.future, function(x){
 })
 
 
-# Step 2c) Find within time FUNC BETA DIVERSITY --------------------------------
-
-#----- Within current functional beta diversity
+#Step 2c) Find within time FUNC BETA DIVERSITY -------------------------------- 
+#*** THERE SEEM TO BE PROBLEMS CALCULATING THE FUNCTIONAL DIVERSITY, NEED TO
+#CHECK AND CORRECT *** 
+# Within current functional beta diversity
 load(paste(out_path, "fco.rda",sep = "/"))
 Func.current <- current[,colnames(current) %in% colnames(fco)]
 Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]  
@@ -165,20 +166,23 @@ within.future.func <- lapply(Func.future,function(x){
 })
 
 
-# Between time beta diversity (compare current witih each future scenario) -----
-#---------------- Find between TAXONOMIC BETA DIVERSITY
+# Step 3) Between time beta diversity ------------------------------------------
+# compare current witih each future scenario
+
+# Step 3a) Find between time TAXONOMIC BETA DIVERSITY --------------------------
 beta.time.taxa <- lapply(future, function(x){
   analogue::distance(current, x, "bray")
 })
 
 
-#---------------- Find between PHYLO BETA DIVERSITY
+# Step 3b) Find between PHYLO BETA DIVERSITY -----------------------------------
 beta.time.phylo <- lapply(phylo.future, function(x){
-  beta.time.phylo <- as.matrix(matpsim.pairwise(phyl=trx, com.x=phylo.current, com.y=x, clust=7))
+  beta.time.phylo <- as.matrix(matpsim.pairwise(phyl=trx, com.x=phylo.current, 
+                                                com.y=x, clust=7))
 })
 
 
-#---------------- Find between FUNC BETA DIVERSITY
+# Step 3c) Find between time FUNC BETA DIVERSITY -------------------------------
 Beta.time.func <- lapply(Func.future, function(x){
   
   sp.list_current <- lapply(rownames(Func.current), function(k){

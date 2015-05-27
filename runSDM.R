@@ -389,4 +389,5 @@ lapply(1:length(diff.raster),function(x){
               overwrite=TRUE,suffix=names(diff.raster[[x]]))
 })
 
-save.image(paste(out_path,"\\AlphaMapping.rData",sep=""))
+# save the workspace - this gets picked back up by FutureAnalog.R
+save.image(paste(out_path,"/AlphaMapping.rData",sep=""))

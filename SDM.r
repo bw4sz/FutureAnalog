@@ -448,4 +448,5 @@ ggplot(mvar, aes(x=Species,y=Bioclim,fill=value)) + geom_tile() +
 ggsave(paste(out_path, "VariableImportance.jpeg", sep = "/"), dpi=600, height = 6, width=11)
 }
 
+
 print("SDM Function Defined")

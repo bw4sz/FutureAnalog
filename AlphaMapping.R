@@ -5,7 +5,7 @@
 
 # load required packages (installing if not already done)
 packages <- c("raster", "dplyr", "tidyr", "doSNOW", "stringr", "ape", "picante",
-              "RColorBrewer")
+              "RColorBrewer", "rgdal")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -265,7 +265,7 @@ input.niche <- list(current_niche, MICROC2070rcp26_niche, MICROC2070rcp45_niche,
 names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
-siteXspps <- lapply(input.niche, tableFromRaster, threshold=0.05)
+siteXspps <- lapply(input.niche, tableFromRaster, threshold=0.05) # **DECISION**
 
 # Step 9) Alpha Cell Statistics ################################################
 # find the taxonomic, phylgoenetic and trait diversity at each cell

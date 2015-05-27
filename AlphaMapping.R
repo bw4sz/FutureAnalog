@@ -1,17 +1,11 @@
-##Alpha Mapping
-#Ben Weinstein Stony Brook University
+# runSDM.R: --------------------------------------------------------------------
 
-##Goals: To develop parallel computing methods to turn niche models into assemblages and perform phylogenetic and functional betadiversity metrics
-#This is the first script, and calls a source function to compute non-analog assemblages
+# Code to input species and climate data and then run the SDMs
+# (ensemble and projections).
 
-#See Stralberg, D., D. Jongsomjit, C. a Howell, M. a Snyder, J. D. Alexander, J. a Wiens, and T. L. Root. 2009. Re-shuffling of species with climate disruption: a no-analog future for California birds? PloS One 4:e6825.
-
-#October 16th 2012 - Ben Weinstein. Stony Brook University
-
-#require packages for alpha analysis - any packages not already installed will be installed
-packages <- c("RColorBrewer", "biomod2", "maptools", "ggplot2", "reshape", 
-              "raster", "rgdal", "doSNOW", "ape", "stringr", "picante", 
-              "parallel", "ecodist", "vegan", "MASS", "HH")
+# load required packages (installing if not already done)
+packages <- c("raster", "dplyr", "tidyr", "doSNOW", "stringr", "ape", "picante",
+              "RColorBrewer")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -20,132 +14,228 @@ for(p in packages) {
   require(p, character.only = TRUE)
 }
 
-#Set dropbox and github paths
-#Sarah's
-#droppath <- "C:\\Users\\sarah\\Dropbox\\Hummingbirds\\NASA_Anusha\\"
-#gitpath <- "C:\\Users\\sarah\\Documents\\GitHub\\FutureAnalog\\"
-
-#setwd(droppath)
-#######################################################################################################################
-#Please note all paths must be changed, we are switching over to Github workflow, credit sarah for the push (no pun...)
-# Update: paths changed to relative to make code more portable. Make sure run from project directory
-#######################################################################################################################
-
-
-#load workspace if needed on reset
-#load("C:\\Users\\Ben\\Dropbox\\Lab paper 1 Predicted vs observed assemblages\\AlphaMapping.rData")
-
-#source in all the Alpha Mapping functions
+# bring in functions (AlphaMappingFunctions and fnSDM)
 source("AlphaMappingFunctions.R")
+source("fnSDM.R")
 
-#Bring in Phylogenetic Data
-trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
-spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
+# set the cell size for the analysis - **DECISION**
+cell_size = 0.1 
 
-#Replace tip.label with Spnames#
-#replace the tiplabels with periods, which is the biomod default
-# Cophenetic distance is the distance between all pairs of species- measure of relatedness
-trx$tip.label<-gsub("_",".",as.character(spnames$SpName))
-co<-cophenetic(trx)
+# create folders to output the models to
+output_folder = "../FutureAnalog_output" 
+out_path <- paste(output_folder, cell_size, sep = "/")
+if(!dir.exists(output_folder)) dir.create(output_folder)
+if(!dir.exists(out_path)) dir.create(out_path)
+if(!dir.exists(paste(out_path, "logs", sep = "/"))) 
+  dir.create(paste(out_path, "logs", sep = "/"))
 
-#Bring in morphology
-###Bring in trait data
-morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
+# Step 1) Load presence data ###################################################
 
-#just get males & the 3 traits of interest
-morph.male<-morph[morph$Sex=="Macho",c("SpID","ExpC","Peso","AlCdo")]
-morph.complete<-morph.male[complete.cases(morph.male),]
+# Lets go get the presence data on hummingbird distributions
+PA <- read.csv("InputData/MASTER_POINTLOCALITYarcmap_review.csv")
 
-#aggregate for species
-agg.morph<-aggregate(morph.complete,list(morph.complete$SpID),mean) #warnings where it can't take a mean of single value
-mon<-agg.morph[,-2]
-colnames(mon)<-c("Species","Bill","Mass","WingChord")
-rownames(mon)<-gsub(" ",".",mon[,1])
-mon<-mon[,-1]
+# Just take the columns you want. 
+PAdat <- select(PA, RECORD_ID, SPECIES, COUNTRY, LOCALITY, LATDECDEG, 
+                LONGDECDEG, Decision, SpatialCheck, MapDecision)
 
-#principal component traits and get euclidean distance matrix
-means <- apply(mon, 2, mean)
+#Just get the clean localities
+gooddata <- c("ok", "Ok", "OK", "Y") #note blanks and REJECT data are excluded
+loc_clean <- filter(PAdat, SpatialCheck=="Y", MapDecision %in% gooddata)
 
-Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
-Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
-WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
+# Step 2) Load climate data #################################################### 
 
-z.scores <- data.frame(Bill, Mass, WingChord)
-rownames(z.scores) <- rownames(mon)
+# The Paths to the climate layers must be changed. The layers are too large to 
+# hang out on dropbox and github (40gb) Unzip the files to a local directory and
+# change the paths. 
 
-fco <- as.matrix(dist(z.scores, method = "euclidean"))
+# Laura's note (change to above) - if the climate layers are in a folder called
+# "worldclim_data" in the same level as the project folder, only the references
+# to the individual climate data sets need changing here
 
-##################################################
-#Niche models for each species need to be run
-#Beware Biomod Outputs are HUGE, i'd suggest starting with a couple species and saving locally
-#########################################################################################
+# Import environmental data from worldclim, three variables Bio1 = annual mean
+# temp, Bio12 = annual precip, Bio15 = precip seasonality
+myExpl <- c("../worldclim_data/bio1-9_30s_bil/bio_1.bil",
+            "../worldclim_data/bio10-19_30s_bil/bio_12.bil",
+            "../worldclim_data/bio10-19_30s_bil/bio_15.bil")
 
-#source SDM function
-source("SDM.r")
+myExpl <- stack(myExpl)
 
-#Function computes ensemble niche models with default methods (Models=GLM,GBM,MAXENT) and paramters (background draws, keep ROC > .75)
-#The SDM function could be tweaked to take in any set of parameters, but given the enormous number of options, start simple. 
-#current arguements cell size (in degrees, ie 1 degree = 112km^2 at the equator) and output directory (If it doesn't exist, script will create it)
+# get extent of the presence data
+extPoint <- SpatialPoints(loc_clean[,c("LONGDECDEG","LATDECDEG")])
 
-########################################################
-#Before you run the function, go through this checklist
-########################################################
-#1.Set the Extent (Line 95)
-#The extent was the bounding box we used for another paper and could be set a variable, or changed internally 
-# if you like
+# crop by this extent
+myExpl <- crop(myExpl,extPoint)
 
-#2. Run for how many species
-#i'd suggest just running on a few species at first, go to line 180 (x=1:length(spec)) and change length(spec) 
-# to the total number of species desired, rather than all species
+# set cell size
+fact <- cell_size/res(myExpl) # the "factor" to aggregate by
 
-#3 Set the climate scenarios (line 66 for current, 97 for future)
+# Set cell size to ~ cell_size degree
+myExpl <- aggregate(myExpl,fact)
 
-#There really isn't an elegant way of coding which climate scenarios you want, so please pay close attention to lines 
-#The climate scenerios are very large, and need to be held locally
+# Step 3) Climate Scenarios and Futute Climate #################################
+# TO DO: Once code is working fully, update the climate scenarios loading to
+# collate all climate scenarios in the folder - this will involve searching the
+# "worldclim_data" folder, creating a list, and 'listifying' all of the climate
+# layer bits and pieces. Should be straightforward and will make automation
+# easier. Also, think about removing climate scenarios which have already been
+# run from the list?
 
-#In general the script is meant as a helpful wrapper, but attention needs to be paid to alot of the manual details 
-# in the setup of BIOMOD, there are simply too many options and dependencies for me to take an all-encompassing function
+# Bring in future climate layers (change here to add in more scenarios - all
+# below code will need adapting to include new scenarios)
+# Modelname_year_emmissionscenario
+MICROC_2070_rcp26 <- stack("../worldclim_data/mc26bi70/mc26bi701.tif",
+                           "../worldclim_data/mc26bi70/mc26bi7012.tif",
+                           "../worldclim_data/mc26bi70/mc26bi7015.tif")
+MICROC_2070_rcp85 <- stack("../worldclim_data/mc85bi70/mc85bi701.tif",
+                           "../worldclim_data/mc85bi70/mc85bi7012.tif",
+                           "../worldclim_data/mc85bi70/mc85bi7015.tif")
+MICROC_2070_rcp45 <- stack("../worldclim_data/mc45bi70/mc45bi701.tif",
+                           "../worldclim_data/mc45bi70/mc45bi7012.tif",
+                           "../worldclim_data/mc45bi70/mc45bi7015.tif")
 
-####################################
-#Perform Niche Models
-####################################
-#Define these variables outside the function so they can be used below.
-# Cell size is in degrees. 1 degree = 112km
-cell_size = 0.1
-output_folder = "../FutureAnalog_output/"
+# make the names consistent for all 
+names(MICROC_2070_rcp26) <- names(myExpl)
+names(MICROC_2070_rcp85) <- names(myExpl)
+names(MICROC_2070_rcp45) <- names(myExpl)
 
-# create an output folder outside of the main folder if it doesn't already exist
-if(dir.exists(output_folder) == FALSE) dir.create(output_folder)
-SDM_SP(cell_size,output_folder)  #TODO: There are plces in SDM.R that call MICROC directly - will need to add new GCMS, or autodetect names to loop through
+# Step 4) Set the Extent to project *into*. ####################################
 
+# Presence points are still taken from everywhere Avoid projecting into areas 
+# where sample size is really low **DECISION**
+exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))
 
-##############################
-#Bring in Completed Model Data
-##############################
+# Cut by the extent. Crop by this layer 
+myExpl.crop<-stack(crop(myExpl,exte))
+MICROC_2070_rcp26.c<-stack(crop(MICROC_2070_rcp26,exte))
+MICROC_2070_rcp85.c<-stack(crop(MICROC_2070_rcp85,exte))
+MICROC_2070_rcp45.c<-stack(crop(MICROC_2070_rcp45,exte))
 
-####Bring in niche models, from the output directory specified above.
-#get all the niche model data
-niche<-list.files(paste(output_folder,cell_size,sep="/"),pattern="ensemble.gri",full.name=T,recursive=T)
+# set resolution for the future layers equivalent to cell size
+if (!res(MICROC_2070_rcp26)[[1]] == cell_size){
+  fact1<-cell_size/res(MICROC_2070_rcp26.c)
+  fact2<-cell_size/res(MICROC_2070_rcp85.c)
+  fact3<-cell_size/res(MICROC_2070_rcp45.c)
+  
+  # Set cell size to ~ cell_size degree
+  MICROC_2070_rcp26.c<-stack(aggregate(MICROC_2070_rcp26.c,fact1))
+  MICROC_2070_rcp85.c<-stack(aggregate(MICROC_2070_rcp85.c,fact2))
+  MICROC_2070_rcp45.c<-stack(aggregate(MICROC_2070_rcp45.c,fact3))
+}
+
+# create a list of all env to project into
+projEnv<-list(myExpl.crop,MICROC_2070_rcp26.c,MICROC_2070_rcp45.c,MICROC_2070_rcp85.c)
+names(projEnv)<-c("current","MICROC2070rcp26","MICROC2070rcp45","MICROC2070rcp85")
+
+# Step 5) List the species to run models for (needs updating) ##################
+
+# See code from the original SDM.R file for info on how it was done
+
+# for now just list all of the species with enough points
+spec <- table(loc_clean$SPECIES)
+spec <- names(spec[which(spec >= 10)])
+
+# Step 6) Run SDM_SP ###########################################################
+setwd(out_path)
+for(x in 4:10) {
+  SDM_SP(spec[x], loc_clean, myExpl, projEnv, out_path)
+}
+setwd("../../FutureAnalog")
+
+# Step 7) create evaluation plots ######################################################
+#Get the model evaluation from file
+model_eval<-list.files(out_path, full.name=TRUE,recursive=T,pattern="Eval.csv")
+model_eval<-rbind_all(lapply(model_eval, 
+                             function(x) read.csv(x, stringsAsFactors = FALSE)))
+colnames(model_eval)[1:2] <- c("Stat", "Species")
+model_eval  <- gather(data.frame(model_eval), Model, value, -Stat, -Species)
+colnames(model_eval)<-c("Stat", "Species", "Model", "Value")
+
+# heatmap of model evaluations
+ggplot(model_eval, aes(x=Species,y=Model,fill=Value)) + 
+  geom_tile() + 
+  facet_wrap(~Stat, ncol = 1) +
+  scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + 
+  theme_classic() +
+  theme(axis.text.x=element_text(angle=-90))
+ggsave(paste(out_path, "ModelEvaluations.jpeg", sep = "/"), 
+       dpi=600, height = 6, width=11)
+
+#Plot correlation of ROC and TSS scores
+model_compare <- spread(model_eval, Stat, Value)
+ggplot(model_compare, aes(TSS, ROC)) + 
+  geom_point() + 
+  stat_smooth(method="lm") + 
+  theme_classic() + 
+  theme(text=element_text(size=20))
+lm1=lm(ROC~TSS, data=model_compare)
+ggsave(paste(out_path, "ModelComparison_ROC-TSS.jpeg", sep = "/"), 
+       dpi=600, height = 6, width=11)
+
+model_thresh<-sapply(seq(.5,.95,.05),function(x){
+  table(model_eval$Value > x,model_eval$Model)["TRUE",]
+})
+
+# Model thresholds plot - number of species where ROC/TSS scores are above
+# varying thresholds
+model_thresh <- data.frame(Model = rownames(model_thresh), model_thresh)
+colnames(model_thresh)[-1] <- seq(.5,.95,.05)
+model_thresh <- gather(model_thresh, variable, value, -Model)
+
+names(model_thresh)<-c("Model","ROC_Threshold","Number_of_Species")
+ggplot(model_thresh,aes(x=ROC_Threshold,y=Number_of_Species,col=Model)) + 
+  geom_line() + 
+  geom_point() + 
+  geom_text(aes(label=Number_of_Species),vjust=4,size=5) + 
+  xlab("Model Threshold") + 
+  ylab("Number of species included") +
+  theme_classic() + theme(text=element_text(size=20))
+ggsave(paste(out_path, "ModelThresholding.jpeg", sep = "/"), 
+       dpi=600, height=8, width=8)
+
+#Get the variable importance from file
+varI <- list.files(paste(out_path, sep = "/"), 
+                   full.name=TRUE,recursive=T,pattern="VarImportance.csv")
+varI<-rbind_all(lapply(varI, function(x) read.csv(x, stringsAsFactors = FALSE)))
+varI <- data.frame(varI[,-1])
+
+#Melt variable for plotting
+mvar <- gather(varI, variable, value, -X1, -spec)
+colnames(mvar)<-c("Bioclim","Species","Model","value")
+
+#Plot variable importance across all models
+ggplot(mvar, aes(x=Species,y=Bioclim,fill=value)) + 
+  geom_tile() + 
+  scale_fill_gradient(limits=c(0,1),low="blue",high="red",na.value="white") + 
+  theme_classic() + 
+  theme(axis.text.x=element_text(angle=-90)) + 
+  facet_grid(Model ~ .)
+
+ggsave(paste(out_path, "VariableImportance.jpeg", sep = "/"), 
+       dpi=600, height = 6, width=11)
+
+# Step 8) Bring in completed model data ########################################
+
+# Bring in niche models, from the output directory specified above.
+# get all the niche model data
+niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
 
 #split into current and future
 #Get current models
-current_niche<-niche[grep("current",niche,value=FALSE)]
+current_niche <- niche[grep("current",niche,value=FALSE)]
 
 #Get future models (emissions scenarios),check the SDM.R script
 MICROC2070rcp26_niche<-niche[grep("MICROC2070rcp26",niche,value=FALSE)]
 MICROC2070rcp85_niche<-niche[grep("MICROC2070rcp85",niche,value=FALSE)]
 MICROC2070rcp45_niche<-niche[grep("MICROC2070rcp45",niche,value=FALSE)]
 
-#create list of input rasters
-input.niche<-list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+# create list of input rasters
+input.niche<-list(current_niche, MICROC2070rcp26_niche, MICROC2070rcp45_niche,
+                  MICROC2070rcp85_niche)
 names(input.niche)<-c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
 
-###############################################
-#Clip to Extent and shape of desired countries (Ecuador for now)
-###############################################
-
-ec<-readShapePoly("Inputdata/EcuadorCut.shp")
+# Clip to Extent and shape of desired countries (Ecuador for now)
+ec<-readOGR("InputData", "EcuadorCut")
 r<-raster(extent(ec))
 
 #Match cell size above from the SDM_SP function
@@ -159,7 +249,7 @@ niche.crop <- lapply(niche,function(x){
 })
 
 #get the crop files
-niche.crops <- list.files(paste(output_folder,cell_size,sep="/"),pattern="crop.gri",full.name=T,recursive=T)
+niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
 
 #Get current models
 current_niche <- niche.crops[grep("current",niche.crops,value=FALSE)]
@@ -170,80 +260,79 @@ MICROC2070rcp45_niche <- niche.crops[grep("MICROC2070rcp45",niche.crops,value=FA
 MICROC2070rcp85_niche <- niche.crops[grep("MICROC2070rcp85",niche.crops,value=FALSE)]
 
 #create list of input rasters
-input.niche <- list(current_niche,MICROC2070rcp26_niche,MICROC2070rcp45_niche,MICROC2070rcp85_niche)
+input.niche <- list(current_niche, MICROC2070rcp26_niche, MICROC2070rcp45_niche, 
+                    MICROC2070rcp85_niche)
 names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC2070rcp85")
 
 #Create siteXspp table from input rasters, function is from AlphaMappingFunctions.R, sourced at the top. 
 siteXspps <- lapply(input.niche, tableFromRaster, threshold=0.05)
 
-####################################################
-#Niche Models Completed!
-####################################################
+# Step 9) Alpha Cell Statistics ################################################
+# find the taxonomic, phylgoenetic and trait diversity at each cell
 
-#################################################
-#Alpha Cell Statistics - find the taxonomic, phylgoenetic and trait diversity at each cell
-#################################################
-#Functions are sourced from AlphaMappingFunctions.R
+# Bring in Phylogenetic Data
+trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
+spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
 
-###create a blank raster object of the correct size and extent to have for projecting the cell values
+# Replace tip.label with Spnames, replace the tiplabels with periods, which is
+# the biomod default Cophenetic distance is the distance between all pairs of
+# species- measure of relatedness
+trx$tip.label <- gsub("_",".",as.character(spnames$SpName))
+co<-cophenetic(trx)
+
+# Bring in morphology
+# Bring in trait data
+morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
+
+#just get males & the 3 traits of interest
+mon <- filter(morph, Sex == "Macho") %>%
+  select(SpID, ExpC, Peso, AlCdo) %>%
+  group_by(SpID) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) %>%
+  filter(complete.cases(.))
+
+mon <- data.frame(mon)
+colnames(mon) <- c("Species","Bill","Mass","WingChord")
+rownames(mon) <- gsub(" ",".",mon$Species)
+mon <- mon[,-1]
+
+#principal component traits and get euclidean distance matrix
+means <- apply(mon, 2, mean)
+
+Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
+Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
+WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
+
+z.scores <- data.frame(Bill, Mass, WingChord)
+rownames(z.scores) <- rownames(mon)
+
+fco <- as.matrix(dist(z.scores, method = "euclidean"))
+
+# create a blank raster object of the correct size and extent to have for
+# projecting the cell values
 blank <- raster(niche.crops[[1]])
 
-#################################
-#########################################
-#######Phylogenetic Alpha Diversity (MPD)
-#########################################
+# a) Phylogenetic Alpha Diversity (MPD) ########################################
 
 #Remove communities with less than 1 species in a row
-#just get where diversity > 1, there is no phylogenetic diversity or functional diversity of species with richness = 1
-MPDs <- lapply(siteXspps,AlphaPhylo)
+#just get where diversity > 1, there is no phylogenetic diversity or functional
+#diversity of species with richness = 1
+MPDs <- lapply(siteXspps,AlphaPhylo) 
 
-########################################
-########## Trait Alpha Tree Diversity (MFD)
-########################################
+# b) Trait Alpha Tree Diversity (MFD) ##########################################
 
-MFDs <- lapply(siteXspps,AlphaFunc)
+MFDs <- lapply(siteXspps,AlphaFunc) 
 
-###################################################################
-#Functional Dispersion Metric Lalibert?, E., and P. Legendre (2010)
-##################################################################
-#This is discontinued due to computational constraints
-#FDs<-lapply(siteXspps,AlphaFunc.FD,traits=mon)
-
-##########################
 #Visualize Mapping Metrics
-##########################
 #set to the number of climate scenarios.
 par(mfrow=c(4,3))
 
-cell.Rasters <- lapply(names(siteXspps),cellVisuals)
+cell.Rasters <- lapply(names(siteXspps),cellVisuals) 
 names(cell.Rasters) <- names(siteXspps)
 
-##FD Functional Divergence, discontiuned, proceed at own risk. 
-##############
-#apply visualization to all columns
-#FD_metrics<-lapply(FDs,function(x){
- # apply(x,2,cellVis,cells=rownames(x))
-#})
-  
-#Normalize the metrics
-#FD.norm<-FD.stack/cellStats(FD.stack,"max")
+# Step 10) Calculate differences among climate projections ---------------------
 
-#plot(FD.norm)
-#create a stack of metrics
-
-#for ( x in 1:length(cell.Rasters)){
- # cell.Rasters[[x]][[4]]<-stack(FD_metrics[[x]][-c(1,2,4,8)])
-#}
-
-##############
-  
-
-
-################################################
-#Calculate differences among climate projections
-################################################
-#
-pdf(file="current_alpha.pdf", height=4.2, width=7)
+pdf(file=paste(out_path, "current_alpha.pdf", sep = "/"), height=4.2, width=7)
 current<-cell.Rasters[[1]]
 blues <- colorRampPalette(brewer.pal(9,"Blues"))(100)
 plot(stack(current), col=blues)
@@ -253,16 +342,16 @@ dev.off()
 
 diff.raster<-lapply(2:length(cell.Rasters),function(x){
   out<-stack(current[[1]]-cell.Rasters[[x]][[1]],
-            current[[2]]-cell.Rasters[[x]][[2]],
-            current[[3]]-cell.Rasters[[x]][[3]])
+             current[[2]]-cell.Rasters[[x]][[2]],
+             current[[3]]-cell.Rasters[[x]][[3]])
   names(out)<-c("Richness","Phylo","Func")
   return(out)}
-  )
+)
 
 names(diff.raster)<-names(siteXspps[-1])
 
 #plot the differences between current and future alpha diversity for each of the scenarios (Richness, Phylogenetic, and Functional)
-pdf(file="compare_alpha.pdf", height=8.5, width=11)
+pdf(file=paste(out_path, "compare_alpha.pdf", sep="/"), height=8.5, width=11)
 #par(mfrow=c(3,3))
 cols <- colorRampPalette(brewer.pal(7,"RdBu"))(100)
 plot(diff.raster[[1]], col=cols)
@@ -270,18 +359,19 @@ plot(diff.raster[[2]], col=cols)
 plot(diff.raster[[3]], col=cols)
 dev.off()
 
-#####################
-#Correlate rasters
-al <- lapply(1:length(diff.raster), function(x){
-within.cor <- cor(values(diff.raster[[x]]), use="complete.obs")
-within.cor <- melt(within.cor)
-a <- qplot(data=within.cor, x=X1, y=X2, fill=value, geom="tile") + xlab("") + ylab("") + 
-  scale_fill_continuous(low="white", high="red") + geom_text(aes(label=round(value,2))) + 
-  theme(text=element_text(size=20)) + ggtitle(names(diff.raster[x]))
-return(a)
-})
+#I'm not entirely sure of the purpose of this section - need to find out.
+#Leaving as is for now 
 
-al
+# Correlate rasters
+al <- lapply(1:length(diff.raster), function(x){
+  within.cor <- cor(values(diff.raster[[x]]), use="complete.obs")
+  #within.cor <- data.frame(id = rownames(within.cor), within.cor)
+  within.cor <- melt(within.cor)
+  a <- qplot(data=within.cor, x=Var1, y=Var2, fill=value, geom="tile") + xlab("") + ylab("") + 
+    scale_fill_continuous(low="white", high="red") + geom_text(aes(label=round(value,2))) + 
+    theme(text=element_text(size=20)) + ggtitle(names(diff.raster[x]))
+  return(a)
+})
 
 #Write difference in alpha out to file. 
 #############
@@ -289,8 +379,8 @@ al
 #############
 #Write alpha rasters to file
 lapply(1:length(cell.Rasters),function(x){
-  writeRaster(stack(cell.Rasters[[x]]), "Figures/", names(cell.Rasters)[x],sep=""),
-              overwrite=TRUE,bylayer=TRUE,suffix='names')
+  writeRaster(stack(cell.Rasters[[x]]), "/Figures/", names(cell.Rasters)[x],sep=""),
+  overwrite=TRUE,bylayer=TRUE,suffix='names')
 })
 
 #Write difference raster to file
@@ -299,4 +389,5 @@ lapply(1:length(diff.raster),function(x){
               overwrite=TRUE,suffix=names(diff.raster[[x]]))
 })
 
-save.image(paste(output_folder,"\\AlphaMapping.rData",sep=""))
+# save the workspace - this gets picked back up by FutureAnalog.R
+save.image(paste(out_path,"/AlphaMapping.rData",sep=""))

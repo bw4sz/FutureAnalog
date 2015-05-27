@@ -58,18 +58,18 @@ within.future <- lapply(future, function(x){
   as.matrix(dist)
 })
 
-#--------------- Find within PHYLO BETA DIVERSITY
+# Step 2b) Find within time PHYLO BETA DIVERSITY -------------------------------
 #For phylobeta, there needs to be more than 2 species for a rooted tree
-phylo.current <- current[,colnames(current) %in% trx$tip.label]
-phylo.current <- phylo.current[!apply(phylo.current,1,sum)<=2,]   
+load(paste(out_path, "trx.rda", sep = "/"))
+phylo.current <- current[,colnames(current) %in% trx$tip.label] # TRX needed from AlphaMapping.R
+phylo.current <- phylo.current[!rowSums(phylo.current)<=2,]   
 
 phylo.future <- lapply(future, function(x){
   matched <- x[,colnames(x) %in% trx$tip.label]
-  matched[!apply(matched,1,sum)<=2,] 
+  matched[!rowSums(matched)<=2,] 
 })
 
-
-#Within current phylobetadiversity
+#Within current phylo beta diversity
 system.time(holt.try <- matpsim(phyl=trx, com=phylo.current, clust=3))  
 #turn beta measures into a matrix   
 within.current.phylo <- as.matrix(holt.try)
@@ -80,9 +80,10 @@ within.future.phylo <- lapply(phylo.future, function(x){
 })
 
 
-#---------------- Find within FUNC BETA DIVERSITY
+# Step 2c) Find within time FUNC BETA DIVERSITY --------------------------------
 
 #----- Within current functional beta diversity
+load(paste(out_path, "fco.rda",sep = "/"))
 Func.current <- current[,colnames(current) %in% colnames(fco)]
 Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]  
 
@@ -164,10 +165,7 @@ within.future.func <- lapply(Func.future,function(x){
 })
 
 
-###############################################################
-#     BETWEEN TIME (compare current witih each future scenario)
-###############################################################
-
+# Between time beta diversity (compare current witih each future scenario) -----
 #---------------- Find between TAXONOMIC BETA DIVERSITY
 beta.time.taxa <- lapply(future, function(x){
   analogue::distance(current, x, "bray")

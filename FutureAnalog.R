@@ -61,7 +61,7 @@ within.future <- lapply(future, function(x){
 # Step 2b) Find within time PHYLO BETA DIVERSITY -------------------------------
 #For phylobeta, there needs to be more than 2 species for a rooted tree
 load(paste(out_path, "trx.rda", sep = "/"))
-phylo.current <- current[,colnames(current) %in% trx$tip.label] # TRX needed from AlphaMapping.R
+phylo.current <- current[,colnames(current) %in% trx$tip.label]
 phylo.current <- phylo.current[!rowSums(phylo.current)<=2,]   
 
 phylo.future <- lapply(future, function(x){

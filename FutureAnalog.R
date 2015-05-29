@@ -80,9 +80,7 @@ within.future.phylo <- lapply(phylo.future, function(x){
 })
 
 
-#Step 2c) Find within time FUNC BETA DIVERSITY -------------------------------- 
-#*** THERE SEEM TO BE PROBLEMS CALCULATING THE FUNCTIONAL DIVERSITY, NEED TO
-#CHECK AND CORRECT *** 
+#Step 2c) Find within time FUNC BETA DIVERSITY --------------------------------- 
 # Within current functional beta diversity
 load(paste(out_path, "fco.rda",sep = "/"))
 Func.current <- current[,colnames(current) %in% colnames(fco)]
@@ -101,27 +99,7 @@ dists <- as.matrix(fco)
 rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
-sgtraitMNTD <- sapply(rownames(Func.current), function(i){                    
-  A <- i   #set iterator, takes a long time to run
-  print(i)
-  out <- lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {
-    MNND(A, B, sp.list=sp.list, dists=dists)
-    })
-  names(out) <- rownames(Func.current)[1:(which(rownames(Func.current) == i))]
-  return(out)
-})
-
-names(sgtraitMNTD) <- rownames(Func.current)  #rownames are site ID numbers
-melt.MNTD <- melt(sgtraitMNTD)
-colnames(melt.MNTD) <- c("MNTD","To","From")
-
-# Turn new results into a matrix
-within.current.func <- cast(melt.MNTD,To ~ From, value="MNTD")
-rownames(within.current.func) <- within.current.func[,1]
-within.current.func <- within.current.func[,-1]
-
-within.current.func[lower.tri(within.current.func)] <- t(within.current.func[upper.tri(within.current.func)])
-
+within.current.func <- func.dist.mat(Func.current, sp.list, dists)
 
 #----- Within future functional beta          
 Func.future <- lapply(future, function(x){
@@ -135,39 +113,21 @@ sp.list <- lapply(Func.future,function(x){
     names(x[which(x==1)])
   })
   names(a) <- rownames(x)
+  return(a)
 })
 
-##Turn cophenetic distance to matrix
-dists <- as.matrix(fco)
-rownames(dists) <- rownames(fco)
-colnames(dists) <- rownames(fco)
+input <- list()
+for(i in 1:length(future)){
+  input[[i]] <- list(Func.future = Func.future[[i]], sp.list = sp.list[[i]]) 
+}
 
-within.future.func <- lapply(Func.future,function(x){
-  sgtraitMNTD <- sapply(rownames(x),function(i){
-    A<-i    #set iterator
-    out<-lapply(rownames(x)[1:(which(rownames(x) == i))], function(B) {
-      MNND(A, B, sp.list=sp.list, dists=dists)
-      })
-    names(out) <- rownames(x)[1:(which(rownames(x) == i))]
-    return(out)
-  })
-  
-  names(sgtraitMNTD) <- rownames(x)
-  melt.MNTD <- melt(sgtraitMNTD)
-  colnames(melt.MNTD) <- c("MNTD","To","From")
-  
-  #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
-  within.future.func <- cast(melt.MNTD,To ~ From, value="MNTD")
-  rownames(within.future.func) <- within.future.func[,1]
-  within.future.func <- within.future.func[,-1]
-  within.future.func[lower.tri(within.future.func)] <- t(within.future.func[upper.tri(within.future.func)])
-  
-  return(within.future.func)
+within.future.func <- lapply(input, function(x){
+  func.dist.mat(x$Func.future, x$sp.list, dists)
 })
 
-
+## *** CODE CHECKED TO HERE *** ################################################
 # Step 3) Between time beta diversity ------------------------------------------
-# compare current witih each future scenario
+# compare current with each future scenario
 
 # Step 3a) Find between time TAXONOMIC BETA DIVERSITY --------------------------
 beta.time.taxa <- lapply(future, function(x){

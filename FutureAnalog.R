@@ -59,7 +59,7 @@ within.future <- lapply(future, function(x){
 })
 
 # Step 2b) Find within time PHYLO BETA DIVERSITY -------------------------------
-#For phylobeta, there needs to be more than 2 species for a rooted tree
+# For phylobeta, there needs to be more than 2 species for a rooted tree
 load(paste(out_path, "trx.rda", sep = "/"))
 phylo.current <- current[,colnames(current) %in% trx$tip.label]
 phylo.current <- phylo.current[!rowSums(phylo.current)<=2,]   
@@ -69,9 +69,12 @@ phylo.future <- lapply(future, function(x){
   matched[!rowSums(matched)<=2,] 
 })
 
-#Within current phylo beta diversity
+# Within current phylo beta diversity
 system.time(holt.try <- matpsim(phyl=trx, com=phylo.current, clust=3))  
-#turn beta measures into a matrix   
+# there is a warning message - it's not a problem, but it might be worth working
+# out how to rewrite this function to avoid it... 
+
+# turn beta measures into a matrix
 within.current.phylo <- as.matrix(holt.try)
 
 within.future.phylo <- lapply(phylo.future, function(x){

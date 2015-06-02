@@ -23,7 +23,7 @@ cell_size = 0.1
 # create folders to output the models to
 output_folder = "../FutureAnalog_output" 
 out_path <- paste(output_folder, cell_size, sep = "/")
-
+# PART I: Calculate beta diversity (within and between time) -------------------
 # Step 1) Load results from AlphaMapping.R -------------------------------------
 load(paste(out_path, "siteXspps.rda", sep = "/"))
 current <- siteXspps[[1]]
@@ -167,7 +167,7 @@ Beta.time.func <- lapply(Func.future, function(x){
   colnames(dists) <- rownames(fco)
   
   
-  Beta.time.func <- sapply(rownames(x), function(fu){
+  beta.time.func <- sapply(rownames(x), function(fu){
     sapply(rownames(Func.current), function(cur){
       MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
     })
@@ -176,25 +176,23 @@ Beta.time.func <- lapply(Func.future, function(x){
   return(beta.time.func)
 })
 
-## *** CODE CHECKED TO HERE *** ################################################
+# PART II: ANALOG ANALYSIS -----------------------------------------------------
 
-#############################################     #TODO MONDAY: check dfs and start here
-#     ANALOG ANALYSIS
-#############################################
-#TODO: Wrap this code in a function so we can test sensitivity of results to the threshold 
+# TODO: Wrap this code in a function so we can test sensitivity of results to the threshold 
 #      Set threshold for 5%, 10%, 50% and 100% - can present alternate results in appendices
 
-#Set an arbitrary threshold      
+# Set an arbitrary threshold      
 arb.thresh <- 0.20
 
-#################################
-#PART I
-#CURRENT COMMUNITIES THAT DO NOT HAVE ANALOGS IN FUTURE
-#How many current communities have do not have analogs in the future?
-#These are akin to communities which will disappear, "Disappearing"
+# Step 1) CURRENT COMMUNITIES WITHOUT ANALOGS IN FUTURE (Disappearing) ---------
 
-#---------------- TAXONOMIC NON-ANALOGS - DISAPPEARING COMMUNITIES
-#For each of the current communities how many future communities fall below the threshold (e.g., are analogous; 0 = similar, 1 = different)
+# How many current communities have do not have analogs in the future?
+# These are akin to communities which will disappear, "Disappearing"
+
+# Step 1a) TAXONOMIC NON-ANALOGS - DISAPPEARING COMMUNITIES --------------------
+
+# For each of the current communities how many future communities fall below the
+# threshold (e.g., are analogous; 0 = similar, 1 = different)
 current_to_future.analog <- lapply(beta.time.taxa, function(j){
   n.analogs <- sapply(rownames(j), function(x){
     sum(j[rownames(j) %in% x,] <= arb.thresh) #counts the number of assemblages with beta div values less than arb.thresh
@@ -204,15 +202,16 @@ current_to_future.analog <- lapply(beta.time.taxa, function(j){
   return(current_to_future.analog)
 })
 
+load(paste(out_path, "blank_raster.rda", sep="/")) # blank raster of correct size & extent
 c_f_tax <- lapply(current_to_future.analog, function(x){
   fanalog <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog, "NumberofFutureAnalogs_Taxon_ARB.tif", overwrite=TRUE)   
+  writeRaster(fanalog, paste(out_path, "NumberofFutureAnalogs_Taxon_ARB.tif", 
+                             sep="/"), overwrite=TRUE)   
   return(fanalog)
 })
 
-
-#---------------- PHYLO NON-ANALOGS - DISAPPEARING COMMUNITIES
+# Step 1b) PHYLO NON-ANALOGS - DISAPPEARING COMMUNITIES ------------------------
 future.analog.phylo <- lapply(beta.time.phylo, function(j){
   n.analogs.phylo <- sapply(rownames(j), function(x){
     sum(j[rownames(j) %in% x,] <= arb.thresh)
@@ -229,12 +228,13 @@ future.analog.phylo <- lapply(beta.time.phylo, function(j){
 c_f_phylo <- lapply(future.analog.phylo, function(x){
   fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog.phylo, "NumberofFutureAnalogs_Phylo_ARB.tif", overwrite=T)  
+  writeRaster(fanalog.phylo, paste(out_path, "NumberofFutureAnalogs_Phylo_ARB.tif",
+                                   sep="/"), overwrite=T)  
   return(fanalog.phylo)
 })
 
 
-#---------------- FUNC NON-ANALOGS - DISAPPEARING COMMUNITIES
+# Step 1c) FUNC NON-ANALOGS - DISAPPEARING COMMUNITIES -------------------------
 future.analog.func <- lapply(Beta.time.func, function(j){
   n.analogs.func <- sapply(rownames(j), function(x){
     sum(j[rownames(j) %in% x,] <= arb.thresh)
@@ -247,29 +247,28 @@ future.analog.func <- lapply(Beta.time.func, function(j){
 
 c_f_func <- lapply(future.analog.func, function(x){
   fanalog.Func <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
-  writeRaster(fanalog.Func, "NumberofFutureAnalogs_Func_ARB.tif", overwrite=T)  
+  writeRaster(fanalog.Func, paste(out_path, "NumberofFutureAnalogs_Func_ARB.tif",
+                                  sep="/"), overwrite=T)  
   return(fanalog.Func)
 })
 
 
-#############Visualize all three analog axes together
-# Columns are the emissions scenarios, 
-# Rows are taxonomic, phylogenetic and functional for CURRENT TO FUTURE analogs (dissapearing)
+# Step 1d) Visualize all three analog axes together ----------------------------
+# Columns are the emissions scenarios, Rows are taxonomic, phylogenetic and
+# functional for CURRENT TO FUTURE analogs (dissapearing)
 c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
 
 blues <- colorRampPalette(brewer.pal(9,"Blues"))(100) 
 plot(c_f, col=blues)
 
+# Step 2) FUTURE COMMUNITIES WITHOUT ANALOGS IN CURRENT (Novel) ----------------
 
-#####################################################
-#PART II
-#FUTURE COMMUNITIES THAT DO NOT HAVE ANALOGS IN CURRENT
 #How many future communities do not have analogs in the current time?
 #These are akin to communities that are novel, "Novel"
-######################################################
 
-#---------------- TAXONOMIC NON-ANALOGS - NOVEL COMMUNITIES
-#For each of the future communities how many future communities are analogous (< arb.thresh). Things that are different are "novel"
+#Step 2a) TAXONOMIC NON-ANALOGS - NOVEL COMMUNITIES --------------------------- 
+#For each of the future communities how many future communities are analogous 
+# (< arb.thresh). Things that are different are "novel"
 future_to_current.analog <- lapply(beta.time.taxa, function(j){
   n.analogs <- sapply(colnames(j), function(x){
     sum(j[,colnames(j) %in% x] <= arb.thresh)
@@ -283,7 +282,8 @@ future_to_current.analog <- lapply(beta.time.taxa, function(j){
 f_c_tax <- lapply(future_to_current.analog, function(x){
   fanalog <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog, "NumberofCurrentAnalogs_Taxon_ARB.tif", overwrite=T)  
+  writeRaster(fanalog, paste(out_path, "NumberofCurrentAnalogs_Taxon_ARB.tif", sep="/")
+              , overwrite=T)  
   return(fanalog)
 })
 
@@ -292,7 +292,7 @@ RdBu <- colorRampPalette(brewer.pal(7,"RdBu"))(100)
 plot(stack(f_c_tax) - stack(c_f_tax), col=RdBu)
 
 
-#---------------- PHYLO NON-ANALOGS - NOVEL COMMUNITIES
+# Step 2b) PHYLO NON-ANALOGS - NOVEL COMMUNITIES -------------------------------
 future_to_current.phylo <- lapply(beta.time.phylo, function(j){
   n.analogs.phylo <- sapply(colnames(j), function(x){
     sum(j[,colnames(j) %in% x] <= arb.thresh)
@@ -305,18 +305,19 @@ future_to_current.phylo <- lapply(beta.time.phylo, function(j){
 })
 
 
-#Visualize!
+# Visualize!
 f_c_phylo <- lapply(future_to_current.phylo, function(x){
   fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)
-  writeRaster(fanalog.phylo, "NumberofCurrentAnalogs_Phylo_ARB.tif", overwrite=T)  
+  writeRaster(fanalog.phylo, paste(out_path, "NumberofCurrentAnalogs_Phylo_ARB.tif",
+                                   sep="/"), overwrite=T)  
   return(fanalog.phylo)
 })
 
 plot(stack(f_c_phylo) - stack(c_f_phylo), col=RdBu)
 
 
-#---------------- FUNC NON-ANALOGS - NOVEL COMMUNITIES
+# Step 2c) FUNC NON-ANALOGS - NOVEL COMMUNITIES --------------------------------
 future_to_current.func <- lapply(Beta.time.func, function(j){
   n.analogs.func <- sapply(colnames(j), function(x){
     sum(j[,colnames(j) %in% x] <= arb.thresh)
@@ -329,17 +330,30 @@ future_to_current.func <- lapply(Beta.time.func, function(j){
 
 f_c_func <- lapply(future_to_current.func, function(x){
   fanalog.Func <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
-  writeRaster(fanalog.Func, "NumberofCurrentAnalogs_Func_ARB.tif", overwrite=T)  
+  writeRaster(fanalog.Func, paste(out_path, "NumberofCurrentAnalogs_Func_ARB.tif",
+                                  sep = "/"), overwrite=T)  
   return(fanalog.Func)
 })
 
 
-#############Visualize all three NON-ANALOGS together
+# Step 2d) Visualize all three NON-ANALOGS together ----------------------------
 f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
+reds <- colorRampPalette(brewer.pal(9,"Reds"))(100) 
 
 #plot novel and disappearing assemblages
-plot(f_c, col=rev(blues))  #novel
+plot(c_f, col=rev(blues))  #novel
 plot(f_c, col=rev(reds))   #disappearing
+
+
+
+
+
+
+
+
+## *** CODE CHECKED TO HERE *** ################################################
+
+
 
 # #plot both as a panel              TODO: this needs to be improved - loop through emissions scenarios, plot in diff colors
 # #Just try plotting one emission scenario across both disappearing and novel

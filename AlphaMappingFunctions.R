@@ -731,20 +731,25 @@ Beval.pam <- function( dis, dismat, s.all,maxclust = 100)
 
 MNND_fc <- function(fu,cur,sp.list_current,sp.list_future,dists)
 {
-  
   Asp     <- sp.list_current[[fu]]
   Bsp     <- sp.list_future[[cur]]
-  compmat <- dists[Asp,Bsp]
-  Ann     <- apply(as.matrix(compmat),1,min)
-  Bnn     <- apply(as.matrix(compmat),2,min)
-  Dnn     <- mean(c(Ann, Bnn))
-  #turn    <- min(c(mean(Ann),mean(Bnn)))
-  #nest    <- Dnn - turn
-  #res <- c(Dnn,turn,nest)
-  res<-c(Dnn)
-  #names(res) <- c("MNND","MNNDturn","MNNDnest")
-  names(res) <- c("MNND")
   
-  res
+  if(is.null(Asp) | is.null(Bsp)){
+    res <- 1
+    #names(res) <- "MNND"
+  } else {
+    compmat <- dists[Asp,Bsp]
+    Ann     <- apply(as.matrix(compmat),1,min)
+    Bnn     <- apply(as.matrix(compmat),2,min)
+    Dnn     <- mean(c(Ann, Bnn))
+    #turn    <- min(c(mean(Ann),mean(Bnn)))
+    #nest    <- Dnn - turn
+    #res <- c(Dnn,turn,nest)
+    res<-c(Dnn)
+    #names(res) <- c("MNND","MNNDturn","MNNDnest")
+    #names(res) <- c("MNND")  
+  }
+  
+  return(res)
 }
 

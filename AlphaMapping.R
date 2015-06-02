@@ -313,7 +313,7 @@ save(fco, file=paste(out_path, "fco.rda", sep = "/"))
 # create a blank raster object of the correct size and extent to have for
 # projecting the cell values
 blank <- raster(niche.crops[[1]])
-
+save(blank, file = paste(out_path, "blank_raster.rda", sep="/"))
 # a) Phylogenetic Alpha Diversity (MPD) ########################################
 
 #Remove communities with less than 1 species in a row

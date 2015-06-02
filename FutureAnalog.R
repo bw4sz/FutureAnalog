@@ -2,8 +2,8 @@
 
 #This code goes through the results from AlphaMapping.R to determine the 
 # number of analog hummingbird assemblages in Ecuador under future climate scenarios.
-packages <- c("vegan", "picante", "reshape", "reshape2", "analogue", "doSNOW", "ape", "cluster", 
-         "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal")
+packages <- c("vegan", "picante", "analogue", "doSNOW", "ape", "cluster", 
+         "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", "tidyr")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -128,7 +128,6 @@ within.future.func <- lapply(input, function(x){
   func.dist.mat(x$Func.future, x$sp.list, dists)
 })
 
-## *** CODE CHECKED TO HERE *** ################################################
 # Step 3) Between time beta diversity ------------------------------------------
 # compare current with each future scenario
 
@@ -143,7 +142,6 @@ beta.time.phylo <- lapply(phylo.future, function(x){
   beta.time.phylo <- as.matrix(matpsim.pairwise(phyl=trx, com.x=phylo.current, 
                                                 com.y=x, clust=7))
 })
-
 
 # Step 3c) Find between time FUNC BETA DIVERSITY -------------------------------
 Beta.time.func <- lapply(Func.future, function(x){
@@ -169,28 +167,16 @@ Beta.time.func <- lapply(Func.future, function(x){
   colnames(dists) <- rownames(fco)
   
   
-  Beta.time.func <- lapply(rownames(x), function(fu){
-    lapply(rownames(Func.current), function(cur){
+  Beta.time.func <- sapply(rownames(x), function(fu){
+    sapply(rownames(Func.current), function(cur){
       MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
     })
-    
   })
   
-  melt.MNTD <- melt(Beta.time.func)
-  
-  colnames(melt.MNTD) <- c("MNTD","To","From")
-  
-  #needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
-  beta.time.func <- dcast(melt.MNTD,To ~ From, value.var="MNTD")
-  rownames(beta.time.func) <- beta.time.func[,1]
-  beta.time.func <- beta.time.func[,-1]
-  
-  
-  rownames(beta.time.func) <- rownames(Func.current)
-  colnames(beta.time.func) <- rownames(x)
   return(beta.time.func)
 })
 
+## *** CODE CHECKED TO HERE *** ################################################
 
 #############################################     #TODO MONDAY: check dfs and start here
 #     ANALOG ANALYSIS

@@ -146,8 +146,8 @@ SDM_SP <- function(spec, loc_clean, myExpl) {
 
 # Output: projections for species (spec) into projected climate (GCM)
 bio_project<-function(spec, GCM, nam){
-  load(paste(spec, "myBiomodModelOut.rda", sep="/"))
-  load(paste(spec, "myBiomodEM.rda", sep="/"))
+  load(paste(gsub(" ", ".", spec), "myBiomodModelOut.rda", sep="/"))
+  load(paste(gsub(" ", ".", spec), "myBiomodEM.rda", sep="/"))
   paste("Running Env", nam)
   # **DECISION** 
   myBiomodProjection <- BIOMOD_Projection(

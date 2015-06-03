@@ -1,13 +1,12 @@
 # Code to run the SDMs ---------------------------------------------------------
 
 
-# Input: loc_clean, spec, myExpl, out_path, projEnv 
+# Input: loc_clean, spec, myExpl
 
-# Output: Maxent, GLM, GBM and ensemble models. Projections into current and
-# whichever future climates are given in projEnv
+# Output: Maxent, GLM, GBM and ensemble models. 
 
 # Packages:
-SDM_SP <- function(spec, loc_clean, myExpl, projEnv, out_path) {
+SDM_SP <- function(spec, loc_clean, myExpl) {
   packages <- c("biomod2", "dplyr")
   
   for(p in packages) {
@@ -143,7 +142,9 @@ SDM_SP <- function(spec, loc_clean, myExpl, projEnv, out_path) {
 }
 
 # Project SDM into env projections ---------------------------------------------
-#All the gcm and current worldclim layer (first) are put together in a list
+# Input: spec, GCM, nam
+
+# Output: projections for species (spec) into projected climate (GCM)
 bio_project<-function(spec, GCM, nam){
   load(paste(spec, "myBiomodModelOut.rda", sep="/"))
   load(paste(spec, "myBiomodEM.rda", sep="/"))

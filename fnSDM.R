@@ -144,7 +144,9 @@ SDM_SP <- function(spec, loc_clean, myExpl, projEnv, out_path) {
 
 # Project SDM into env projections ---------------------------------------------
 #All the gcm and current worldclim layer (first) are put together in a list
-bio_project<-function(GCM,nam){
+bio_project<-function(spec, GCM, nam){
+  load(paste(spec, "myBiomodModelOut.rda", sep="/"))
+  load(paste(spec, "myBiomodEM.rda", sep="/"))
   paste("Running Env", nam)
   # **DECISION** 
   myBiomodProjection <- BIOMOD_Projection(

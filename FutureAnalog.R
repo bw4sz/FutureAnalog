@@ -224,7 +224,7 @@ future.analog.phylo <- lapply(beta.time.phylo, function(j){
 })
 
 
-#Visualize!
+# Visualize!
 c_f_phylo <- lapply(future.analog.phylo, function(x){
   fanalog.phylo <- cellVis(cell=x$cell.number, value=x$numberofanalogs)
   hist(x$numberofanalogs)

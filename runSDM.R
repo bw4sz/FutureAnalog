@@ -78,19 +78,19 @@ exte<-extent(c(-81.13411,-68.92061,-5.532386,11.94902))
 # Cut by the extent. Crop by this layer 
 myExpl.crop<-stack(crop(myExpl,exte))
 
-# Step 3) List the species to run models for (needs updating) ------------------
-
-# See code from the original SDM.R file for info on how it was done
-
-# for now just list all of the species with enough points
+# Step 3) List the species to run models for -----------------------------------
 spec <- table(loc_clean$SPECIES)
 spec <- names(spec[which(spec >= 10)])
 
 # Step 4) Run SDM_SP and project current ---------------------------------------
 setwd(out_path)
 for(x in 1:10) {
-  SDM_SP(spec[x], loc_clean, myExpl)
-  bio_project(spec[x], myExpl.crop, "current")
+  if(!file.exists(gsub(" ", ".", spec[x]))) {
+    SDM_SP(spec[x], loc_clean, myExpl)
+  } 
+  if(!file.exists(paste0(gsub(" ", ".", spec[x]), "/proj_current"))) {
+    bio_project(spec[x], myExpl.crop, "current")
+  }
 }
 setwd("../../FutureAnalog")
 

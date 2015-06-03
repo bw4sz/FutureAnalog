@@ -1,20 +1,10 @@
 # Code to run the SDMs ---------------------------------------------------------
 
-
 # Input: loc_clean, spec, myExpl
 
 # Output: Maxent, GLM, GBM and ensemble models. 
 
-# Packages:
 SDM_SP <- function(spec, loc_clean, myExpl) {
-  packages <- c("biomod2", "dplyr")
-  
-  for(p in packages) {
-    if (!p %in% installed.packages()) {
-      install.packages(p)
-    }
-    require(p, character.only = TRUE)
-  }
   print(paste0("Modelling for ", spec))
   strt <- Sys.time()
   # Step 1) Get presence/pseudo-absence records for species --------------------

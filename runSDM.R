@@ -4,8 +4,7 @@
 # (ensemble and projections).
 
 # load required packages (installing if not already done)
-packages <- c("raster", "dplyr", "tidyr", "doSNOW", "stringr", "ape", "picante",
-              "RColorBrewer", "rgdal")
+packages <- c("raster", "dplyr", "tidyr", "biomod2")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -15,7 +14,7 @@ for(p in packages) {
 }
 
 # bring in functions (AlphaMappingFunctions and fnSDM)
-source("AlphaMappingFunctions.R")
+#source("AlphaMappingFunctions.R")
 source("fnSDM.R")
 
 # set the cell size for the analysis - **DECISION**
@@ -89,9 +88,9 @@ spec <- names(spec[which(spec >= 10)])
 
 # Step 4) Run SDM_SP and project current ---------------------------------------
 setwd(out_path)
-for(x in 4:10) {
-  SDM_SP(spec[x], loc_clean, myExpl, projEnv, out_path)
-  bio_project(myExpl.crop, "current")
+for(x in 1:10) {
+  SDM_SP(spec[x], loc_clean, myExpl)
+  bio_project(spec[x], myExpl.crop, "current")
 }
 setwd("../../FutureAnalog")
 

@@ -135,8 +135,8 @@ SDM_SP <- function(spec, loc_clean, myExpl) {
     prob.mean.weight.decay = 'proportional' )
   
   # save modelling outputs for use in env projections
-  save(myBiomodModelOut, file = paste(spec, "myBiomodModelOut.rda", sep="/"))
-  save(myBiomodEM, file = paste(spec, "myBiomodEM.rda", sep="/"))
+  save(myBiomodModelOut, file = paste(gsub(" ", ".", spec), "myBiomodModelOut.rda", sep="/"))
+  save(myBiomodEM, file = paste(gsub(" ", ".", spec), "myBiomodEM.rda", sep="/"))
 
   print(Sys.time() - strt)
 }

@@ -135,27 +135,27 @@ SDM_SP <- function(spec, loc_clean, myExpl, projEnv, out_path) {
     prob.mean.weight = T,
     prob.mean.weight.decay = 'proportional' )
   
-  # Project SDM into env projections ---------------------------------------------
-  #All the gcm and current worldclim layer (first) are put together in a list
-  bio_project<-function(GCM,nam){
-    paste("Running Env", nam)
-    # **DECISION** 
-    myBiomodProjection <- BIOMOD_Projection(
-      modeling.output = myBiomodModelOut,
-      new.env = GCM,
-      proj.name = nam,
-      selected.models = 'all',
-      binary.meth = c('ROC'),
-      compress = 'xz',
-      clamping.mask = T)
-    
-    #Ensemble projection
-    EnsBas<-BIOMOD_EnsembleForecasting(projection.output = myBiomodProjection, EM.output = myBiomodEM)
-    }
-  
-  for (i in 1:length(projEnv)){
-    bio_project(projEnv[[i]], names(projEnv[i]))
-  }
-  
+  # save modelling outputs for use in env projections
+  save(myBiomodModelOut, file = paste(spec, "myBiomodModelOut.rda", sep="/"))
+  save(myBiomodEM, file = paste(spec, "myBiomodEM.rda", sep="/"))
+
   print(Sys.time() - strt)
+}
+
+# Project SDM into env projections ---------------------------------------------
+#All the gcm and current worldclim layer (first) are put together in a list
+bio_project<-function(GCM,nam){
+  paste("Running Env", nam)
+  # **DECISION** 
+  myBiomodProjection <- BIOMOD_Projection(
+    modeling.output = myBiomodModelOut,
+    new.env = GCM,
+    proj.name = nam,
+    selected.models = 'all',
+    binary.meth = c('ROC'),
+    compress = 'xz',
+    clamping.mask = T)
+  
+  #Ensemble projection
+  EnsBas<-BIOMOD_EnsembleForecasting(projection.output = myBiomodProjection, EM.output = myBiomodEM)
 }

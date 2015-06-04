@@ -1,4 +1,5 @@
-# Step 1) Bring in completed model data ########################################
+# AlphaMapping.R ---------------------------------------------------------------
+# Step 1) Bring in completed model data ----------------------------------------
 
 # Bring in niche models, from the output directory specified above.
 # get all the niche model data
@@ -53,7 +54,7 @@ names(input.niche) <- c("current","MICROC2070rcp26","MICROC2070rcp45", "MICROC20
 siteXspps <- lapply(input.niche, tableFromRaster, threshold=0.05) # **DECISION**
 save(siteXspps, file = paste(out_path, "siteXspps.rda", sep = "/"))
      
-# Step 2) Alpha Cell Statistics ################################################
+# Step 2) Alpha Cell Statistics ------------------------------------------------
 # find the taxonomic, phylgoenetic and trait diversity at each cell
 
 # Bring in Phylogenetic Data
@@ -99,14 +100,14 @@ save(fco, file=paste(out_path, "fco.rda", sep = "/"))
 # projecting the cell values
 blank <- raster(niche.crops[[1]])
 save(blank, file = paste(out_path, "blank_raster.rda", sep="/"))
-# Step 2a) Phylogenetic Alpha Diversity (MPD) ########################################
+# Step 2a) Phylogenetic Alpha Diversity (MPD) ----------------------------------
 
 #Remove communities with less than 1 species in a row
 #just get where diversity > 1, there is no phylogenetic diversity or functional
 #diversity of species with richness = 1
 MPDs <- lapply(siteXspps,AlphaPhylo) 
 
-# Step 2b) Trait Alpha Tree Diversity (MFD) ##########################################
+# Step 2b) Trait Alpha Tree Diversity (MFD) ------------------------------------
 
 MFDs <- lapply(siteXspps,AlphaFunc) 
 

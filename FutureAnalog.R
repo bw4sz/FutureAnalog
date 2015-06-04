@@ -15,6 +15,7 @@ for(p in packages) {
 #Load in source functions
 source("AlphaMappingFunctions.R")
 source("BenHolttraitDiversity.R")
+source("FutureAnalogFunctions.R")
 
 # Set output folder
 # set the cell size for the analysis
@@ -24,7 +25,6 @@ cell_size = 0.1
 output_folder = "../FutureAnalog_output" 
 out_path <- paste(output_folder, cell_size, sep = "/")
 
-# PART I: Bring in completed model, phylo and trait data -----------------------
 # Step 1) Bring in Phylogenetic Data -------------------------------------------
 trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
 spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
@@ -81,6 +81,10 @@ niche.crop <- lapply(all.niche,function(x){
 # get the crop files
 niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
 
+# create a blank raster object of the correct size and extent to have for
+# projecting the cell values
+blank <- raster(niche.crops[[1]])
+
 # Step 4) Get current niches for comparing to ----------------------------------
 current <- niche.crops[grep("current", niche.crops, value=FALSE)]
 current <- tableFromRaster(current, threshold = 0.05)
@@ -105,50 +109,60 @@ current.phylo <- current.phylo[!rowSums(current.phylo)<=2,]
 current.func <- current[,colnames(current) %in% colnames(fco)]
 current.func <- current.func[!apply(current.func,1,sum)<=2,]  
 
+# list to output results
+NonAnalogRasters <- list()
+
+# Need to write code to create mod.list - will probably be listing the files in
+# the worldclim directory...
+
+for(mod in mod.list){
+  # PART I BETWEEN TIME BETA-DIVERSITY MEASURES --------------------------------
+  # see FutureAnalogFunctions.R for how these are calculated
+  fnBetaDiv(mod)
+
+  # PART II: ANALOG ANALYSIS ---------------------------------------------------
+  
+  # This code has been set up so that additional lines with different thresholds
+  # can be added in for sensitivity analysis
+  
+  # Step 1) CURRENT COMMUNITIES WITHOUT ANALOGS IN FUTURE (Disappearing) -------
+  
+  # How many current communities have do not have analogs in the future?
+  # These are akin to communities which will disappear, "Disappearing"
+  
+  # For each of the current communities how many future communities fall below the
+  # threshold (e.g., are analogous; 0 = similar, 1 = different)
+  c_f_tax <- fnCurrent2Future(beta.time.taxa, "Taxon")
+  c_f_phylo <- fnCurrent2Future(beta.time.phylo, "Phylo")
+  c_f_func <- fnCurrent2Future(beta.time.func, "Func")
+  
+  # Create output raster stack (Disappearing) 
+  c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
+  names(c_f) <- c("Taxonomic", "Phylogenetic", "Functional")
+  
+  # Step 2) FUTURE COMMUNITIES WITHOUT ANALOGS IN CURRENT (Novel) --------------
+  
+  #How many future communities do not have analogs in the current time?
+  #These are akin to communities that are novel, "Novel"
+  f_c_tax <- fnFuture2Current(beta.time.taxa, arbthresh)
+  f_c_phylo <- fnFuture2Current(beta.time.phylo, arbthresh)
+  f_c_func <- fnFuture2Current(beta.time.func, arbthresh)
+  
+  # Visualize all three NON-ANALOGS together --------------------------
+  f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
+  names(f_c) <- c("Taxonomic", "Phylogenetic", "Functional")
+
+  # output the raster stacks
+  results <- stack(c_f, f_c)
+  names(results) <- c(paste("Novel",c("Tax","Phylo","Func")), 
+                      paste("Disappearing",c("Tax","Phylo","Func")))
+  NonAnalogRasters[[mod]] <- results
+}
 
 
 
 
 
-
-
-# PART II: ANALOG ANALYSIS -----------------------------------------------------
-
-# Step 1) CURRENT COMMUNITIES WITHOUT ANALOGS IN FUTURE (Disappearing) -------
-
-# How many current communities have do not have analogs in the future?
-# These are akin to communities which will disappear, "Disappearing"
-
-# create a blank raster object of the correct size and extent to have for
-# projecting the cell values
-blank <- raster(niche.crops[[1]])
-
-# For each of the current communities how many future communities fall below the
-# threshold (e.g., are analogous; 0 = similar, 1 = different)
-c_f_tax <- fnCurrent2Future(mod, beta.time.taxa, "Taxon", arb.thresh)
-c_f_phylo <- fnCurrent2Future(mod, beta.time.phylo, "Phylo", arb.thresh)
-c_f_func <- fnCurrent2Future(mod, beta.time.func, "Func", arb.thresh)
-
-# Step 1d) Create output raster stack (Disappearing) ---------------------------
-c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
-names(c_f) <- c("Taxonomic", "Phylogenetic", "Functional")
-
-# Step 2) FUTURE COMMUNITIES WITHOUT ANALOGS IN CURRENT (Novel) ----------------
-
-#How many future communities do not have analogs in the current time?
-#These are akin to communities that are novel, "Novel"
-f_c_tax <- fnFuture2Current(beta.time.taxa, arbthresh)
-f_c_phylo <- fnFuture2Current(beta.time.phylo, arbthresh)
-f_c_func <- fnFuture2Current(beta.time.func, arbthresh)
-
-# Step 2d) Visualize all three NON-ANALOGS together ----------------------------
-f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
-names(f_c) <- c("Taxonomic", "Phylogenetic", "Functional")
-reds <- colorRampPalette(brewer.pal(9,"Reds"))(100) 
-
-#plot novel and disappearing assemblages
-plot(c_f, col=rev(blues))  #novel
-plot(f_c, col=rev(reds))   #disappearing
 
 
 

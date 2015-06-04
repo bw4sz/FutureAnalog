@@ -119,54 +119,18 @@ siteXspps <- tableFromRaster(niche, threshold = 0.05)
 fails <- na.test(siteXspps)
 siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
 
-# PART II: Calculate beta diversity (within and between time) -------------------
-# Step 1) Within time beta diversity -------------------------------------------
-# SPECIES BETA DIVERSITY -------------------------------------------------------
-species.dist <- as.matrix(vegdist(siteXspps, "bray"))  
-# **DECISION** why Bray Curtis?
-
-# PHYLO BETA DIVERSITY ---------------------------------------------------------
-
-# For phylobeta, there needs to be more than 2 species for a rooted tree
-phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
-phylo.dat <- phylo.dist[!rowSums(phylo.dist)<=2,]   
-
-# Within current phylo beta diversity
-system.time(holt.try <- matpsim(phyl=trx, com=phylo.dat, clust=3))  
-# there is a warning message - it's not a problem, but it might be worth working
-# out how to rewrite this function to avoid it... 
-
-# turn beta measures into a matrix
-phylo.dist <- as.matrix(holt.try)
-
-
-# FUNC BETA DIVERSITY ----------------------------------------------------------
-func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
-func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
-
-####MNNTD method for integrating trait beta, used in the DimDiv script    
-#   MNNTD = Mean nearest neighbor taxon distance                          TODO: recommend parallelizing all the func code in this script - takes HOURS to run on the fast desktop
-#   Holt et al. 2012. An update of Wallace's zoogeographic regions of the world. Science.
-sp.list <- lapply(rownames(func.dat), function(k){
-  x <- func.dat[k,]
-  names(x[which(x==1)])
-})
-
-names(sp.list) <- rownames(func.dat)
-dists <- as.matrix(fco)
-rownames(dists) <- rownames(fco)
-colnames(dists) <- rownames(fco)
-
-func.dist <- func.dist.mat(func.dat, sp.list, dists)
-
-# Step 2) Between time beta diversity ------------------------------------------
+# PART II: Calculate beta diversity (between time) -----------------------------
 # compare current with each future scenario
 
-# TAXONOMIC BETA DIVERSITY -----------------------------------------------------
+# Step 1) TAXONOMIC BETA DIVERSITY ---------------------------------------------
 beta.time.taxa <- analogue::distance(current, siteXspps, "bray")
 
 
 # Step 3b) Find between PHYLO BETA DIVERSITY -----------------------------------
+# For phylobeta, there needs to be more than 2 species for a rooted tree
+phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
+phylo.dat <- phylo.dist[!rowSums(phylo.dist)<=2,]   
+
 beta.time.phylo <- matpsim.pairwise(phyl = trx, com.x = phylo.current, com.y = phylo.dat)
 beta.time.phylo <- lapply(phylo.future, function(x){
   beta.time.phylo <- as.matrix(matpsim.pairwise(phyl=trx, com.x=phylo.current, 
@@ -174,6 +138,9 @@ beta.time.phylo <- lapply(phylo.future, function(x){
 })
 
 # Step 3c) Find between time FUNC BETA DIVERSITY -------------------------------
+func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
+func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
+
 Beta.time.func <- lapply(Func.future, function(x){
   
   sp.list_current <- lapply(rownames(Func.current), function(k){

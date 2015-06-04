@@ -3,7 +3,7 @@
 #This code goes through the results from AlphaMapping.R to determine the 
 # number of analog hummingbird assemblages in Ecuador under future climate scenarios.
 packages <- c("vegan", "picante", "analogue", "doSNOW", "ape", "cluster", 
-         "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", "tidyr")
+         "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", "tidyr", "stringr")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -17,19 +17,75 @@ source("AlphaMappingFunctions.R")
 source("BenHolttraitDiversity.R")
 
 # Set output folder
-# set the cell size for the analysis - **DECISION**
+# set the cell size for the analysis
 cell_size = 0.1 
 
 # create folders to output the models to
 output_folder = "../FutureAnalog_output" 
 out_path <- paste(output_folder, cell_size, sep = "/")
-# PART I: Calculate beta diversity (within and between time) -------------------
-# Step 1) Load results from AlphaMapping.R -------------------------------------
-load(paste(out_path, "siteXspps.rda", sep = "/"))
-current <- siteXspps[[1]]
-future <- siteXspps[2:4]
 
-#Remove NAs from siteXspps so we can do the following analyses. Some species do
+# PART I: Bring in completed model, phylo and trait data -----------------------
+# Step 1) Bring in Phylogenetic Data -------------------------------------------
+trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
+spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
+
+# Replace tip.label with Spnames, replace the tiplabels with periods, which is
+# the biomod default Cophenetic distance is the distance between all pairs of
+# species- measure of relatedness
+trx$tip.label <- gsub("_",".",as.character(spnames$SpName))
+co<-cophenetic(trx)
+
+# Step 2) Bring in trait data --------------------------------------------------
+morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
+
+#just get males & the 3 traits of interest
+mon <- filter(morph, Sex == "Macho") %>%
+  select(SpID, ExpC, Peso, AlCdo) %>%
+  group_by(SpID) %>%
+  summarise_each(funs(mean(., na.rm = TRUE))) %>%
+  filter(complete.cases(.))
+
+mon <- data.frame(mon)
+colnames(mon) <- c("Species","Bill","Mass","WingChord")
+rownames(mon) <- gsub(" ",".",mon$Species)
+mon <- mon[,-1]
+
+#principal component traits and get euclidean distance matrix
+means <- apply(mon, 2, mean)
+
+Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
+Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
+WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
+
+z.scores <- data.frame(Bill, Mass, WingChord)
+rownames(z.scores) <- rownames(mon)
+
+fco <- as.matrix(dist(z.scores, method = "euclidean"))
+
+# Step 3) Bring in niche models ------------------------------------------------
+all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
+
+# Clip to Extent and shape of desired countries (Ecuador for now)
+ec<-readOGR("InputData", "EcuadorCut")
+r<-raster(extent(ec))
+
+# Match cell size above from the SDM_SP function
+res(r) <- cell_size
+
+niche.crop <- lapply(all.niche,function(x){
+  r <- crop(raster(x),extent(ec.r))
+  filnam <- paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
+  writeRaster(r,filnam,overwrite=TRUE)
+})
+
+# get the crop files
+niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
+
+# Step 4) Get current niches for comparing to ----------------------------------
+current <- niche.crops[grep("current", niche.crops, value=FALSE)]
+current <- tableFromRaster(current, threshold = 0.05)
+
+#Remove NAs from current so we can do the following analyses. Some species do
 #not occur in Ecuador, so they should be removed from analysis here.
 na.test <-  function (x) {
   w <- apply(x, 2, function(x)all(is.na(x)))
@@ -43,101 +99,75 @@ na.test <-  function (x) {
 fails <- na.test(current)
 current <- current[,!colnames(current) %in% fails]
 
-future <- lapply(future, function(x){
-  fails <- na.test(x)
-  x[,!colnames(x) %in% fails]
-})
+current.phylo <- current[,colnames(current) %in% trx$tip.label]
+current.phylo <- current.phylo[!rowSums(current.phylo)<=2,]  
 
-# Step 2) Within time beta diversity -------------------------------------------
-# Step 2a) Find within time SPECIES BETA DIVERSITY -----------------------------
-within.current.dist <- vegdist(current, "bray")  # **DECISION** why Bray Curtis?
-within.current <- as.matrix(within.current.dist)
+current.func <- siteXspps[,colnames(current) %in% colnames(fco)]
+current.func <- current.func[!apply(current.func,1,sum)<=2,]  
 
-within.future <- lapply(future, function(x){
-  dist <- vegdist(x, "bray")
-  as.matrix(dist)
-})
+#### LOOP WILL START HERE, AT PRESENT TESTING ON:
+mod <- "mc26bi70"
 
-# Step 2b) Find within time PHYLO BETA DIVERSITY -------------------------------
+# get niche for the GCM 
+niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
+
+#Create siteXspp table from input rasters, function is from
+#AlphaMappingFunctions.R, sourced at the top.
+siteXspps <- tableFromRaster(niche, threshold = 0.05)
+
+#Remove NAs from siteXspps 
+fails <- na.test(siteXspps)
+siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
+
+# PART II: Calculate beta diversity (within and between time) -------------------
+# Step 1) Within time beta diversity -------------------------------------------
+# SPECIES BETA DIVERSITY -------------------------------------------------------
+species.dist <- as.matrix(vegdist(siteXspps, "bray"))  
+# **DECISION** why Bray Curtis?
+
+# PHYLO BETA DIVERSITY ---------------------------------------------------------
+
 # For phylobeta, there needs to be more than 2 species for a rooted tree
-load(paste(out_path, "trx.rda", sep = "/"))
-phylo.current <- current[,colnames(current) %in% trx$tip.label]
-phylo.current <- phylo.current[!rowSums(phylo.current)<=2,]   
-
-phylo.future <- lapply(future, function(x){
-  matched <- x[,colnames(x) %in% trx$tip.label]
-  matched[!rowSums(matched)<=2,] 
-})
+phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
+phylo.dat <- phylo.dist[!rowSums(phylo.dist)<=2,]   
 
 # Within current phylo beta diversity
-system.time(holt.try <- matpsim(phyl=trx, com=phylo.current, clust=3))  
+system.time(holt.try <- matpsim(phyl=trx, com=phylo.dat, clust=3))  
 # there is a warning message - it's not a problem, but it might be worth working
 # out how to rewrite this function to avoid it... 
 
 # turn beta measures into a matrix
-within.current.phylo <- as.matrix(holt.try)
-
-within.future.phylo <- lapply(phylo.future, function(x){
-  holt.try <- matpsim(phyl=trx, com=x, clust=3)
-  as.matrix(holt.try)
-})
+phylo.dist <- as.matrix(holt.try)
 
 
-#Step 2c) Find within time FUNC BETA DIVERSITY --------------------------------- 
-# Within current functional beta diversity
-load(paste(out_path, "fco.rda",sep = "/"))
-Func.current <- current[,colnames(current) %in% colnames(fco)]
-Func.current <- Func.current[!apply(Func.current,1,sum)<=2,]  
+# FUNC BETA DIVERSITY ----------------------------------------------------------
+func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
+func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
 
 ####MNNTD method for integrating trait beta, used in the DimDiv script    
 #   MNNTD = Mean nearest neighbor taxon distance                          TODO: recommend parallelizing all the func code in this script - takes HOURS to run on the fast desktop
 #   Holt et al. 2012. An update of Wallace's zoogeographic regions of the world. Science.
-sp.list <- lapply(rownames(Func.current), function(k){
-  x <- Func.current[k,]
+sp.list <- lapply(rownames(func.dat), function(k){
+  x <- func.dat[k,]
   names(x[which(x==1)])
 })
 
-names(sp.list) <- rownames(Func.current)
+names(sp.list) <- rownames(func.dat)
 dists <- as.matrix(fco)
 rownames(dists) <- rownames(fco)
 colnames(dists) <- rownames(fco)
 
-within.current.func <- func.dist.mat(Func.current, sp.list, dists)
+func.dist <- func.dist.mat(func.dat, sp.list, dists)
 
-#----- Within future functional beta          
-Func.future <- lapply(future, function(x){
-  matched <- x[,colnames(x) %in% colnames(fco)]
-  matched[!apply(matched,1,sum)<=2,]   
-})
-
-sp.list <- lapply(Func.future,function(x){
-  a <- lapply(rownames(x),function(k){
-    x <- x[k,]
-    names(x[which(x==1)])
-  })
-  names(a) <- rownames(x)
-  return(a)
-})
-
-input <- list()
-for(i in 1:length(future)){
-  input[[i]] <- list(Func.future = Func.future[[i]], sp.list = sp.list[[i]]) 
-}
-
-within.future.func <- lapply(input, function(x){
-  func.dist.mat(x$Func.future, x$sp.list, dists)
-})
-
-# Step 3) Between time beta diversity ------------------------------------------
+# Step 2) Between time beta diversity ------------------------------------------
 # compare current with each future scenario
 
-# Step 3a) Find between time TAXONOMIC BETA DIVERSITY --------------------------
-beta.time.taxa <- lapply(future, function(x){
-  analogue::distance(current, x, "bray")
-})
+# TAXONOMIC BETA DIVERSITY -----------------------------------------------------
+beta.time.taxa <- analogue::distance(current, siteXspps, "bray")
 
 
 # Step 3b) Find between PHYLO BETA DIVERSITY -----------------------------------
+beta.time.phylo <- matpsim.pairwise(phyl = trx, com.x = phylo.current, com.y = phylo.dat)
 beta.time.phylo <- lapply(phylo.future, function(x){
   beta.time.phylo <- as.matrix(matpsim.pairwise(phyl=trx, com.x=phylo.current, 
                                                 com.y=x, clust=7))

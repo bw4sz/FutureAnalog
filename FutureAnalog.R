@@ -102,7 +102,7 @@ current <- current[,!colnames(current) %in% fails]
 current.phylo <- current[,colnames(current) %in% trx$tip.label]
 current.phylo <- current.phylo[!rowSums(current.phylo)<=2,]  
 
-current.func <- siteXspps[,colnames(current) %in% colnames(fco)]
+current.func <- current[,colnames(current) %in% colnames(fco)]
 current.func <- current.func[!apply(current.func,1,sum)<=2,]  
 
 #### LOOP WILL START HERE, AT PRESENT TESTING ON:
@@ -125,53 +125,46 @@ siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
 # Step 1) TAXONOMIC BETA DIVERSITY ---------------------------------------------
 beta.time.taxa <- analogue::distance(current, siteXspps, "bray")
 
-
-# Step 3b) Find between PHYLO BETA DIVERSITY -----------------------------------
+# Step 2) PHYLO BETA DIVERSITY -------------------------------------------------
 # For phylobeta, there needs to be more than 2 species for a rooted tree
 phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
 phylo.dat <- phylo.dist[!rowSums(phylo.dist)<=2,]   
 
-beta.time.phylo <- matpsim.pairwise(phyl = trx, com.x = phylo.current, com.y = phylo.dat)
-beta.time.phylo <- lapply(phylo.future, function(x){
-  beta.time.phylo <- as.matrix(matpsim.pairwise(phyl=trx, com.x=phylo.current, 
-                                                com.y=x, clust=7))
-})
+beta.time.phylo <- matpsim.pairwise(phyl = trx, 
+                                    com.x = current.phylo, 
+                                    com.y = phylo.dat)
 
-# Step 3c) Find between time FUNC BETA DIVERSITY -------------------------------
+# Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
 func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
 func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
 
-Beta.time.func <- lapply(Func.future, function(x){
+sp.list_current <- lapply(rownames(current.func), function(k){
+    g <- current.func[k,]
+    names(g[which(g==1)])
+    })
   
-  sp.list_current <- lapply(rownames(Func.current), function(k){
-    g <- Func.current[k,]
+names(sp.list_current) <- rownames(current.func)
+  
+sp.list_future <- lapply(phylo.dat, function(k){
+    g <- phylo.dat[k,]
     names(g[which(g==1)])
   })
   
-  names(sp.list_current) <- rownames(Func.current)
+names(sp.list_future) <- rownames(phylo.dat)
   
-  sp.list_future <- lapply(rownames(x), function(k){
-    g <- x[k,]
-    names(g[which(g==1)])
-  })
-  
-  names(sp.list_future) <- rownames(x)
-  
-  #Get distances from the cophenetic matrix?
-  dists <- as.matrix(fco)
-  
-  rownames(dists) <- rownames(fco)
-  colnames(dists) <- rownames(fco)
+#Get distances from the cophenetic matrix?
+dists <- as.matrix(fco)
+rownames(dists) <- rownames(fco)
+colnames(dists) <- rownames(fco)
   
   
-  beta.time.func <- sapply(rownames(x), function(fu){
-    sapply(rownames(Func.current), function(cur){
+beta.time.func <- sapply(rownames(func.dat), function(fu){
+    sapply(rownames(current.func), function(cur){
       MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
     })
   })
   
-  return(beta.time.func)
-})
+
 
 # PART II: ANALOG ANALYSIS -----------------------------------------------------
 

@@ -78,4 +78,9 @@ site.pair <- formatsitepair(bioData, 1, siteColumn="site", XColumn="long", YColu
                              predData=envData)
 
 # fit GDM ----------------------------------------------------------------------
+gdm.model <- gdm(site.pair)
+summary.gdm(gdm.model)
 
+predDiss <- predict(gdm.model, site.pair)
+
+plot(site.pair$distance, predDiss)

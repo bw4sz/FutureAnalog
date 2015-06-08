@@ -84,7 +84,7 @@ spec <- names(spec[which(spec >= 10)])
 
 # Step 4) Run SDM_SP and project current ---------------------------------------
 setwd(out_path)
-for(x in 1:10) {
+for(x in 1:length(spec)) {
   if(!file.exists(gsub(" ", ".", spec[x]))) {
     SDM_SP(spec[x], loc_clean, myExpl)
   } 

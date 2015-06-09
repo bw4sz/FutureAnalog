@@ -81,6 +81,30 @@ niche.crop <- lapply(all.niche,function(x){
 # get the crop files
 niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
 
+# select only well fitting species (currently set as all where TSS is over 0.5
+# for all models and ROC is over 7.5 for all models)
+model_eval<-list.files(out_path, full.name=TRUE,recursive=T,pattern="Eval.csv")
+model_eval<-rbind_all(lapply(model_eval, 
+                             function(x) read.csv(x, stringsAsFactors = FALSE)))
+colnames(model_eval)[1:2] <- c("Stat", "Species")
+
+# change here for sensitivity analyis
+model_eval$TEST <- (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.5) 
+                    & model_eval$Stat == "TSS") |
+  (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.75) 
+   & model_eval$Stat == "ROC")
+
+well.fitting.models <- subset(model_eval, !TEST)
+well.fitting.species <- unique(well.fitting.models$Species)
+well.fitting.species <- gsub(" ", ".", well.fitting.species)
+
+files <- c()
+for(s in well.fitting.species){
+  files <- c(files,grep(s, niche.crops))
+}
+
+niche.crops <- niche.crops[files]
+
 # create a blank raster object of the correct size and extent to have for
 # projecting the cell values
 blank <- raster(niche.crops[[1]])

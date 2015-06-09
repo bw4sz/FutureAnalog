@@ -17,10 +17,11 @@ source("fnSDM.R")
 
 
 # set cell size
-cell_size = 0.1
+cell_size = 0.0833333333
+cell = "5_arcmins"
 
 output_folder = "../FutureAnalog_output" 
-out_path <- paste(output_folder, cell_size, sep = "/")
+out_path <- paste(output_folder, cell, sep = "/")
 
 # Step 1) List the future climate data available and collate variables ---------
 # Create list of climate models
@@ -52,8 +53,8 @@ for (mod in clim.mods) {
   mod.stack.c <- stack(crop(mod.stack, exte))
   
   # set resolution for the future layers equivalent to cell size
-  if (!res(mod.stack.c)[[1]] == cell_size){
-    fact <- cell_size/res(mod.stack.c)
+  fact <- cell_size/res(mod.stack.c)
+ if(round(fact)[1] > 1)) {
     # Set cell size to ~ cell_size degree
     mod.stack.c <- stack(aggregate(mod.stack.c, fact))
   }

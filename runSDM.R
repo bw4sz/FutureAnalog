@@ -18,11 +18,12 @@ for(p in packages) {
 source("fnSDM.R")
 
 # set the cell size for the analysis - **DECISION**
-cell_size = 0.1 
+cell_size = 0.0833333333
+cell = "5_arcmins"
 
 # create folders to output the models to
 output_folder = "../FutureAnalog_output" 
-out_path <- paste(output_folder, cell_size, sep = "/")
+out_path <- paste(output_folder, cell, sep = "/")
 if(!dir.exists(output_folder)) dir.create(output_folder)
 if(!dir.exists(out_path)) dir.create(out_path)
 if(!dir.exists(paste(out_path, "logs", sep = "/"))) 
@@ -53,9 +54,9 @@ loc_clean <- filter(PAdat, SpatialCheck=="Y", MapDecision %in% gooddata)
 
 # Import environmental data from worldclim, three variables Bio1 = annual mean
 # temp, Bio12 = annual precip, Bio15 = precip seasonality
-myExpl <- c("../worldclim_data/bio1-9_30s_bil/bio_1.bil",
-            "../worldclim_data/bio10-19_30s_bil/bio_12.bil",
-            "../worldclim_data/bio10-19_30s_bil/bio_15.bil")
+myExpl <- c("../worldclim_data/bio_5m_bil/bio1.bil",
+            "../worldclim_data/bio_5m_bil/bio12.bil",
+            "../worldclim_data/bio_5m_bil/bio15.bil")
 
 myExpl <- stack(myExpl)
 
@@ -69,7 +70,7 @@ myExpl <- crop(myExpl,extPoint)
 fact <- cell_size/res(myExpl) # the "factor" to aggregate by
 
 # Set cell size to ~ cell_size degree
-myExpl <- aggregate(myExpl,fact)
+if(round(fact)[1] > 1) myExpl <- aggregate(myExpl,fact)
 
 # Presence points are still taken from everywhere Avoid projecting into areas 
 # where sample size is really low **DECISION**

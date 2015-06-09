@@ -19,7 +19,7 @@ fnBetaDiv <- function(mod){
   # Step 2) PHYLO BETA DIVERSITY -------------------------------------------------
   # For phylobeta, there needs to be more than 2 species for a rooted tree
   phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
-  phylo.dat <- phylo.dat[!rowSums(phylo.dat)<=2,]   
+  phylo.dat <- phylo.dist[!rowSums(phylo.dist)<=2,]   
   
   beta.time.phylo <- matpsim.pairwise(phyl = trx, 
                                       com.x = current.phylo, 
@@ -55,10 +55,7 @@ fnBetaDiv <- function(mod){
     })
   })
   
-  res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
-  names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
-  return(res)
-  save(res, paste0("beta_diversity_", mod, ".rda"))
+  return(list(beta.time.taxa, beta.time.phylo, beta.time.func))
 }
 
 fnCurrent2Future <- function(betadiv, arb.thresh) {
@@ -70,7 +67,7 @@ fnCurrent2Future <- function(betadiv, arb.thresh) {
   current_to_future.analog <- data.frame(rownames(betadiv), n.analogs)
   colnames(current_to_future.analog) <- c("cell.number", "numberofanalogs")  
   
-  c_f <- cellVis(cells=current_to_future.analog$cell.number, 
+  c_f <- cellVis(cell=current_to_future.analog$cell.number, 
                  value=current_to_future.analog$numberofanalogs)
   hist(current_to_future.analog$numberofanalogs)
   return(c_f)
@@ -88,13 +85,4 @@ fnFuture2Current <- function(betadiv, arbthresh){
                  value=future_to_current.analog$numberofanalogs)
   hist(future_to_current.analog$numberofanalogs)
   return(f_c)
-}
-
-na.test <-  function (x) {
-  w <- apply(x, 2, function(x)all(is.na(x)))
-  if (any(w)) {
-    fails <- names(which(w))
-    print(paste("All NA in columns", paste(names(which(w)), collapse=", ")))
-    return(fails)
-  }
 }

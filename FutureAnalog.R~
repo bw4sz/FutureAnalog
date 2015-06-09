@@ -3,7 +3,7 @@
 #This code goes through the results from AlphaMapping.R to determine the 
 # number of analog hummingbird assemblages in Ecuador under future climate scenarios.
 packages <- c("vegan", "picante", "analogue", "doSNOW", "ape", "cluster", 
-         "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", "tidyr", "stringr", "dplyr")
+         "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", "tidyr", "stringr")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -71,13 +71,15 @@ r<-raster(extent(ec))
 
 # Match cell size above from the SDM_SP function
 res(r) <- cell_size
-ec.r <- rasterize(ec,r)
 
 niche.crop <- lapply(all.niche,function(x){
   r <- crop(raster(x),extent(ec.r))
   filnam <- paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
   writeRaster(r,filnam,overwrite=TRUE)
 })
+
+# get the crop files
+niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
 
 # select only well fitting species (currently set as all where TSS is over 0.5
 # for all models and ROC is over 7.5 for all models)
@@ -96,9 +98,6 @@ well.fitting.models <- subset(model_eval, !TEST)
 well.fitting.species <- unique(well.fitting.models$Species)
 well.fitting.species <- gsub(" ", ".", well.fitting.species)
 
-# get the crop files
-niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
-
 files <- c()
 for(s in well.fitting.species){
   files <- c(files,grep(s, niche.crops))
@@ -116,6 +115,15 @@ current <- tableFromRaster(current, threshold = 0.05)
 
 #Remove NAs from current so we can do the following analyses. Some species do
 #not occur in Ecuador, so they should be removed from analysis here.
+na.test <-  function (x) {
+  w <- apply(x, 2, function(x)all(is.na(x)))
+  if (any(w)) {
+    fails <- names(which(w))
+    print(paste("All NA in columns", paste(names(which(w)), collapse=", ")))
+    return(fails)
+  }
+}
+
 fails <- na.test(current)
 current <- current[,!colnames(current) %in% fails]
 
@@ -127,12 +135,14 @@ current.func <- current.func[!apply(current.func,1,sum)<=2,]
 
 # list to output results
 NonAnalogRasters <- list()
-clim.mods <- list.files("../worldclim_data/projections_2070/")
 
-for(mod in clim.mods){
+# Need to write code to create mod.list - will probably be listing the files in
+# the worldclim directory...
+
+for(mod in mod.list){
   # PART I BETWEEN TIME BETA-DIVERSITY MEASURES --------------------------------
   # see FutureAnalogFunctions.R for how these are calculated
-  bd.res <- fnBetaDiv(mod)
+  fnBetaDiv(mod)
 
   # PART II: ANALOG ANALYSIS ---------------------------------------------------
   
@@ -146,9 +156,9 @@ for(mod in clim.mods){
   
   # For each of the current communities how many future communities fall below the
   # threshold (e.g., are analogous; 0 = similar, 1 = different)
-  c_f_tax <- fnCurrent2Future(bd.res$beta.time.taxa, "Taxon")
-  c_f_phylo <- fnCurrent2Future(bd.res$beta.time.phylo, "Phylo")
-  c_f_func <- fnCurrent2Future(bd.res$beta.time.func, "Func")
+  c_f_tax <- fnCurrent2Future(beta.time.taxa, "Taxon")
+  c_f_phylo <- fnCurrent2Future(beta.time.phylo, "Phylo")
+  c_f_func <- fnCurrent2Future(beta.time.func, "Func")
   
   # Create output raster stack (Disappearing) 
   c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
@@ -158,9 +168,9 @@ for(mod in clim.mods){
   
   #How many future communities do not have analogs in the current time?
   #These are akin to communities that are novel, "Novel"
-  f_c_tax <- fnFuture2Current(bd.res$beta.time.taxa, arbthresh)
-  f_c_phylo <- fnFuture2Current(bd.res$beta.time.phylo, arbthresh)
-  f_c_func <- fnFuture2Current(bd.res$beta.time.func, arbthresh)
+  f_c_tax <- fnFuture2Current(beta.time.taxa, arbthresh)
+  f_c_phylo <- fnFuture2Current(beta.time.phylo, arbthresh)
+  f_c_func <- fnFuture2Current(beta.time.func, arbthresh)
   
   # Visualize all three NON-ANALOGS together --------------------------
   f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))

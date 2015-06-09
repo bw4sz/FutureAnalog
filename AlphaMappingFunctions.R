@@ -641,7 +641,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
   print("cell_br")
   rownames(tcellbr.x) <- rownames(com.x)
   rownames(tcellbr.y) <- rownames(com.y)
-  tcellbr <<- tcellbr
+  #tcellbr <<- tcellbr
   
   # function to calculate phylobsim between cell_a and cell_b
   

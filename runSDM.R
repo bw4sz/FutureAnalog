@@ -124,18 +124,25 @@ lm1=lm(ROC~TSS, data=model_compare)
 ggsave(paste(out_path, "ModelComparison_ROC-TSS.jpeg", sep = "/"), 
        dpi=600, height = 6, width=11)
 
-model_thresh<-sapply(seq(.5,.95,.05),function(x){
-  table(model_eval$Value > x,model_eval$Model)["TRUE",]
+model_thresh.ROC <- sapply(seq(.5,.95,.05),function(x){
+  table(model_compare$ROC > x,model_compare$Model)["TRUE",]
 })
+
+model_thresh.TSS <- sapply(seq(.5,.95,.05), function(x){
+  table(model_compare$TSS > x, model_compare$Model)["TRUE",]
+})
+
+model_thresh <- rbind(model_thresh.ROC, model_thresh.TSS)
+model_thresh <- data.frame(Stat = c(rep("ROC", 3), rep("TSS", 3)), 
+                           Model = rownames(model_thresh), model_thresh)
+colnames(model_thresh)[-(1:2)] <- seq(.5,.95,.05)
+model_thresh <- gather(model_thresh, variable, value, -Model, -Stat)
+names(model_thresh)<-c("Stat", "Model","Threshold","Number_of_Species")
 
 # Model thresholds plot - number of species where ROC/TSS scores are above
 # varying thresholds
-model_thresh <- data.frame(Model = rownames(model_thresh), model_thresh)
-colnames(model_thresh)[-1] <- seq(.5,.95,.05)
-model_thresh <- gather(model_thresh, variable, value, -Model)
-
-names(model_thresh)<-c("Model","ROC_Threshold","Number_of_Species")
-ggplot(model_thresh,aes(x=ROC_Threshold,y=Number_of_Species,col=Model)) + 
+ggplot(model_thresh,aes(x=Threshold,y=Number_of_Species,col=Model)) + 
+  facet_wrap(~Stat) +
   geom_line() + 
   geom_point() + 
   geom_text(aes(label=Number_of_Species),vjust=4,size=5) + 
@@ -143,12 +150,21 @@ ggplot(model_thresh,aes(x=ROC_Threshold,y=Number_of_Species,col=Model)) +
   ylab("Number of species included") +
   theme_classic() + theme(text=element_text(size=20))
 ggsave(paste(out_path, "ModelThresholding.jpeg", sep = "/"), 
-       dpi=600, height=8, width=8)
+       dpi=600, height=8, width=16)
 
 #Get the variable importance from file
 varI <- list.files(paste(out_path, sep = "/"), 
                    full.name=TRUE,recursive=T,pattern="VarImportance.csv")
-varI<-rbind_all(lapply(varI, function(x) read.csv(x, stringsAsFactors = FALSE)))
+varI<-lapply(varI, function(x) read.csv(x, stringsAsFactors = FALSE))
+
+# this bit of code is not particularly safe!!! Have hardcoded the variable names
+# because for some reason they have not been set as the row names for some
+# species...
+varI <- lapply(varI, function(x) {
+  x$X1 <- c("bio_1", "bio_12", "bio_15")
+  return(x)
+  })
+varI <- rbind_all(varI)
 varI <- data.frame(varI[,-1])
 
 #Melt variable for plotting

@@ -41,7 +41,7 @@ for (mod in clim.mods) {
   mod.stack <- stack(mod.var1, mod.var12, mod.var15)
   
   # make the names consistent
-  names(mod.stack) <- c("bio_1", "bio_12", "bio_15")
+  names(mod.stack) <- c("bio1", "bio12", "bio15")
   
   # Step 2) Set the Extent to project *into*. ----------------------------------
   
@@ -54,7 +54,7 @@ for (mod in clim.mods) {
   
   # set resolution for the future layers equivalent to cell size
   fact <- cell_size/res(mod.stack.c)
- if(round(fact)[1] > 1)) {
+ if(round(fact)[1] > 1) {
     # Set cell size to ~ cell_size degree
     mod.stack.c <- stack(aggregate(mod.stack.c, fact))
   }

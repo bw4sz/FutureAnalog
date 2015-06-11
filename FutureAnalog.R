@@ -19,11 +19,12 @@ source("FutureAnalogFunctions.R")
 
 # Set output folder
 # set the cell size for the analysis
-cell_size = 0.1 
+cell_size = 0.0833333333
+cell = "5_arcmins"
 
 # create folders to output the models to
 output_folder = "../FutureAnalog_output" 
-out_path <- paste(output_folder, cell_size, sep = "/")
+out_path <- paste(output_folder, cell, sep = "/")
 
 # Step 1) Bring in Phylogenetic Data -------------------------------------------
 trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
@@ -136,6 +137,9 @@ for(mod in clim.mods){
 
   # PART II: ANALOG ANALYSIS ---------------------------------------------------
   
+  # arbritrary threshold set here - need to change etc. for sensitivity analysis
+  arbthresh = 0.2
+  
   # This code has been set up so that additional lines with different thresholds
   # can be added in for sensitivity analysis
   
@@ -146,9 +150,9 @@ for(mod in clim.mods){
   
   # For each of the current communities how many future communities fall below the
   # threshold (e.g., are analogous; 0 = similar, 1 = different)
-  c_f_tax <- fnCurrent2Future(bd.res$beta.time.taxa, "Taxon")
-  c_f_phylo <- fnCurrent2Future(bd.res$beta.time.phylo, "Phylo")
-  c_f_func <- fnCurrent2Future(bd.res$beta.time.func, "Func")
+  c_f_tax <- fnCurrent2Future(bd.res$beta.time.taxa, arbthresh)
+  c_f_phylo <- fnCurrent2Future(bd.res$beta.time.phylo, arbthresh)
+  c_f_func <- fnCurrent2Future(bd.res$beta.time.func, arbthresh)
   
   # Create output raster stack (Disappearing) 
   c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
@@ -171,6 +175,7 @@ for(mod in clim.mods){
   names(results) <- c(paste("Novel",c("Tax","Phylo","Func")), 
                       paste("Disappearing",c("Tax","Phylo","Func")))
   NonAnalogRasters[[mod]] <- results
+  save(results, file=paste0(out_path, "/NonAnalogRasters_", mod, ".rda"))
 }
 
 

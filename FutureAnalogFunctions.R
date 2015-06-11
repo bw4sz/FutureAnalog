@@ -58,7 +58,7 @@ fnBetaDiv <- function(mod){
   res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
   names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
   return(res)
-  save(res, paste0("beta_diversity_", mod, ".rda"))
+  save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
 }
 
 fnCurrent2Future <- function(betadiv, arb.thresh) {

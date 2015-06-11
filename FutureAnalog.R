@@ -76,7 +76,7 @@ ec.r <- rasterize(ec,r)
 
 niche.crop <- lapply(all.niche,function(x){
   r <- crop(raster(x),extent(ec.r))
-  filnam <- paste(strsplit(x,".gri")[[1]][1],"crop",sep="")
+  filnam <- paste(strsplit(x,".gri$")[[1]][1],"crop",sep="")
   writeRaster(r,filnam,overwrite=TRUE)
 })
 

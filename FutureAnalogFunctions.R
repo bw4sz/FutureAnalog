@@ -76,7 +76,7 @@ fnCurrent2Future <- function(betadiv, arb.thresh) {
   return(c_f)
 }
 
-fnFuture2Current <- function(betadiv, arbthresh){
+fnFuture2Current <- function(betadiv, arb.thresh){
   n.analogs <- sapply(colnames(betadiv), function(x){
     sum(betadiv[,colnames(betadiv) %in% x] <= arb.thresh)
   })

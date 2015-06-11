@@ -28,6 +28,24 @@ PAdat <- select(PA, RECORD_ID, SPECIES, COUNTRY, LOCALITY, LATDECDEG,
 gooddata <- c("ok", "Ok", "OK", "Y") #note blanks and REJECT data are excluded
 loc_clean <- filter(PAdat, SpatialCheck=="Y", MapDecision %in% gooddata)
 
+# select only well fitting species (currently set as all where TSS is over 0.5
+# for all models and ROC is over 7.5 for all models)
+model_eval<-list.files("../FutureAnalog_output/5_arcmins/", full.name=TRUE,recursive=T,pattern="Eval.csv")
+model_eval<-rbind_all(lapply(model_eval, 
+                             function(x) read.csv(x, stringsAsFactors = FALSE)))
+colnames(model_eval)[1:2] <- c("Stat", "Species")
+
+# change here for sensitivity analyis
+model_eval$TEST <- (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.5) 
+                    & model_eval$Stat == "TSS") |
+  (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.75) 
+   & model_eval$Stat == "ROC")
+
+well.fitting.models <- subset(model_eval, !TEST)
+well.fitting.species <- unique(well.fitting.models$Species)
+
+loc_clean <- filter(loc_clean, SPECIES %in% well.fitting.species)
+
 # get into site by species format
 sppXsite <- select(loc_clean, RECORD_ID, LATDECDEG, LONGDECDEG, SPECIES) %>%
                    mutate(pres = 1) %>%
@@ -74,13 +92,16 @@ dat <- data.frame(dat)
 # site-pair table format -------------------------------------------------------
 bioData <- data.frame(site = rownames(dat), long = dat$x, lat = dat$y, dat[,6:ncol(dat)])
 envData <- data.frame(site = rownames(dat), long = dat$x, lat = dat$y, dat[,3:5])
-site.pair <- formatsitepair(bioData, 1, siteColumn="site", XColumn="long", YColumn="lat",
-                             predData=envData)
+site.pair2 <- formatsitepair(bioData, 1, siteColumn="site", XColumn="long", YColumn="lat",
+                             predData=envData, weightType = "richness")
 
 # fit GDM ----------------------------------------------------------------------
-gdm.model <- gdm(site.pair)
+gdm.model <- gdm(site.pair2)
 summary.gdm(gdm.model)
 
-predDiss <- predict(gdm.model, site.pair)
+png("gdmplot.png")
+plot.gdm(gdm.model, plot.layout = c(3,2))
+dev.off()
+predDiss <- predict(gdm.model, site.pair2)
 
-plot(site.pair$distance, predDiss)
+plot(site.pair2$distance, predDiss)

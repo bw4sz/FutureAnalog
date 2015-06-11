@@ -1,8 +1,11 @@
 
 #Write a function that gets the siteXspp matrix from an input list of niche_model outputs
-tableFromRaster<-function(fil_list,threshold){
+tableFromRaster<-function(fil_list,threshold, clust = 4){
   
-  trial<-foreach(mod=1:length(fil_list),.combine=cbind) %do% {
+  cl <- makeCluster(clust) # create parellel clusters
+  registerDoSNOW(cl)
+  
+  trial<-foreach(mod=1:length(fil_list),.combine=cbind, .packages = c("raster", "dplyr")) %dopar% {
     #read in the niche models from file
     niche.m<-lapply(fil_list[[mod]],function(x) raster(x))
     
@@ -39,10 +42,12 @@ tableFromRaster<-function(fil_list,threshold){
     paste("suitability threshold:",suit_cut,"")
     #Predicted Presence absence Column
     A_list<-values(niche_ens > suit_cut)*1
-    }
+  }
+  
+  stopCluster(cl)
   
   #use a regular expression to extract names
-  species <- str_match(fil_list,pattern=paste(cell_size,"(\\w+.\\w+)/proj_",sep="/"))[,2]
+  species <- str_match(fil_list,pattern=paste(cell,"(\\w+.\\w+)/proj_",sep="/"))[,2]
     
   #Name the rows and columns. 
   colnames(trial)<-species

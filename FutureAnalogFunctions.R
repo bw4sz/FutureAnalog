@@ -21,9 +21,11 @@ fnBetaDiv <- function(mod){
   phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
   phylo.dat <- phylo.dat[!rowSums(phylo.dat)<=2,]   
   
+  strt <- Sys.time()
   beta.time.phylo <- matpsim.pairwise(phyl = trx, 
                                       com.x = current.phylo, 
                                       com.y = phylo.dat)
+  Sys.time()-strt
   
   # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
   func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
@@ -36,29 +38,34 @@ fnBetaDiv <- function(mod){
   
   names(sp.list_current) <- rownames(current.func)
   
-  sp.list_future <- lapply(phylo.dat, function(k){
-    g <- phylo.dat[k,]
+  sp.list_future <- lapply(func.dat, function(k){
+    g <- func.dat[k,]
     names(g[which(g==1)])
   })
   
-  names(sp.list_future) <- rownames(phylo.dat)
+  names(sp.list_future) <- rownames(func.dat)
   
   #Get distances from the cophenetic matrix?
   dists <- as.matrix(fco)
   rownames(dists) <- rownames(fco)
   colnames(dists) <- rownames(fco)
   
+  cl <- makeCluster(clust) # make another cluster
+  registerDoSNOW(cl)
   
-  beta.time.func <- sapply(rownames(func.dat), function(fu){
+  beta.time.func <- foreach(fu=rownames(func.dat)) %dopar%{
     sapply(rownames(current.func), function(cur){
       MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
-    })
-  })
+    })}
   
-  res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
-  names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
-  return(res)
-  save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
+  
+  stopCluster(cl)
+
+ res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
+ names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
+ return(res)
+ save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
+  return(beta.time.taxa)
 }
 
 fnCurrent2Future <- function(betadiv, arb.thresh) {

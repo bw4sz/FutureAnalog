@@ -22,6 +22,9 @@ source("FutureAnalogFunctions.R")
 cell_size = 0.0833333333
 cell = "5_arcmins"
 
+# arbritrary threshold set here - need to change etc. for sensitivity analysis
+arbthresh = 0.2
+
 # create folders to output the models to
 output_folder = "../FutureAnalog_output" 
 out_path <- paste(output_folder, cell, sep = "/")
@@ -137,9 +140,6 @@ for(mod in clim.mods){
 
   # PART II: ANALOG ANALYSIS ---------------------------------------------------
   
-  # arbritrary threshold set here - need to change etc. for sensitivity analysis
-  arbthresh = 0.2
-  
   # This code has been set up so that additional lines with different thresholds
   # can be added in for sensitivity analysis
   
@@ -174,7 +174,7 @@ for(mod in clim.mods){
   results <- stack(c_f, f_c)
   names(results) <- c(paste("Novel",c("Tax","Phylo","Func")), 
                       paste("Disappearing",c("Tax","Phylo","Func")))
-  NonAnalogRasters[[mod]] <- results
+  
   save(results, file=paste0(out_path, "/NonAnalogRasters_", mod, ".rda"))
 }
 

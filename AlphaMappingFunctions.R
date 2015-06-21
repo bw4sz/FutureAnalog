@@ -1,6 +1,6 @@
 
 #Write a function that gets the siteXspp matrix from an input list of niche_model outputs
-tableFromRaster<-function(fil_list,threshold, clust = 4){
+tableFromRaster<-function(fil_list,threshold, clust = 7){
   
   cl <- makeCluster(clust) # create parellel clusters
   registerDoSNOW(cl)

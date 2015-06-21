@@ -1,4 +1,4 @@
-fnBetaDiv <- function(mod){
+fnBetaDiv <- function(mod, clust = 7){
   # get niche for the GCM 
   niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
   

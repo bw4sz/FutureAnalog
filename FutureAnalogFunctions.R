@@ -53,7 +53,7 @@ fnBetaDiv <- function(mod, clust = 7){
   cl <- makeCluster(clust) # make another cluster
   registerDoSNOW(cl)
   
-  beta.time.func <- foreach(fu=rownames(func.dat)) %dopar%{
+  beta.time.func <- foreach(fu=rownames(func.dat), .export = c("current.func", "MNND_fc"), .combine="cbind") %dopar%{
     sapply(rownames(current.func), function(cur){
       MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
     })}
@@ -61,7 +61,6 @@ fnBetaDiv <- function(mod, clust = 7){
   
   stopCluster(cl)
   
-  beta.time.func <- matrix(beta.time.func)
   rownames(beta.time.func) <- rownames(current.func)
   colnames(beta.time.func) <- rownames(func.dat)
 

@@ -12,10 +12,6 @@ for(p in packages) {
   require(p, character.only = TRUE)
 }
 
-# cell size - currently analyses are being done at 0.1 degrees, but might do 
-# sensitivity analysis
-cell_size = 0.1
-
 # load and clean species data --------------------------------------------------
 # Lets go get the presence data on hummingbird distributions
 PA <- read.csv("InputData/MASTER_POINTLOCALITYarcmap_review.csv")
@@ -55,9 +51,9 @@ sppXsite[is.na(sppXsite)] <- 0
 # load climate data - predictors -----------------------------------------------
 # Import environmental data from worldclim, three variables Bio1 = annual mean
 # temp, Bio12 = annual precip, Bio15 = precip seasonality
-myExpl <- c("../worldclim_data/bio1-9_30s_bil/bio_1.bil",
-            "../worldclim_data/bio10-19_30s_bil/bio_12.bil",
-            "../worldclim_data/bio10-19_30s_bil/bio_15.bil")
+myExpl <- c("../worldclim_data/bio_5m_bil/bio1.bil",
+            "../worldclim_data/bio_5m_bil/bio12.bil",
+            "../worldclim_data/bio_5m_bil/bio15.bil")
 
 myExpl <- stack(myExpl)
 
@@ -66,12 +62,6 @@ extPoint <- SpatialPoints(loc_clean[,c("LONGDECDEG","LATDECDEG")])
 
 # crop by this extent
 myExpl <- crop(myExpl,extPoint)
-
-# set cell size
-fact <- cell_size/res(myExpl) # the "factor" to aggregate by
-
-# Set cell size to ~ cell_size degree
-myExpl <- aggregate(myExpl,fact)
 
 # get data info correct format for bioFormat 4 (2 wouldn't work :( )) ----------
 # get sppXsite into raster format
@@ -84,11 +74,11 @@ datastack <- stack(myExpl, sppXsite.r)
 dat <- rasterToPoints(datastack)
 # remove rows without species
 dat <- subset(dat, rowSums(dat[,6:ncol(dat)]) > 0)
-# need to get rid of any rows with no environmental data (this is just one
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              #                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   need to get rid of any rows with no environmental data (this is just one
 # offshore record) create 
 dat <- dat[which(complete.cases(dat)),]
 dat <- data.frame(dat)
-
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        
 # site-pair table format -------------------------------------------------------
 bioData <- data.frame(site = rownames(dat), long = dat$x, lat = dat$y, dat[,6:ncol(dat)])
 envData <- data.frame(site = rownames(dat), long = dat$x, lat = dat$y, dat[,3:5])
@@ -102,6 +92,4 @@ summary.gdm(gdm.model)
 png("gdmplot.png")
 plot.gdm(gdm.model, plot.layout = c(3,2))
 dev.off()
-predDiss <- predict(gdm.model, site.pair2)
 
-plot(site.pair2$distance, predDiss)

@@ -60,12 +60,15 @@ fnBetaDiv <- function(mod, clust = 7){
   
   
   stopCluster(cl)
+  
+  beta.time.func <- matrix(beta.time.func)
+  rownames(beta.time.func) <- rownames(current.func)
+  colnames(beta.time.func) <- rownames(func.dat)
 
- res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
- names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
- return(res)
- save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
-  return(beta.time.taxa)
+  res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
+  names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
+  save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
+  return(res)
 }
 
 fnCurrent2Future <- function(betadiv, arb.thresh) {

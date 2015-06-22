@@ -131,7 +131,13 @@ current.func <- current.func[!apply(current.func,1,sum)<=2,]
 
 # list to output results
 NonAnalogRasters <- list()
-clim.mods <- list.files("../worldclim_data/projections_2070/")
+
+# If the worldclim data are on the computer running the analysis use first line,
+# if not use second but be careful to make sure contents of clim.mods.rda are
+# correct
+
+#clim.mods <- list.files("../worldclim_data/projections_2070/")
+load("clim.mods.rda")
 
 for(mod in clim.mods){
   # PART I BETWEEN TIME BETA-DIVERSITY MEASURES --------------------------------

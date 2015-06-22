@@ -137,7 +137,7 @@ NonAnalogRasters <- list()
 # correct
 
 #clim.mods <- list.files("../worldclim_data/projections_2070/")
-load("clim.mods.rda")
+load("InputData/clim.mods.rda")
 
 for(mod in clim.mods){
   # PART I BETWEEN TIME BETA-DIVERSITY MEASURES --------------------------------

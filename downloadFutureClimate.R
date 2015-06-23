@@ -10,6 +10,7 @@ clim.mods <- c(
 for(mod in clim.mods){
   download.file(paste0("http://biogeo.ucdavis.edu/data/climate/cmip5/5m/", mod, ".zip"),
                 paste0("../worldclim_data/projections_2070/", mod, ".zip"))
+  dir.create(paste0("../worldclim_data/projections_2070/", mod))
   unzip(paste0("../worldclim_data/projections_2070/", mod, ".zip"),
         exdir = paste0("../worldclim_data/projections_2070/", mod))
 }

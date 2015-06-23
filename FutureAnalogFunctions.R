@@ -38,10 +38,10 @@ fnBetaDiv <- function(mod, clust = 7){
   
   names(sp.list_current) <- rownames(current.func)
   
-  sp.list_future <- lapply(func.dat, function(k){
+  sp.list_future <- lapply(rownames(func.dat), function(k){
     g <- func.dat[k,]
     names(g[which(g==1)])
-  })
+  }) 
   
   names(sp.list_future) <- rownames(func.dat)
   

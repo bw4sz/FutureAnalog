@@ -66,7 +66,7 @@ fnBetaDiv <- function(mod, clust = 7){
 
   res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
   names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
-  save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
+  save(res, file = paste0(res_path, "/beta_diversity_", mod, ".rda"))
   return(res)
 }
 

@@ -183,6 +183,8 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
 runAnalogAnalysis <- function(arbthresh, out_path) {
   # get list of results from beta diversity analysis
   betadiv.files <- list.files(out_path, pattern = "beta_diversity")
+  if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))
+
   for(f in betadiv.files){
     load(f)
     mod <- substr(f, nchar(f)-11, nchar(f)-4)

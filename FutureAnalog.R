@@ -182,7 +182,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
 # PART II: ANALOG ANALYSIS ---------------------------------------------------
 runAnalogAnalysis <- function(arbthresh, out_path) {
   # get list of results from beta diversity analysis
-  betadiv.files <- list.files(out_path, pattern = "beta_diversity")
+  betadiv.files <- list.files(out_path, pattern = "beta_diversity", full.name = TRUE)
   if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))
 
   for(f in betadiv.files){
@@ -196,7 +196,7 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
     
     # For each of the current communities how many future communities fall below the
     # threshold (e.g., are analogous; 0 = similar, 1 = different)
-    c_f_tax <- fnCurrent2Future(bres$beta.time.taxa, arbthresh)
+    c_f_tax <- fnCurrent2Future(res$beta.time.taxa, arbthresh)
     c_f_phylo <- fnCurrent2Future(res$beta.time.phylo, arbthresh)
     c_f_func <- fnCurrent2Future(res$beta.time.func, arbthresh)
     

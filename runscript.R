@@ -1,7 +1,7 @@
 # Load required packages
 packages <- c("vegan", "picante", "analogue", "doSNOW", "ape", "cluster", 
               "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", 
-              "tidyr", "stringr", "dplyr", "biomod2")
+              "tidyr", "stringr", "dplyr", "biomod2", "rasterVis", "grid")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {

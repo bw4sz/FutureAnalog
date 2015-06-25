@@ -29,7 +29,6 @@ output_folder = "../FutureAnalog_output"
 out_path <- paste(output_folder, cell, sep = "/")
 if(!dir.exists(output_folder)) dir.create(output_folder)
 if(!dir.exists(out_path)) dir.create(out_path)
-if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))
 proj_folder <- getwd()
 
 # Run SDMs
@@ -52,5 +51,27 @@ runAnalogAnalysis(0.1, out_path)
 runAnalogAnalysis(0.2, out_path)
 runAnalogAnalysis(0.5, out_path)
 
+# Create plots for the results
 
+for(arbthresh in c(0.05, 0.1, 0.2, 0.5)) {
+  # means
+  fnFAPlot(arbthresh, comm.type = "Novel", scenario.type = "RCP", 
+           stat = "mean", low.col = "blue", high.col = "white")
+  fnFAPlot(arbthresh, comm.type = "Disappearing", scenario.type = "RCP", 
+           stat = "mean", low.col = "red", high.col = "white")
+  fnFAPlot(arbthresh, comm.type = "Novel", scenario.type = "GCM", 
+           stat = "mean", low.col = "blue", high.col = "white")
+  fnFAPlot(arbthresh, comm.type = "Disappearing", scenario.type = "GCM", 
+           stat = "mean", low.col = "red", high.col = "white")
+  
+  # sds
+  fnFAPlot(arbthresh, comm.type = "Novel", scenario.type = "RCP", 
+           stat = "sd", low.col = "white", high.col = "blue")
+  fnFAPlot(arbthresh, comm.type = "Disappearing", scenario.type = "RCP", 
+           stat = "sd", low.col = "white", high.col = "red")
+  fnFAPlot(arbthresh, comm.type = "Novel", scenario.type = "GCM", 
+           stat = "sd", low.col = "white", high.col = "blue")
+  fnFAPlot(arbthresh, comm.type = "Disappearing", scenario.type = "GCM", 
+           stat = "sd", low.col = "white", high.col = "red")
 
+}

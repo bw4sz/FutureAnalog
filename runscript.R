@@ -1,7 +1,7 @@
 # Load required packages
 packages <- c("vegan", "picante", "analogue", "doSNOW", "ape", "cluster", 
               "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", 
-              "tidyr", "stringr", "dplyr", "biomod2", "rasterVis", "grid")
+              "tidyr", "stringr", "dplyr", "biomod2", "rasterVis", "grid", "gdm")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -18,6 +18,7 @@ source("runSDM.R")
 source("fnSDM.R")
 source("runProjections.R")
 source("FutureAnalog.R")
+source("GDM.R")
 
 # variables for sensitivity analysis
 cell_size = 0.0833333333 # cell size numerical (degrees)
@@ -75,3 +76,6 @@ for(arbthresh in c(0.05, 0.1, 0.2, 0.5)) {
            stat = "sd", low.col = "white", high.col = "red")
 
 }
+
+# GDM code ---------------------------------------------------------------------
+gdm.out <- fitGDM()

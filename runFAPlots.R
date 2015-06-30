@@ -1,59 +1,92 @@
-fnFAPlot <- function(arbthresh, comm.type, scenario.type, stat, high.col, low.col){
-  out.rasters <- list.files(paste(out_path, arbthresh, sep="/"), 
-                            pattern = "NonAnalogRasters", 
-                            full.names = TRUE
+rasterToDataFrame <- function(out_path){
+  
+  out.rasters <- list.files(out_path, pattern = "NonAnalogRasters", full.names = TRUE, recursive = TRUE)
+  
+  out <- lapply(out.rasters, function(x) {
+    load(x)
+    
+    arbthresh <- str_match(x,pattern=paste(cell,"(\\w+.\\w+)/NonAnalog",sep="/"))[,2]
+    GCM <- substr(str_match(x,pattern=paste("Rasters_(\\w+.\\w+)bi70",sep="/"))[,2], 1, 2)
+    RCP <- substr(str_match(x,pattern=paste("Rasters_(\\w+.\\w+)bi70",sep="/"))[,2], 3, 4)
+    
+    dat <- as.data.frame(results, xy = TRUE) %>%
+      gather(key, value, -x, -y, na.rm = TRUE) %>%
+      mutate(arbthresh = arbthresh, GCM = GCM, RCP = RCP) %>%
+      separate(variable, into = c("comm.type", "measure"), sep = "\\.")
+  }
   )
-  
-  NonAnalogRasters <- lapply(out.rasters, 
-                             function(x) {
-                               load(x)
-                               return(results)
-                             }
-  )
-  
-  names(NonAnalogRasters) <- substr(out.rasters, 
-                                    nchar(out.rasters) - 11, 
-                                    nchar(out.rasters) - 8)
-  
-  mean_res <- list()
-  mean_scenario <- list()
-  
-  if(scenario.type == "RCP"){
-    scenario <- unique(substr(names(NonAnalogRasters), 3, 4))
-  }
-  if(scenario.type == "GCM"){
-    scenario <- unique(substr(names(NonAnalogRasters), 1, 2))
-  } 
-  
-  for(s in scenario) {
-    rasters <- grep(s, names(NonAnalogRasters))
-    rasters <- NonAnalogRasters[rasters]
-    for(nam in names(rasters[[1]])){
-      if(grepl(comm.type, nam) == TRUE) {
-        res <- lapply(rasters, function(x) x[[nam]])
-        res <- stack(res)
-        mean_res[[nam]] <- calc(res, get(stat))
-      }
-    }
-    mean_scenario[[s]] <- stack(mean_res)
-  }
-  
-  plot_dat <- stack(mean_scenario)
-  repWithScenario <- function(y){
-    x <- substr(y, nchar(y), nchar(y))
-    gsub(x, scenario[as.numeric(x)], y)
-  }
-  names(plot_dat) <- lapply(names(plot_dat), function(x) repWithScenario(x))
-  
-  gplot(plot_dat) + geom_tile(aes(fill = value)) +
-    facet_wrap(~variable, nrow = 3) +
-    scale_fill_gradient(low = low.col, high = high.col) +
-    coord_equal() + 
-    labs(x = "longitude", y = "latitude") + 
-    scale_x_continuous(breaks = seq(-81, -75, 2)) + 
-    theme_classic() + 
-    theme(strip.background=element_blank(), panel.margin = unit(1, "lines"))
-  
-  filenam <- paste(arbthresh, comm.type, scenario.type, stat, sep="_", ".pdf")
-  ggsave(paste(out_path, filenam, sep="/"), width = 17, height = 9)
+  out <- do.call("rbind", out)
 }
+
+dat <- rasterToDataFrame(out_path)
+dat$measure <- factor(dat$measure, levels=c("Tax", "Phylo", "Func"))
+
+# Sensitivity analysis plots by threshold
+thresh_sa.novel <- filter(dat, comm.type=="Novel") %>% 
+  group_by(x, y, measure, arbthresh) %>%
+  summarise(NoOfAnalogs = mean(value))
+
+ggplot(thresh_sa.novel, aes(x, y, fill = NoOfAnalogs)) + 
+  scale_fill_gradient(low = "blue", high = "white") +
+  facet_grid(measure ~ arbthresh) + 
+  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+
+ggsave(paste(out_path, "Threshold_SA_Novel.png", sep="/"), width = 17, height = 9)
+
+thresh_sa.diss <- filter(dat, comm.type=="Disappearing") %>% 
+  group_by(x, y, measure, arbthresh) %>%
+  summarise(NoOfAnalogs = mean(value))
+
+ggplot(thresh_sa.diss, aes(x, y, fill = NoOfAnalogs)) + 
+  scale_fill_gradient(low = "red", high = "white") +
+  facet_grid(measure ~ arbthresh) + 
+  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+
+ggsave(paste(out_path, "Threshold_SA_Disappearing.png", sep="/"), width = 17, height = 9)
+
+# Novel average of GCMs (res for each RCP shown)
+novel.20.rcp <- subset(dat, comm.type=="Novel", arbthresh = 0.2) %>%
+  group_by(x, y, measure, RCP) %>%
+  summarise(NoOfAnalogs = mean(value))
+
+ggplot(novel.20.rcp, aes(x, y, fill = NoOfAnalogs)) + 
+  scale_fill_gradient(low = "blue", high = "white") +
+  facet_grid(measure ~ RCP) + 
+  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+
+ggsave(paste(out_path, "Novel_by_RCP_20perc_thres.png", sep="/"), width = 17, height = 9)
+
+novel.20.gcm <- subset(dat, comm.type=="Novel", arbthresh = 0.2) %>%
+  group_by(x, y, measure, GCM) %>%
+  summarise(NoOfAnalogs = mean(value))
+
+ggplot(novel.20.gcm, aes(x, y, fill = NoOfAnalogs)) + 
+  scale_fill_gradient(low = "blue", high = "white") +
+  facet_grid(measure ~ GCM) + 
+  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+
+ggsave(paste(out_path, "Novel_by_GCM_20perc_thres.png", sep="/"), width = 17, height = 9)
+
+# Disappearing average of GCMs (res for each RCP shown)
+diss.20.rcp <- subset(dat, comm.type=="Disappearing", arbthresh = 0.2) %>%
+  group_by(x, y, measure, RCP) %>%
+  summarise(NoOfAnalogs = mean(value))
+
+ggplot(diss.20.rcp, aes(x, y, fill = NoOfAnalogs)) + 
+  scale_fill_gradient(low = "red", high = "white") +
+  facet_grid(measure ~ RCP) + 
+  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+
+# Disappearing average of RCPs (res for each GCM shown)
+ggsave(paste(out_path, "Disappearing_by_RCP_20perc_thres.png", sep="/"), width = 17, height = 9)
+
+diss.20.gcm <- subset(dat, comm.type=="Disappearing", arbthresh = 0.2) %>%
+  group_by(x, y, measure, GCM) %>%
+  summarise(NoOfAnalogs = mean(value))
+
+ggplot(diss.20.gcm, aes(x, y, fill = NoOfAnalogs)) + 
+  scale_fill_gradient(low = "red", high = "white") +
+  facet_grid(measure ~ GCM) + 
+  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+
+ggsave(paste(out_path, "Disappearing_by_GCM_20perc_thres.png", sep="/"), width = 17, height = 9)

@@ -1,13 +1,13 @@
 [general] 
 creator=R package 'raster' 
-created= 2013-10-30 12:41:56 
+created= 2014-08-21 15:44:21 
 [georeference] 
-nrows= 9 
-ncols= 8 
-xmin= -81.15 
-ymin= -5.48333333333335 
+nrows= 64 
+ncols= 58 
+xmin= -80.95 
+ymin= -4.93333333333335 
 xmax= -75.15 
-ymax= 1.26666666666667 
+ymax= 1.46666666666667 
 projection= +proj=longlat +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +no_defs 
 [data] 
 datatype= FLT8S 
@@ -15,13 +15,12 @@ byteorder= little
 nbands= 1 
 bandorder= BIL 
 categorical= FALSE 
-minvalue= 11.3466569966665 
-maxvalue= 20.1903749332144 
+minvalue= 5.37911326530731 
+maxvalue= 15.8654016844995 
 nodatavalue= -1.7e+308 
 [legend] 
 legendtype=  
 values=  
 color=  
 [description] 
-layername= Trait 
-history=  
+layername= layer 

@@ -1,43 +1,53 @@
 
 #Write a function that gets the siteXspp matrix from an input list of niche_model outputs
-tableFromRaster<-function(fil_list,threshold){
-  trial<-foreach(mod=1:length(fil_list),.combine=cbind) %do% {
-    
+tableFromRaster<-function(fil_list,threshold, clust = 7){
+  
+  cl <- makeCluster(clust) # create parellel clusters
+  registerDoSNOW(cl)
+  
+  trial<-foreach(mod=1:length(fil_list),.combine=cbind, .packages = c("raster", "dplyr")) %dopar% {
     #read in the niche models from file
     niche.m<-lapply(fil_list[[mod]],function(x) raster(x))
     
     niche_ens<-niche.m[[1]][[1]]
     
     #get species name
-    sp.n<-strsplit(names(niche_ens),"_")[[1]][1]
+    #This portion is a bit sensitive to file structure, if error calls, check here first!
+    # Fixed so not so sensitive to file structure
+    us.pos <- gregexpr(pattern = "_", niche_ens@file@name) # pos of underscores
+    sp.start <- us.pos[[1]][[length(us.pos[[1]]) - 1]] # pos of penultimate us
+    sp.end <- us.pos[[1]][[length(us.pos[[1]])]] # pos of last us
+    sp.n <- substr(niche_ens@file@name, sp.start + 1, sp.end - 1)
     
     #Lets go get the presence data on hummingbird distributions
-    Niche_locals<-read.csv(paste(gitpath,"InputData/MASTER_POINTLOCALITYarcmap_review.csv",sep=""))
+    Niche_locals <- read.csv("InputData/MASTER_POINTLOCALITYarcmap_review.csv")
 
     #Just take the columns you want. 
-    PAdat<-Niche_locals[,colnames (Niche_locals) %in% c("RECORD_ID","SPECIES","COUNTRY","LOCALITY","LATDECDEG","LONGDECDEG","Decision","SpatialCheck","MapDecision")]
+    PAdat <- select(Niche_locals, RECORD_ID, SPECIES, COUNTRY, LOCALITY, LATDECDEG,
+                  LONGDECDEG, Decision, SpatialCheck, MapDecision)
     
-    PAdat<-PAdat[!PAdat$LONGDECDEG==-6,]
-    loc_clean<-PAdat[PAdat$Decision=="OK"|PAdat$MapDecision=="OK"|PAdat$MapDecision=="",]
-    loc_clean<-PAdat[PAdat$SpatialCheck=="Y",]
+    gooddata <- c("ok", "Ok", "OK", "Y") #note that blanks ("") and REJECT data are excluded
+    loc_clean <- filter(PAdat, SpatialCheck=="Y", MapDecision %in% gooddata)
     
-    sp.loc<-loc_clean[loc_clean$SPECIES %in%  gsub("\\."," ",sp.n),]
+    sp.loc <- filter(loc_clean, SPECIES %in%  gsub("\\."," ",sp.n))
     sp.loc<-SpatialPointsDataFrame(sp.loc[,c("LONGDECDEG","LATDECDEG")],sp.loc)
     
     #draw suitability for occurence points
-    site_suit<-extract(niche_ens,sp.loc)
-    suit_cut<-quantile(na.omit(site_suit),threshold)
+    site_suit<-raster::extract(niche_ens,sp.loc)
+    suit_cut<-stats::quantile(na.omit(site_suit),threshold)
     
     #plot to file
-    print(qplot(site_suit) + geom_vline(aes(xintercept=suit_cut),linetype="dashed",col="Red"))
+    #print(qplot(site_suit) + geom_vline(aes(xintercept=suit_cut),linetype="dashed",col="Red"))
     
     paste("suitability threshold:",suit_cut,"")
     #Predicted Presence absence Column
     A_list<-values(niche_ens > suit_cut)*1
-    }
+  }
   
-  #use a regular expression  to extract names
-  species<-str_match(fil_list,pattern=paste(cell_size,"(\\w+.\\w+)/proj_",sep="/"))[,2]
+  stopCluster(cl)
+  
+  #use a regular expression to extract names
+  species <- str_match(fil_list,pattern=paste(cell,"(\\w+.\\w+)/proj_",sep="/"))[,2]
     
   #Name the rows and columns. 
   colnames(trial)<-species
@@ -61,8 +71,8 @@ chunk<-function(dat,max){
 }
 
 AlphaPhylo<-function(siteXspp.raster){
-    # remove any species not in the phylogeny
-  siteXspp.raster.Phylo<-siteXspp.raster[,colnames(siteXspp.raster) %in% colnames(co)]
+  #remove any species not in the phylogeny
+  siteXspp.raster.Phylo<-siteXspp.raster[ , colnames(siteXspp.raster) %in% colnames(co)]
   
   #Get sum rows
   rowS.Phylo<-apply(siteXspp.raster.Phylo,1,sum,na.rm=TRUE)
@@ -76,8 +86,13 @@ AlphaPhylo<-function(siteXspp.raster){
   #remove untrimmed siteXspp data
   rm(siteXspp.raster.Phylo)
   
+  #remove any species with na
+  toremove<-apply(siteXspp.Phylo,2,sum)
+  
+  siteXspp.Phylo<-siteXspp.Phylo[,colnames(siteXspp.Phylo) %in% names(which(!is.na(toremove)))]
+  
   #mean phylogenetic branch length at each community
-  a<-mpd(siteXspp.Phylo,co)
+  a<-mpd(siteXspp.Phylo,cophenetic(trx))
   
   #Add in cell names and write to file
   MPDcell<-data.frame(rownames(siteXspp.Phylo),a)
@@ -91,12 +106,17 @@ AlphaFunc<-function(siteXspp.raster){
   #Only keep communities with species with functional information and richness > 1
   siteXspp.raster.Func<-siteXspp.raster[,colnames(siteXspp.raster) %in% colnames(fco)]
   
-  rowS.Func<-apply(siteXspp.raster.Func,1,sum)
+  rowS.Func<-apply(siteXspp.raster.Func,1,sum,na.rm=TRUE)
   siteXspp.Func<-siteXspp.raster.Func[rowS.Func > 1,]
+  
+  #remove any species with na
+  toremove<-apply(siteXspp.Func,2,sum)
+  
+  siteXspp.Func<-siteXspp.Func[ ,colnames(siteXspp.Func) %in% names(which(!is.na(toremove)))]
   
   #find mean func neighbor at each assemblage
   a<-mpd(siteXspp.Func,fco)
-  
+    
   #Put the cell numbers so it can be identified as each community
   MFDCell<-data.frame(rownames(siteXspp.Func),a)
   colnames(MFDCell)<-c("Cell","MFD")
@@ -153,6 +173,28 @@ cellVis<-function(cells,value){
   
   return(alpha_structure)
 }
+
+#wrapper function to be called for all types of climate layers and time periods
+cellVisuals<-function(inp.name){
+  
+  #Taxonomic richness
+  richnessvalues<-apply(siteXspps[names(siteXspps) %in% inp.name][[1]],1,sum,na.rm=TRUE)
+  cellP<-rownames(siteXspps[names(siteXspps) %in% inp.name][[1]])
+  richness<-cellVis(cells=cellP,value=richnessvalues)
+  
+  #Phylogenetic richness
+  prichness<-MPDs[names(MPDs) %in% inp.name][[1]]$MPD
+  pcellP<-MPDs[names(MPDs) %in% inp.name][[1]]$Cell
+  MPD.vis<-cellVis(cells=pcellP,value=prichness)
+  
+  #Func Tree
+  fcellP<-MFDs[names(MFDs) %in% inp.name][[1]]$Cell
+  frichness<-MFDs[names(MFDs) %in% inp.name][[1]]$MFD
+  MFD.vis<-cellVis(fcellP,frichness)
+  
+  out<-list(richness,MPD.vis,MFD.vis)
+  names(out)<-c("Richness","Phylogenetic","Trait")
+  return(out)}
 
 ###Parallel Phylosor
 
@@ -304,14 +346,14 @@ matpsim <- function(phyl, com, clust = 7) # make sure nodes are labelled and tha
     spp_br[i,names(brs[[i]])] <- brs[[i]]
   }
   
-  spp_br <- spp_br[,-(ncol(com)+1)] # removes root
+  spp_br <- spp_br[,-(ncol(com)+1)] # removes root # Laura note: what is this doing? Is it getting rid of the branch containing all NAs? If so, it's not removing the correct one. 
   spp_br <- spp_br[,!colSums(spp_br) %in% c(0,nrow(spp_br))]  # here take out all common branches instead
   
   print("spp_br")
   
   spp_br <<- spp_br
   
-  # function to give the pres/abs of phy branches withi cell i
+  # function to give the pres/abs of phy branches within cell i
   
   cellbr <- function(i,spp_br, com)
   {
@@ -604,7 +646,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
   print("cell_br")
   rownames(tcellbr.x) <- rownames(com.x)
   rownames(tcellbr.y) <- rownames(com.y)
-  tcellbr <<- tcellbr
+  #tcellbr <<- tcellbr
   
   # function to calculate phylobsim between cell_a and cell_b
   
@@ -687,5 +729,32 @@ Beval.pam <- function( dis, dismat, s.all,maxclust = 100)
   
   stopCluster(cl)
   return(all.eval) 
+}
+
+
+###Between time func
+
+MNND_fc <- function(fu,cur,sp.list_current,sp.list_future,dists)
+{
+  Asp     <- sp.list_current[[fu]]
+  Bsp     <- sp.list_future[[cur]]
+  
+  if(is.null(Asp) | is.null(Bsp)){
+    res <- 1
+    #names(res) <- "MNND"
+  } else {
+    compmat <- dists[Asp,Bsp]
+    Ann     <- apply(as.matrix(compmat),1,min)
+    Bnn     <- apply(as.matrix(compmat),2,min)
+    Dnn     <- mean(c(Ann, Bnn))
+    #turn    <- min(c(mean(Ann),mean(Bnn)))
+    #nest    <- Dnn - turn
+    #res <- c(Dnn,turn,nest)
+    res<-c(Dnn)
+    #names(res) <- c("MNND","MNNDturn","MNNDnest")
+    #names(res) <- c("MNND")  
+  }
+  
+  return(res)
 }
 

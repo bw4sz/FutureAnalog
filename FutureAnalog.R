@@ -1,562 +1,317 @@
-require(vegan)
-require(picante)
-require(reshape)
-require(reshape2)
-require(analogue)
-require(doSNOW)
-require(ape)
-require(cluster)
-require(RColorBrewer)
-require(raster)
-require(ggplot2)
-require(phylobase)
+# FutureAnalog.R ---------------------------------------------------------------
 
-droppath<-"C:\\Users\\Ben\\Dropbox\\"
-gitpath<-"C:\\Users\\Ben\\Documents\\FutureAnalog\\"
+#This code goes through the results from AlphaMapping.R to determine the 
+# number of analog hummingbird assemblages in Ecuador under future climate scenarios.
+# PART I CALCULATE BETWEEN TIME BETA-DIVERSITY MEASURES ------------------------
+runBetaDiv <- function(out_path, cell_size, clust = 7){
 
-#Load in source functions
-source(paste(gitpath,"AlphaMappingFunctions.R",sep=""))
-
-setwd(paste(droppath,"NASA_Anusha\\FutureAnalog",sep=""))
-
-#Load in data
-load("AlphaMapping.RData")
-
-#If testing the script grab a much smaller chunk?
-current<-siteXspps[[1]][sample(1:nrow(siteXspps[[1]]),1000),]
-future<-siteXspps[[3]][sample(1:nrow(siteXspps[[3]]),1000),]
-
-#Maybe just grab the middle layer to visualize?
-#current<-siteXspps[[1]][6000:12500,]
-#future<-siteXspps[[3]][6000:12500,]
-
-#current<-siteXspps[[1]]
-#future<-siteXspps[[3]]
-
-#Find within betadiversity
-within.current.dist<-vegdist(current,"bray")
-within.current<-as.matrix(within.current.dist)
-
-#Find within phylobetadiversity
-#For phylobeta, there needs to be more than 2 species for a rooted tree
-phylo.current<-current[,colnames(current) %in% trx$tip.label]
-phylo.current<-phylo.current[!apply(phylo.current,1,sum)<=2,]
-
-phylo.future<-future[,colnames(future) %in% trx$tip.label]
-phylo.future<-phylo.future[!apply(phylo.future,1,sum)<=2,]
-
-#Find within Func betadiversity
-Func.current<-current[,colnames(current) %in% colnames(fco)]
-Func.current<-Func.current[!apply(Func.current,1,sum)<=2,]
-
-Func.future<-future[,colnames(future) %in% colnames(fco)]
-Func.future<-Func.future[!apply(Func.future,1,sum)<=2,]
-
-#Within current phylobetadiversity
-system.time(holt.try<-matpsim(phyl=trx,com=phylo.current,clust=3))
-
-#Within current func betadiversity
-#system.time(holt.func<-matpsim(phyl=tree.func,com=Func.current,clust=7))
-
-####MNNTD method for integrating trait beta, needs to be checked, used in the DimDiv script
-
-source(paste(gitpath,"BenHolttraitDiversity.R",sep=""))
-#source("BenHolttraitDiversity.R")
-
-#create sp.list
-sp.list<-lapply(rownames(Func.current),function(k){
-  x<-Func.current[k,]
-  names(x[which(x==1)])
-})
-
-names(sp.list)<-rownames(Func.current)
-
-dists <- as.matrix(fco)
-
-rownames(dists) <- rownames(fco)
-colnames(dists) <- rownames(fco)
-
-sgtraitMNTD <- sapply(rownames(Func.current),function(i){
+  # Step 1) Bring in Phylogenetic Data -------------------------------------------
+  trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
+  spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
   
-  #Iterator count
-  #print(round(which(rownames(siteXspp_traits)==i)/nrow(siteXspp_traits),3))
+  # Replace tip.label with Spnames, replace the tiplabels with periods, which is
+  # the biomod default Cophenetic distance is the distance between all pairs of
+  # species- measure of relatedness
+  trx$tip.label <- gsub("_",".",as.character(spnames$SpName))
+  co<-cophenetic(trx)
   
-  #set iterator
-  A<-i
+  # Step 2) Bring in trait data --------------------------------------------------
+  morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
   
-  #
-  out<-lapply(rownames(Func.current)[1:(which(rownames(Func.current) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
-  names(out)<-rownames(Func.current)[1:(which(rownames(Func.current) == i))]
-  return(out)
-})
+  #just get males & the 3 traits of interest
+  mon <- filter(morph, Sex == "Macho") %>%
+    select(SpID, ExpC, Peso, AlCdo) %>%
+    group_by(SpID) %>%
+    summarise_each(funs(mean(., na.rm = TRUE))) %>%
+    filter(complete.cases(.))
+  
+  mon <- data.frame(mon)
+  colnames(mon) <- c("Species","Bill","Mass","WingChord")
+  rownames(mon) <- gsub(" ",".",mon$Species)
+  mon <- mon[,-1]
+  
+  #principal component traits and get euclidean distance matrix
+  means <- apply(mon, 2, mean)
+  
+  Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
+  Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
+  WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
+  
+  z.scores <- data.frame(Bill, Mass, WingChord)
+  rownames(z.scores) <- rownames(mon)
+  
+  fco <- as.matrix(dist(z.scores, method = "euclidean"))
+  
+  # Step 3) Bring in niche models ------------------------------------------------
+  all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
+  
+  # Clip to Extent and shape of desired countries (Ecuador for now)
+  ec<-readOGR("InputData", "EcuadorCut")
+  r<-raster(extent(ec))
+  
+  # Match cell size above from the SDM_SP function
+  res(r) <- cell_size
+  ec.r <- rasterize(ec,r)
+  
+  niche.crop <- lapply(all.niche,function(x){
+    r <- crop(raster(x),extent(ec.r))
+    filnam <- paste(strsplit(x,".gri$")[[1]][1],"crop",sep="")
+    writeRaster(r,filnam,overwrite=TRUE)
+  })
+  
+  # select only well fitting species (currently set as all where TSS is over 0.5
+  # for all models and ROC is over 7.5 for all models)
+  model_eval<-list.files(out_path, full.name=TRUE,recursive=T,pattern="Eval.csv")
+  model_eval<-rbind_all(lapply(model_eval, 
+                               function(x) read.csv(x, stringsAsFactors = FALSE)))
+  colnames(model_eval)[1:2] <- c("Stat", "Species")
+  
+  # change here for sensitivity analyis
+  model_eval$TEST <- (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.5) 
+                      & model_eval$Stat == "TSS") |
+    (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.75) 
+     & model_eval$Stat == "ROC")
+  
+  well.fitting.models <- subset(model_eval, !TEST)
+  well.fitting.species <- unique(well.fitting.models$Species)
+  well.fitting.species <- gsub(" ", ".", well.fitting.species)
+  
+  # get the crop files
+  niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
+  
+  files <- c()
+  for(s in well.fitting.species){
+    files <- c(files,grep(s, niche.crops))
+  }
+  
+  niche.crops <- niche.crops[files]
+  
+  # create a blank raster object of the correct size and extent to have for
+  # projecting the cell values
+  blank <- raster(niche.crops[[1]])
+  
+  # Step 4) Get current niches for comparing to ----------------------------------
+  current <- niche.crops[grep("current", niche.crops, value=FALSE)]
+  current <- tableFromRaster(current, threshold = 0.05)
+  
+  #Remove NAs from current so we can do the following analyses. Some species do
+  #not occur in Ecuador, so they should be removed from analysis here.
+  fails <- na.test(current)
+  current <- current[,!colnames(current) %in% fails]
+  
+  current.phylo <- current[,colnames(current) %in% trx$tip.label]
+  current.phylo <- current.phylo[!rowSums(current.phylo)<=2,]  
+  
+  current.func <- current[,colnames(current) %in% colnames(fco)]
+  current.func <- current.func[!apply(current.func,1,sum)<=2,]  
+  
+  # list to output results
+  NonAnalogRasters <- list()
+  
+  # Get climate models in use
+  clim.mods <- list.files("../worldclim_data/projections_2070/")
+  
+  for(mod in clim.mods){
+    niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
+    
+    #Create siteXspp table from input rasters, function is from
+    #AlphaMappingFunctions.R, sourced at the top.
+    siteXspps <- tableFromRaster(niche, threshold = 0.05)
+    
+    #Remove NAs from siteXspps 
+    fails <- na.test(siteXspps)
+    siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
+    
+    # Step 1) TAXONOMIC BETA DIVERSITY ---------------------------------------------
+    beta.time.taxa <- analogue::distance(current, siteXspps, "bray")
+    
+    # Step 2) PHYLO BETA DIVERSITY -------------------------------------------------
+    # For phylobeta, there needs to be more than 2 species for a rooted tree
+    phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
+    phylo.dat <- phylo.dat[!rowSums(phylo.dat)<=2,]   
+    
+    strt <- Sys.time()
+    beta.time.phylo <- matpsim.pairwise(phyl = trx, 
+                                        com.x = current.phylo, 
+                                        com.y = phylo.dat)
+    Sys.time()-strt
+    
+    # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
+    func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
+    func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
+    
+    sp.list_current <- lapply(rownames(current.func), function(k){
+      g <- current.func[k,]
+      names(g[which(g==1)])
+    })
+    
+    names(sp.list_current) <- rownames(current.func)
+    
+    sp.list_future <- lapply(rownames(func.dat), function(k){
+      g <- func.dat[k,]
+      names(g[which(g==1)])
+    }) 
+    
+    names(sp.list_future) <- rownames(func.dat)
+    
+    #Get distances from the cophenetic matrix?
+    dists <- as.matrix(fco)
+    rownames(dists) <- rownames(fco)
+    colnames(dists) <- rownames(fco)
+    
+    cl <- makeCluster(clust) # make another cluster
+    registerDoSNOW(cl)
+    
+    beta.time.func <- foreach(fu=rownames(func.dat), .export = c("current.func", "MNND_fc"), .combine="cbind") %dopar%{
+      sapply(rownames(current.func), function(cur){
+        MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
+      })}
+    
+    
+    stopCluster(cl)
+    
+    rownames(beta.time.func) <- rownames(current.func)
+    colnames(beta.time.func) <- rownames(func.dat)
+    
+    res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
+    names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
+    save(res, file = paste0(res_path, "/beta_diversity_", mod, ".rda"))
+  }
+}
 
-names(sgtraitMNTD) <- rownames(Func.current)
-melt.MNTD<-melt(sgtraitMNTD)
+# PART II: ANALOG ANALYSIS ---------------------------------------------------
+runAnalogAnalysis <- function(arbthresh, out_path) {
+  # get list of results from beta diversity analysis
+  betadiv.files <- list.files(out_path, pattern = "beta_diversity", full.name = TRUE)
+  if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))
 
-colnames(melt.MNTD)<-c("MNTD","To","From")
+  for(f in betadiv.files){
+    load(f)
+    mod <- substr(f, nchar(f)-11, nchar(f)-4)
+    
+    # Step 1) CURRENT COMMUNITIES WITHOUT ANALOGS IN FUTURE (Disappearing) -------
+    
+    # How many current communities have do not have analogs in the future?
+    # These are akin to communities which will disappear, "Disappearing"
+    
+    # For each of the current communities how many future communities fall below the
+    # threshold (e.g., are analogous; 0 = similar, 1 = different)
+    c_f_tax <- fnCurrent2Future(res$beta.time.taxa, arbthresh)
+    c_f_phylo <- fnCurrent2Future(res$beta.time.phylo, arbthresh)
+    c_f_func <- fnCurrent2Future(res$beta.time.func, arbthresh)
+    
+    # Create output raster stack (Disappearing) 
+    c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
+    names(c_f) <- c("Taxonomic", "Phylogenetic", "Functional")
+    
+    # Step 2) FUTURE COMMUNITIES WITHOUT ANALOGS IN CURRENT (Novel) --------------
+    
+    #How many future communities do not have analogs in the current time?
+    #These are akin to communities that are novel, "Novel"
+    f_c_tax <- fnFuture2Current(res$beta.time.taxa, arbthresh)
+    f_c_phylo <- fnFuture2Current(res$beta.time.phylo, arbthresh)
+    f_c_func <- fnFuture2Current(res$beta.time.func, arbthresh)
+    
+    # Visualize all three NON-ANALOGS together --------------------------
+    f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
+    names(f_c) <- c("Taxonomic", "Phylogenetic", "Functional")
+    
+    # output the raster stacks
+    results <- stack(c_f, f_c)
+    names(results) <- c(paste("Novel",c("Tax","Phylo","Func")), 
+                        paste("Disappearing",c("Tax","Phylo","Func")))
+    
+    save(results, file=paste0(out_path, "/", arbthresh, "/NonAnalogRasters_", mod, ".rda"))
+  }
+}
 
-#turn beta measures into a matrices
-within.current.phylo<-as.matrix(holt.try)
+# Misc functions needed for the above functions
+fnCurrent2Future <- function(betadiv, arb.thresh) {
+  n.analogs <- sapply(rownames(betadiv), function(x){
+    sum(betadiv[rownames(betadiv) %in% x,] <= arb.thresh) 
+    #counts the number of assemblages with beta div values less than arb.thresh
+  })
+  
+  current_to_future.analog <- data.frame(rownames(betadiv), n.analogs)
+  colnames(current_to_future.analog) <- c("cell.number", "numberofanalogs")  
+  
+  c_f <- cellVis(cells=current_to_future.analog$cell.number, 
+                 value=current_to_future.analog$numberofanalogs)
+  hist(current_to_future.analog$numberofanalogs)
+  return(c_f)
+}
 
-#needs to cast into a matrix to fit old formatting?
-#############needs to be done#######################
-#turn into a matrix
-within.current.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
-rownames(within.current.func)<-within.current.func[,1]
-within.current.func<-within.current.func[,-1]
+fnFuture2Current <- function(betadiv, arb.thresh){
+  n.analogs <- sapply(colnames(betadiv), function(x){
+    sum(betadiv[,colnames(betadiv) %in% x] <= arb.thresh)
+  })
+  
+  future_to_current.analog <- data.frame(colnames(betadiv), n.analogs)
+  colnames(future_to_current.analog) <- c("cell.number", "numberofanalogs")  
+  
+  f_c <- cellVis(cell=future_to_current.analog$cell.number, 
+                 value=future_to_current.analog$numberofanalogs)
+  hist(future_to_current.analog$numberofanalogs)
+  return(f_c)
+}
 
-#within.current.func<-as.matrix(holt.func)
+na.test <-  function (x) {
+  w <- apply(x, 2, function(x)all(is.na(x)))
+  if (any(w)) {
+    fails <- names(which(w))
+    print(paste("All NA in columns", paste(names(which(w)), collapse=", ")))
+    return(fails)
+  }
+}
 
-##################################
-#Quantile Delination Approach
-##################################
-#Find the 5th quantile for each community
-#quant.5<-apply(within.current,1,function(x){
-  #quantile(x,.95)})
-#names(quant.5)<-rownames(within.current)
 
-#quant.phylo.5<-apply(within.current.phylo,1,function(x){
-  #quantile(x,.95)})
-#names(quant.phylo.5)<-rownames(within.current.phylo)
 
-#quant.func.5<-apply(within.current.func,1,function(x){
-  #quantile(x,.95)})
-#names(quant.func.5)<-rownames(within.current.func)
 
-#Once the clusters have been set, we can remove the large within current filezs
-#rm(within.current,within.current.dist,holt.func,holt.try,within.current.func,within.current.phylo)
-#gc()
 
-###########################
-#Between time taxonomic betadiversity
-###########################
 
-beta.time<-analogue::distance(current,future,"bray")
+
+
+
+
+
+## *** CODE CHECKED TO HERE *** ################################################
+
+
+
+# #plot both as a panel              TODO: this needs to be improved - loop through emissions scenarios, plot in diff colors
+# #Just try plotting one emission scenario across both disappearing and novel
+# novel <- f_c[[c(1,4,7)]]
+# disappear <- c_f[[c(1,4,7)]]
+# 
+# #This could be named correctly using 
+# firstplot <- stack(novel,disappear)
+# names(firstplot) <- c(paste("Novel",c("Tax","Phylo","Func")), paste("Disappearing",c("Tax","Phylo","Func")))
+# cols = c(blues, blues, blues, reds, reds, reds)
+# 
+# blues <- colorRampPalette(brewer.pal(9,"Blues"))(100)
+# reds <- colorRampPalette(brewer.pal(9,"Reds"))(100)
+# plot(novel, col=rev(blues))
+# plot(disappear, col=rev(reds))
+
 
 #####################
-#CURRENT IS ROWS
-#####################
+#FIXME: CLEANED UNTIL HERE 8/25/2014 
+#TODO: determine what the object names refer to - add loops? Finish code.
+#TODO: The next sections appears to run some correlation tests and test the sensitivity of the analysis for 
+#      the arbitrary threshold.  It also saves several output plots. Determine what we need, streamline and test it.
+#       save results and make sure it could be run on many more scenarios.
 
-#####################
-#FUTURE IS COLUMNS
-#####################
+#The rest should be fairly straightforward, correlating the rasters from above, 
+#the f_c raster is the number of future analogs of current assemblages
+#The c_f is the number of current analogs of future assemblages
 
-#For phylobetadiversity
-#Between time phylobetadiversity
-beta.time.phylo<-as.matrix(matpsim.pairwise(phyl=trx,com.x=phylo.current,com.y=phylo.future,clust=8))
 
-#Repeat steps above for within time trait, but replacing Func.current with Func.future
-#create sp.list
-sp.list<-lapply(rownames(Func.future),function(k){
-  x<-Func.future[k,]
-  names(x[which(x==1)])
-})
+##TODO Create a wrapper than takes in the above code as a function of the GCM layer. 
+#    Maybe specify the gcm layer as a folder, ie each gcm is made up of three files, which are in their own folder, 
+#     and it takes the folder name as input. 
 
-names(sp.list)<-rownames(Func.future)
+#TODO: Make code that outputs main tables and figures for manuscript. Mean effects across all GCMs, 
+#      plotted by scenario and dimension of biodiv (novel and disappearing; correlation table)
 
-dists <- as.matrix(fco)
-
-rownames(dists) <- rownames(fco)
-colnames(dists) <- rownames(fco)
-
-sgtraitMNTD <- sapply(rownames(Func.future),function(i){
-  
-  #Iterator count
-  #print(round(which(rownames(siteXspp_traits)==i)/nrow(siteXspp_traits),3))
-  
-  #set iterator
-  A<-i
-  
-  #
-  out<-lapply(rownames(Func.future)[1:(which(rownames(Func.future) == i))], function(B) {MNND(A,B,sp.list=sp.list,dists=dists)})
-  names(out)<-rownames(Func.future)[1:(which(rownames(Func.future) == i))]
-  return(out)
-})
-
-names(sgtraitMNTD) <- rownames(Func.future)
-melt.MNTD<-melt(sgtraitMNTD)
-
-colnames(melt.MNTD)<-c("MNTD","To","From")
-
-#needs to be casted back into a matrix, see reshape2::dcast., name it betatime func
-beta.time.func<-dcast(melt.MNTD,To~From,value.var="MNTD")
-rownames(beta.time.func)<-beta.time.func[,1]
-beta.time.func<-beta.time.func[,-1]
-
-#############################################
-###################ANALOG ANALYSIS
-#############################################
-#Set an arbitrary threshold
-arb.thresh<-.2
-
-#PART I
-#CURRENT ANALOGS IN FUTURE
-#How many current communities have analogs in the future?
-#These are akin to communities which will disappear, "Disappearing"
-###################
-#Taxonomic Analogs
-###################
-
-#For each of the current communities how many future communities are less difference 5th current quantile
-n.analogs<-sapply(rownames(beta.time), function(x){
-  sum(beta.time[rownames(beta.time) %in% x,] <= arb.thresh)
-})
-
-#Create a dataframe of cell cell numbers and number of analogs
-current_to_future.analog<-data.frame(rownames(beta.time),n.analogs)
-colnames(current_to_future.analog)<-c("cell.number","numberofanalogs")
-
-#Visualize raster of analogs
-fanalog<-cellVis(cell=current_to_future.analog$cell.number,value=current_to_future.analog$numberofanalogs)
-hist(current_to_future.analog$numberofanalogs)
-writeRaster(fanalog,"NumberofFutureAnalogs_Taxon_ARB.tif",overwrite=T)
-
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-threshold<-nrow(current)*.005
-
-sum(current_to_future.analog$numberofanalogs <= threshold)
-plot(noAnalogTax<-fanalog < threshold)
-
-#For each of the currents communities how many future communities are less difference 5th current quantile
-#n.analogs<-sapply(rownames(beta.time), function(x){
-#sum(beta.time[rownames(beta.time) %in% x,] >= quant.5[names(quant.5) %in% x])
-#})
-
-###################
-#Phylogenetic Analogs
-####################
-n.analogs.phylo<-sapply(rownames(beta.time.phylo), function(x){
-  sum(beta.time.phylo[rownames(beta.time.phylo) %in% x,] <= arb.thresh)
-})
-
-
-#Create a dataframe of the number of analogs and the cellnumber
-future.analog.phylo<-data.frame(rownames(phylo.current),n.analogs.phylo)
-colnames(future.analog.phylo)<-c("cell.number","numberofanalogs")
-
-#Visualize!
-fanalog.phylo<-cellVis(cell=future.analog.phylo$cell.number,value=future.analog.phylo$numberofanalogs)
-
-#Write to file
-writeRaster(fanalog.phylo,"NumberofFutureAnalogs_Phylo_ARB.tif",overwrite=T)
-hist(future.analog.phylo$numberofanalogs)
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-
-threshold<-nrow(phylo.current)*.05
-sum(future.analog.phylo$numberofanalogs <= threshold)
-plot(noAnalogPhylo<-fanalog.phylo < threshold)
-
-###################
-#Functional Analogs
-####################
-n.analogs.func<-sapply(rownames(beta.time.func), function(x){
-  sum(beta.time.func[rownames(beta.time.func) %in% x,] <= arb.thresh)
-})
-
-#n.analogs.Func<-sapply(rownames(beta.time.phylo), function(x){
-# sum(beta.time.func[rownames(beta.time.func) %in% x,] <= quant.func.5[names(quant.func.5) %in% x])
-#})
-
-future.analog.func<-data.frame(rownames(beta.time.func),n.analogs.func)
-colnames(future.analog.func)<-c("cell.number","numberofanalogs")
-
-fanalog.Func<-cellVis(cell=future.analog.func$cell.number,value=future.analog.func$numberofanalogs)
-
-hist(future.analog.func$numberofanalogs)
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-
-threshold<-nrow(Func.current)*.05
-sum(future.analog.func$numberofanalogs <= threshold)
-
-plot(fanalog.Func < threshold)
-writeRaster(fanalog.Func,"NumberofFutureAnalogs_Func_ARB.tif",overwrite=T)
-
-#####################################################
-#PART II
-#FUTURE ANALOGS IN CURRENT - NON-analog communities ("Novel")
-#How many current communities have analogs in the future?
-######################################################
-
-###################
-#Taxonomic Analogs
-####################
-
-#For each of the future communities how many future communities are less difference 5th current quantile
-n.analogs<-sapply(colnames(beta.time), function(x){
-  sum(beta.time[,colnames(beta.time) %in% x] <= arb.thresh)
-})
-
-#Create a dataframe of cell cell numbers and number of analogs
-future_to_current.analog<-data.frame(colnames(beta.time),n.analogs)
-colnames(future_to_current.analog)<-c("cell.number","numberofanalogs")
-
-#Visualize raster of analogs
-fanalog<-cellVis(cell=future_to_current.analog$cell.number,value=future_to_current.analog$numberofanalogs)
-#hist(future_to_current.analog$numberofanalogs)
-
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-#threshold<-nrow(current)*.005
-
-
-#sum(future_to_current.analog$numberofanalogs <= threshold)
-#plot(noAnalogTax<-fanalog < threshold)
-
-writeRaster(fanalog,"NumberofCurrentAnalogs_Taxo.tif",overwrite=T)
-
-#For each of the currents communities how many future communities are less difference 5th current quantile
-#n.analogs<-sapply(rownames(beta.time), function(x){
-#sum(beta.time[rownames(beta.time) %in% x,] >= quant.5[names(quant.5) %in% x])
-#})
-
-###################
-#Phylogenetic Analogs
-####################
-
-n.analogs.phylo<-sapply(colnames(beta.time.phylo), function(x){
-  sum(beta.time.phylo[,colnames(beta.time.phylo) %in% x] <= arb.thresh)
-})
-
-future.analog.phylo<-data.frame(colnames(beta.time.phylo),n.analogs.phylo)
-colnames(future.analog.phylo)<-c("cell.number","numberofanalogs")
-
-fanalog.phylo<-cellVis(cell=future.analog.phylo$cell.number,value=future.analog.phylo$numberofanalogs)
-hist(future.analog.phylo$numberofanalogs)
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-
-writeRaster(fanalog.phylo,"NumberofCurrentAnalogs_Phylo.tif",overwrite=T)
-threshold<-nrow(phylo.current)*.05
-sum(future.analog.phylo$numberofanalogs <= threshold)
-plot(noAnalogPhylo<-fanalog.phylo < threshold)
-
-###################
-#functional Analogs
-####################
-n.analogs.func<-sapply(colnames(beta.time.func), function(x){
-  sum(beta.time.func[,colnames(beta.time.func) %in% x] <= arb.thresh,na.rm=TRUE)
-})
-
-future.analog.func<-data.frame(rownames(Func.future),n.analogs.func)
-colnames(future.analog.func)<-c("cell.number","numberofanalogs")
-
-fanalog.func<-cellVis(cell=future.analog.func$cell.number,value=future.analog.func$numberofanalogs)
-hist(future.analog.func$numberofanalogs)
-#If a am counting the number of cells whose betadiveristy is within the 5th quantile, the threshold for non analog communities should be the number of sites that oc
-#If there are 5000 cells, then 5000*.05=250
-
-threshold<-nrow(Func.current)*.05
-sum(future.analog.func$numberofanalogs <= threshold)
-plot(fanalog.func < threshold)
-writeRaster(fanalog.func,"NumberofCurrentAnalogs_Func.tif",overwrite=T)
-
-
-####################
-#Compare outputs
-####################
-comp<-list.files(pattern=".tif",full.names=T)
-all.raster<-stack(comp)
-plot(all.raster)
-
-########################
-#Split into clusters, current and future
-########################
-
-#####################################
-#naming of clusters is wrong here??
-###################################
-#plot(clusters<-all.raster[[c("TaxonomicClusters","PhylogenticClusters","FunctionalClusters")]],col=rainbow(5))
-plot(current.ras<-all.raster[[c("NumberofCurrentAnalogs_Taxo","NumberofCurrentAnalogs_Phylo","NumberofCurrentAnalogs_Func")]])
-plot(future.ras<-all.raster[[c("NumberofFutureAnalogs_Taxon_ARB","NumberofFutureAnalogs_Phylo_ARB","NumberofFutureAnalogs_Func_ARB")]])
-
-###########################
-#Correlation among outputs, this currently onlymake sense for the betadiv, the clusters are non-ordinal
-###########################
-
-#cluster.cor<-cor(values(clusters),use="complete.obs")
-current.cor<-cor(values(current.ras),use="complete.obs")
-future.cor<-cor(values(future.ras),use="complete.obs")
-
-#make it a spare matrix
-cluster.cor[upper.tri(cluster.cor)]<-NA
-current.cor[upper.tri(current.cor)]<-NA
-future.cor[upper.tri(future.cor)]<-NA
-
-#Plot the correlations?
-
-#m.current<-melt(current.cor)
-#p<-ggplot(na.omit(m.current),aes(x=X1,y=X2,fill=as.numeric(value))) + geom_tile() + theme_bw()
-#p<-p+coord_flip() + scale_x_reverse() + xlab("") + ylab("") + scale_x_discrete(labels=c("Taxonomic","Phylogenetic","Trait")) + scale_y_discrete(labels=c("Taxonomic","Phylogenetic","Trait"))
-#p+scale_fill_continuous("Pearson Correlation",high="red",low="blue")
-
-plot(current_arb<-all.raster[[c("NumberofFutureAnalogs_Taxon_ARB","NumberofFutureAnalogs_Phylo_ARB","NumberofFutureAnalogs_Func_ARB")]])
-
-#standardize
-current_standard<-current_arb/cellStats(current_arb,"max")
-
-#corrlate with richness
-ric<-raster("C://Users/Jorge/Dropbox/Shared Ben and Catherine/FutureAnalog/Alpha/AlphaChange_Richness.tif")
-rc<-cor(values(current_arb[[1]]),values(ric),use="complete.obs")
-
-#Pairwise plots of results, and glms
-#Create giant dataframe
-current_val<-data.frame(values(ric),values(current_arb))
-colnames(current_val)<-c("Richness","Tax","Phylo","Trait")
-
-ggplot(current_val,aes(Richness,Tax))+geom_point() + theme_bw()
-ggplot(current_val,aes(Richness,Phylo))+geom_point() + theme_bw()
-ggplot(current_val,aes(Richness,Trait))+geom_point() + theme_bw()
-
-ggplot(current_val,aes(Phylo,Trait))+geom_point() + theme_bw()
-ggplot(current_val,aes(Tax,Phylo))+geom_point() + theme_bw()
-ggplot(current_val,aes(Tax,Trait))+geom_point() + theme_bw()
-
-
-save.image("FutureAnalog.rData")
-
-qplot(beta.time[1010,]) + theme_bw() + xlab("Community1010") + geom_vline(xintercept=quantile(beta.time[1010,],.2),col="red",linetype="dashed")
-
-#######################
-#Test number of analogs as a function of the threshold?, needs to be reviewed
-########################
-
-cl<-makeCluster(3,"SOCK")
-registerDoSNOW(cl)
-
-#Create a range of arb thresholds, output the number of analogs in each dimensions
-novel.frame<-foreach(arb.thresh=seq(0,.5,.05)) %dopar% {
-  require(reshape2)
-
-  #Taxonomic
-n.analogs<-sapply(colnames(beta.time), function(x){
-  sum(beta.time[,colnames(beta.time) %in% x] <= arb.thresh)
-})
-future_to_current.analog<-data.frame(colnames(beta.time),n.analogs)
-  colnames(future_to_current.analog)<-c("Cell","Taxonomic")
-
-  #Phylogenetic
-n.analogs.phylo<-sapply(colnames(beta.time.phylo), function(x){
-  sum(beta.time.phylo[,colnames(beta.time.phylo) %in% x] <= arb.thresh)
-})
-  
-future.analog.phylo<-data.frame(colnames(beta.time.phylo),n.analogs.phylo)
-  colnames(future.analog.phylo)<-c("Cell","Phylogenetic")
-  
-  #Trait
-n.analogs.func<-sapply(colnames(beta.time.func), function(x){
-  sum(beta.time.func[,colnames(beta.time.func) %in% x] <= arb.thresh)
-})
-future.analog.func<-data.frame(rownames(Func.future),n.analogs.func)
-  colnames(future.analog.func)<-c("Cell","Trait")
-  
-novel<-list(future_to_current.analog,future.analog.phylo,future.analog.func)
-within.melt<-melt(novel)
-  names(within.melt)[4]<-"del"
-return(within.melt)}
-stopCluster(cl)
-
-names(novel.frame)<-seq(0,.5,.05)
-
-#plot the number of analogs as a function of threshold, with each dimension as a series
-m.novel<-melt(novel.frame)
-
-m.novel<-m.novel[!m.novel$variable.1=="del",]
-
-#pick 1000 random cells?
-novel.samp<-m.novel[m.novel$Cell %in% sample(m.novel$Cell,1000),]
-
-head(m.novel)
-ggplot(m.novel,aes(L1,value)) + geom_smooth(aes(L1,value,group=1)) + facet_grid(.~variable) + theme_bw() + geom_point()
-ggplot(novel.samp,aes(L1,value)) + geom_smooth(aes(L1,value,group=1)) + facet_grid(.~variable) + theme_bw() + geom_path(aes(group=Cell))
-
-#Split out any arb value
-novel.rasters<-lapply(1:length(novel.frame),function(x){
-  fr<-novel.frame[[x]]
-  fr.var<-split(fr,fr$variable)
-  ras<-lapply(fr.var,function(y){
-    cellVis(y$Cell,y$value)
-  })
-              names(ras)<-levels(fr$variable)
-  return(stack(ras))
-})
-              
-names(novel.rasters)<-names(novel.frame)
-
-  s<-stack(novel.rasters[[2]],novel.rasters[[4]],novel.rasters[[6]],novel.rasters[[8]],novel.rasters[[10]])
-
-names(s)<-sapply(c(2,4,6,8,10),function(x){
-  paste(levels(fr$variable),names(novel.rasters)[[x]])
-  })
-
-plot(s,nc=3,zlim=c(0,1500))
-
-save.image("FutureAnalog.rData")
-
-##############
-#######################
-#Test number of disappears analogs as a function of the threshold
-########################
-
-cl<-makeCluster(3,"SOCK")
-registerDoSNOW(cl)
-
-#Create a range of arb thresholds, output the number of analogs in each dimensions
-disappear.frame<-foreach(arb.thresh=seq(0,.5,.05)) %dopar% {
-  require(reshape2)
-  
-  #Taxonomic
-  n.analogs<-sapply(rownames(beta.time), function(x){
-    sum(beta.time[rownames(beta.time) %in% x,] <= arb.thresh)
-  })
-  future_to_current.analog<-data.frame(rownames(beta.time),n.analogs)
-  colnames(future_to_current.analog)<-c("Cell","Taxonomic")
-  
-  #Phylogenetic
-  n.analogs.phylo<-sapply(rownames(beta.time.phylo), function(x){
-    sum(beta.time.phylo[rownames(beta.time.phylo) %in% x,] <= arb.thresh)
-  })
-  
-  future.analog.phylo<-data.frame(rownames(beta.time.phylo),n.analogs.phylo)
-  colnames(future.analog.phylo)<-c("Cell","Phylogenetic")
-  
-  #Trait
-  n.analogs.func<-sapply(rownames(beta.time.func), function(x){
-    sum(beta.time.func[rownames(beta.time.func) %in% x,] <= arb.thresh)
-  })
-  future.analog.func<-data.frame(rownames(beta.time.func),n.analogs.func)
-  colnames(future.analog.func)<-c("Cell","Trait")
-  
-  novel<-list(future_to_current.analog,future.analog.phylo,future.analog.func)
-  within.melt<-melt(novel)
-  names(within.melt)[4]<-"del"
-  return(within.melt)}
-stopCluster(cl)
-
-names(disappear.frame)<-seq(0,.5,.05)
-
-fr<-disappear.frame[[1]]
-
-#Split out any arb value
-disappear.rasters<-lapply(1:length(disappear.frame),function(x){
-  fr<-disappear.frame[[x]]
-  fr.var<-split(fr,fr$variable)
-  ras<-lapply(fr.var,function(y){
-    cellVis(y$Cell,y$value)
-  })
-  names(ras)<-levels(fr$variable)
-  return(stack(ras))
-})
-
-s.dis<-stack(disappear.rasters[[2]],disappear.rasters[[4]],disappear.rasters[[6]],disappear.rasters[[8]],disappear.rasters[[10]])
-
-names(s.dis)<-sapply(c(2,4,6,8,10),function(x){
-  paste(levels(fr$variable),names(disappear.rasters)[[x]])
-})
-
-plot(s.dis,nc=3,zlim=c(0,1500))
-
-save.image("FutureAnalog.rData")
-s amnat
+#save.image("FutureAnalog.rData")
+#s amnat

@@ -70,6 +70,6 @@ getTraitData <- function() {
   WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
   
   z.scores <- data.frame(Bill, Mass, WingChord)
-  z.scores$species <- rownames(mon)
+  rownames(z.scores) <- rownames(mon)
   return(z.scores)
 }

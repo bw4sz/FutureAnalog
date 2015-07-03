@@ -25,6 +25,7 @@ source("fnSDM.R")
 source("runProjections.R")
 source("FutureAnalog.R")
 source("GDM.R")
+source("TraitMappingFunctions.R")
 
 # variables for sensitivity analysis
 cell_size = 0.0833333333 # cell size numerical (degrees)

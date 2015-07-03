@@ -1,0 +1,174 @@
+---
+title: "Community Biplot"
+author: "Ben Weinstein"
+date: "July 2, 2015"
+output: html_document
+---
+
+```{r}
+library(vegan)
+library(ggbiplot)
+library(reshape2)
+set.seed(1)
+```
+
+Create some data which would hopefully match the input data
+
+##Site by species matrix
+* 15 species
+* 20 sites
+
+## Trait matrix
+* Six traits
+
+```{r}
+siteXspp<-matrix(nrow=15,ncol=20,data=rbinom(15*20,1,.5))
+traits<-matrix(nrow=15,ncol=6,data = rpois(60,10))
+
+#give some names to make it easier to follow, won't really on sorting order.
+rownames(siteXspp)<-paste("Species",1:nrow(siteXspp))
+colnames(siteXspp)<-paste("Site",1:ncol(siteXspp))
+colnames(traits)<-paste("Trait",1:ncol(traits))
+rownames(traits)<-paste("Species",1:nrow(traits))
+```
+
+Start with mean traits
+
+For each site (column) get the mean trait distance
+
+```{r}
+
+#container for site trait averages
+out<-matrix(nrow=ncol(siteXspp),ncol=ncol(traits))
+
+for (x in 1:ncol(siteXspp)){
+  #subset site
+  site<-siteXspp[,x]
+  
+  #get the trait matrix for species that are present
+  site.trait<-traits[rownames(traits) %in% names(site[site==1]),]
+  #mean position
+  out[x,]<-apply(site.trait,2,mean)
+}
+
+#name container based on sites
+rownames(out)<-colnames(siteXspp)
+colnames(out)<-colnames(traits)
+
+```
+
+Initial biplot
+
+```{r}
+#base package
+biplot(prcomp(out))
+
+#ggbiplot
+ggbiplot((prcomp(out)))
+```
+
+Okay so that what it would look like in one time slice. Let's add a new matrix, which is the future siteXspp. 
+
+
+```{r}
+siteXsppF<-matrix(nrow=15,ncol=20,data=rbinom(15*20,1,.5))
+rownames(siteXsppF)<-paste("Species",1:nrow(siteXspp))
+colnames(siteXsppF)<-paste("FutureSite",1:ncol(siteXspp))
+```
+
+Repeat trait calculation
+
+```{r}
+#container for site trait averages
+outF<-matrix(nrow=ncol(siteXsppF),ncol=ncol(traits))
+
+for (x in 1:ncol(siteXsppF)){
+  #subset site
+  site<-siteXsppF[,x]
+  
+  #get the trait matrix for species that are present
+  site.trait<-traits[rownames(traits) %in% names(site[site==1]),]
+  #mean position
+  outF[x,]<-apply(site.trait,2,mean)
+}
+
+#name container based on sites
+rownames(outF)<-colnames(siteXsppF)
+colnames(outF)<-colnames(traits)
+```
+
+##Approach #1: Bind the dataframes together
+```{r}
+combin<-rbind(out,outF)
+pca<-princomp(combin)
+#lets make a grouping variable, so the plot knows which is current and which is future
+groups<-c(rep("Current",nrow(out)),rep("Future",nrow(outF)))
+ggbiplot(pca,groups=groups)
+```
+
+So maybe we want to connect each assemblage by a faint line? Lots of different visualizations we could try
+
+If the two data.frames out (current) and outF (future) are just bound together in a dataframe (combin), and they are ordered in the same manner, then the first row of combin is the current state of the assemblage and the 1+nrow(out) row of combin is the future state of that assemblage. If they are not ordered correctly, you could match off a row name or lookup table by cell number?
+
+### Draw Lines
+So as an example, line segements can be drawn in ggplot like this.
+```{r}
+ggbiplot(pca,groups=groups) + geom_segment(x=0,y=0,xend=0,yend=2,size=1)
+```
+
+So the goal is to get the pca coordinates of each pair, and pass them into geom_segement.
+
+Step 1 is to get the correct pair for each line segement. The scores hold the pca loadings that act as coordinates in the figure. We just use the first two PC axis
+
+As an example show the first site
+```{r}
+#begin coordinates
+coords<-pca$scores[c(1,nrow(out)+1),1:2]
+
+#rename to make more logical
+colnames(coords)<-c("x","y")
+rownames(coords)<-c("Begin","End")
+
+#rearrange the data
+mcoords<-melt(coords)
+df<-dcast(mcoords,...~Var2+Var1)
+df
+ggbiplot(pca,groups=groups,scale = 0) + geom_segment(data=df,aes(x=x_Begin,y=y_Begin,xend=x_End,yend=y_End),size=.1,alpha=.5, arrow = arrow(length = unit(0.5,"cm")))
+```
+
+Repeat this all current assemblages.
+
+```{r}
+#begin coordinates
+df<-list()
+
+for (x in 1:nrow(out)){
+coords<-pca$scores[c(x,nrow(out)+x),1:2]
+
+#rename to make more logical
+colnames(coords)<-c("x","y")
+rownames(coords)<-c("Begin","End")
+
+#rearrange the data
+mcoords<-melt(coords)
+df[[x]]<-dcast(mcoords,...~Var2+Var1)[,-1]
+}
+
+df<-rbind.fill(df)
+```
+
+plot
+
+```{r}
+ggbiplot(pca,groups=groups,scale = 0) + geom_segment(data=df,aes(x=x_Begin,y=y_Begin,xend=x_End,yend=y_End),size=.1,alpha=.2, arrow = arrow(length = unit(0.5,"cm"))) + theme_bw()
+```
+
+Okay, so this data was constructed randomly, but it looks like its a reasonable approach. Hopefully there is more pattern than that. We could play without a bit more (drop the points and just show the arrows?). Hopefully that illustrates where i'm going with this.
+
+Crucially, this setup relies on scale = F for the biplot. This is where there is no added transformation, known as a 'form biplot'. Depending on the real data we can work on it if there are additional complications.
+
+For the help screen 
+
+```
+covariance biplot (scale = 1), form biplot (scale = 0). When scale = 1, the inner product between the variables approximates the covariance and the distance between the points approximates the Mahalanobis distance.
+```

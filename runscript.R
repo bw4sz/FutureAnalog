@@ -1,7 +1,7 @@
 # Load required packages
 packages <- c("vegan", "picante", "analogue", "doSNOW", "ape", "cluster", 
               "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", 
-              "tidyr", "stringr", "dplyr", "biomod2", "rasterVis", "grid", "gdm")
+              "tidyr", "stringr", "dplyr", "biomod2", "rasterVis", "grid", "gdm", "devtools")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {
@@ -9,6 +9,12 @@ for(p in packages) {
   }
   require(p, character.only = TRUE)
 }
+
+if(!"ggbiplot" %in% installed.packages()) {
+  install_github("vqv/ggbiplot")
+}
+
+require(ggbiplot)
 
 # Load in source functions
 source("AlphaMappingFunctions.R")

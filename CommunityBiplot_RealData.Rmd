@@ -12,34 +12,20 @@ library(reshape2)
 set.seed(1)
 ```
 
-Create some data which would hopefully match the input data
-
-##Site by species matrix
-* 15 species
-* 20 sites
-
-## Trait matrix
-* Six traits
-
+Load the site by species and traits data
 ```{r}
-siteXspp<-matrix(nrow=15,ncol=20,data=rbinom(15*20,1,.5))
-traits<-matrix(nrow=15,ncol=6,data = rpois(60,10))
-
-#give some names to make it easier to follow, won't really on sorting order.
-rownames(siteXspp)<-paste("Species",1:nrow(siteXspp))
-colnames(siteXspp)<-paste("Site",1:ncol(siteXspp))
-colnames(traits)<-paste("Trait",1:ncol(traits))
-rownames(traits)<-paste("Species",1:nrow(traits))
+load("../FutureAnalog_output/5_arcmins/sppXsite/mp85bi70.rda")
+siteXsppF <- siteXspp
+load("../FutureAnalog_output/5_arcmins/sppXsite/current.rda")
 ```
-
 Start with mean traits
 
-For each site (column) get the mean trait distance
+For each site (row) get the mean trait distance
 
 ```{r}
 
 #container for site trait averages
-out<-matrix(nrow=ncol(siteXspp),ncol=ncol(traits))
+out<-matrix(nrow=nrow(siteXspp),ncol=ncol(traits))
 
 for (x in 1:ncol(siteXspp)){
   #subset site

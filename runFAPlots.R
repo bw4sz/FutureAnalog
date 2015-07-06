@@ -19,7 +19,17 @@ rasterToDataFrame <- function(out_path){
 }
 
 dat <- rasterToDataFrame(out_path)
-dat$measure <- factor(dat$measure, levels=c("Tax", "Phylo", "Func"))
+
+dat$measure <- factor(dat$measure, levels=c("Tax", "Phylo", "Func"),
+                      labels=c("Taxonomic", "Phylogenetic", "Functional"))
+
+dat$RCP <- factor(dat$RCP, levels=c(26, 45, 85), 
+                  labels=c("RCP 2.6", "RCP 4.5", "RCP 8.5"))
+
+dat$GCM <- factor(dat$GCM, levels=unique(dat$GCM),
+                  labels=c("CCSM4", "CNRM-CM5", "GISS-E2-R", "HadGEM2-ES", 
+                           "IPSL-CM5A-LR", "MIROC5", "MPI-ESM-LR"))
+
 
 # Sensitivity analysis plots by threshold
 thresh_sa.novel <- filter(dat, comm.type=="Novel") %>% 
@@ -27,22 +37,26 @@ thresh_sa.novel <- filter(dat, comm.type=="Novel") %>%
   summarise(NoOfAnalogs = mean(value))
 
 ggplot(thresh_sa.novel, aes(x, y, fill = NoOfAnalogs)) + 
-  scale_fill_gradient(low = "blue", high = "white") +
+  scale_fill_gradient(low = "blue", high = "white", name="Number of analog\ncommunities") +
+  labs(x="Longitude", y="Latitude") +
   facet_grid(measure ~ arbthresh) + 
-  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+  geom_raster() + coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave(paste(out_path, "Threshold_SA_Novel.png", sep="/"), width = 17, height = 9)
+ggsave("Figures/Threshold_SA_Novel.png", width = 17, height = 9)
 
 thresh_sa.diss <- filter(dat, comm.type=="Disappearing") %>% 
   group_by(x, y, measure, arbthresh) %>%
   summarise(NoOfAnalogs = mean(value))
 
 ggplot(thresh_sa.diss, aes(x, y, fill = NoOfAnalogs)) + 
-  scale_fill_gradient(low = "red", high = "white") +
+  scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
   facet_grid(measure ~ arbthresh) + 
-  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+  labs(x="Longitude", y="Latitude") +
+  geom_raster() + coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave(paste(out_path, "Threshold_SA_Disappearing.png", sep="/"), width = 17, height = 9)
+ggsave("Figures/Threshold_SA_Disappearing.png", width = 17, height = 9)
 
 # Novel average of GCMs (res for each RCP shown)
 novel.20.rcp <- subset(dat, comm.type=="Novel", arbthresh = 0.2) %>%
@@ -50,22 +64,26 @@ novel.20.rcp <- subset(dat, comm.type=="Novel", arbthresh = 0.2) %>%
   summarise(NoOfAnalogs = mean(value))
 
 ggplot(novel.20.rcp, aes(x, y, fill = NoOfAnalogs)) + 
-  scale_fill_gradient(low = "blue", high = "white") +
+  scale_fill_gradient(low = "blue", high = "white", name="Number of analog\ncommunities") +
   facet_grid(measure ~ RCP) + 
-  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+  labs(x="Longitude", y="Latitude") +
+  geom_raster() + coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave(paste(out_path, "Novel_by_RCP_20perc_thres.png", sep="/"), width = 17, height = 9)
+ggsave("Figures/Novel_by_RCP_20perc_thres.png", width = 17, height = 9)
 
 novel.20.gcm <- subset(dat, comm.type=="Novel", arbthresh = 0.2) %>%
   group_by(x, y, measure, GCM) %>%
   summarise(NoOfAnalogs = mean(value))
 
 ggplot(novel.20.gcm, aes(x, y, fill = NoOfAnalogs)) + 
-  scale_fill_gradient(low = "blue", high = "white") +
+  scale_fill_gradient(low = "blue", high = "white", name="Number of analog\ncommunities") +
   facet_grid(measure ~ GCM) + 
-  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+  labs(x="Longitude", y="Latitude") +
+  geom_raster() + coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave(paste(out_path, "Novel_by_GCM_20perc_thres.png", sep="/"), width = 17, height = 9)
+ggsave("Figures/Novel_by_GCM_20perc_thres.png", width = 18, height = 9)
 
 # Disappearing average of GCMs (res for each RCP shown)
 diss.20.rcp <- subset(dat, comm.type=="Disappearing", arbthresh = 0.2) %>%
@@ -73,20 +91,25 @@ diss.20.rcp <- subset(dat, comm.type=="Disappearing", arbthresh = 0.2) %>%
   summarise(NoOfAnalogs = mean(value))
 
 ggplot(diss.20.rcp, aes(x, y, fill = NoOfAnalogs)) + 
-  scale_fill_gradient(low = "red", high = "white") +
+  scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
   facet_grid(measure ~ RCP) + 
-  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+  labs(x="Longitude", y="Latitude") +
+  geom_raster() + coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
 # Disappearing average of RCPs (res for each GCM shown)
-ggsave(paste(out_path, "Disappearing_by_RCP_20perc_thres.png", sep="/"), width = 17, height = 9)
+ggsave("Figures/Disappearing_by_RCP_20perc_thres.png", width = 17, height = 9)
 
 diss.20.gcm <- subset(dat, comm.type=="Disappearing", arbthresh = 0.2) %>%
   group_by(x, y, measure, GCM) %>%
   summarise(NoOfAnalogs = mean(value))
 
 ggplot(diss.20.gcm, aes(x, y, fill = NoOfAnalogs)) + 
-  scale_fill_gradient(low = "red", high = "white") +
+  scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
   facet_grid(measure ~ GCM) + 
-  geom_raster() + coord_equal() + theme_classic() + theme(strip.background = element_blank())
+  labs(x="Longitude", y="Latitude") +
+  geom_raster() + coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave(paste(out_path, "Disappearing_by_GCM_20perc_thres.png", sep="/"), width = 17, height = 9)
+ggsave("Figures/Disappearing_by_GCM_20perc_thres.png", width = 18, height = 9)
+

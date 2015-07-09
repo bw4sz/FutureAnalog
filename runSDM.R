@@ -81,11 +81,10 @@ runSDM <- function(cell_size, out_path, proj_folder){
   ggplot(model_eval, aes(x=Species,y=Model,fill=Value)) + 
     geom_tile() + 
     facet_wrap(~Stat, ncol = 1) +
-    scale_fill_gradient("ROC",limits=c(0,1),low="blue",high="red",na.value="white") + 
+    scale_fill_gradient("Score",limits=c(0,1),low="blue",high="red",na.value="white") + 
     theme_classic() +
     theme(axis.text.x=element_text(angle=-90))
-  ggsave(paste(out_path, "ModelEvaluations.jpeg", sep = "/"), 
-         dpi=600, height = 6, width=11)
+  ggsave(paste(out_path, "ModelEvaluations.jpeg", sep = "/"), height = 9, width=17)
   
   #Plot correlation of ROC and TSS scores
   model_compare <- spread(model_eval, Stat, Value)

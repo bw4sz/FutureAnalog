@@ -24,7 +24,7 @@ dat$measure <- factor(dat$measure, levels=c("Tax", "Phylo", "Func"),
                       labels=c("Taxonomic", "Phylogenetic", "Functional"))
 
 dat$RCP <- factor(dat$RCP, levels=c(26, 45, 85), 
-                  labels=c("RCP 2.6", "RCP 4.5", "RCP 8.5"))
+                  labels=c("RCP2.6", "RCP4.5", "RCP8.5"))
 
 dat$GCM <- factor(dat$GCM, levels=unique(dat$GCM),
                   labels=c("CCSM4", "CNRM-CM5", "GISS-E2-R", "HadGEM2-ES", 
@@ -59,7 +59,7 @@ ggplot(thresh_sa.diss, aes(x, y, fill = NoOfAnalogs)) +
 ggsave("Figures/Threshold_SA_Disappearing.png", width = 17, height = 9)
 
 # Novel average of GCMs (res for each RCP shown)
-novel.20.rcp <- subset(dat, comm.type=="Novel", arbthresh = 0.2) %>%
+novel.20.rcp <- filter(dat, comm.type=="Novel", arbthresh == 0.2) %>%
   group_by(x, y, measure, RCP) %>%
   summarise(NoOfAnalogs = mean(value))
 
@@ -72,7 +72,7 @@ ggplot(novel.20.rcp, aes(x, y, fill = NoOfAnalogs)) +
 
 ggsave("Figures/Novel_by_RCP_20perc_thres.png", width = 17, height = 9)
 
-novel.20.gcm <- subset(dat, comm.type=="Novel", arbthresh = 0.2) %>%
+novel.20.gcm <- filter(dat, comm.type=="Novel", arbthresh == 0.2) %>%
   group_by(x, y, measure, GCM) %>%
   summarise(NoOfAnalogs = mean(value))
 
@@ -86,7 +86,7 @@ ggplot(novel.20.gcm, aes(x, y, fill = NoOfAnalogs)) +
 ggsave("Figures/Novel_by_GCM_20perc_thres.png", width = 18, height = 9)
 
 # Disappearing average of GCMs (res for each RCP shown)
-diss.20.rcp <- subset(dat, comm.type=="Disappearing", arbthresh = 0.2) %>%
+diss.20.rcp <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
   group_by(x, y, measure, RCP) %>%
   summarise(NoOfAnalogs = mean(value))
 
@@ -100,7 +100,7 @@ ggplot(diss.20.rcp, aes(x, y, fill = NoOfAnalogs)) +
 # Disappearing average of RCPs (res for each GCM shown)
 ggsave("Figures/Disappearing_by_RCP_20perc_thres.png", width = 17, height = 9)
 
-diss.20.gcm <- subset(dat, comm.type=="Disappearing", arbthresh = 0.2) %>%
+diss.20.gcm <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
   group_by(x, y, measure, GCM) %>%
   summarise(NoOfAnalogs = mean(value))
 
@@ -112,4 +112,3 @@ ggplot(diss.20.gcm, aes(x, y, fill = NoOfAnalogs)) +
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
 ggsave("Figures/Disappearing_by_GCM_20perc_thres.png", width = 18, height = 9)
-

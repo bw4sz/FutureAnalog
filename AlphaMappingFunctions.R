@@ -346,8 +346,9 @@ matpsim <- function(phyl, com, clust = 7) # make sure nodes are labelled and tha
     spp_br[i,names(brs[[i]])] <- brs[[i]]
   }
   
-  spp_br <- spp_br[,-(ncol(com)+1)] # removes root # Laura note: what is this doing? Is it getting rid of the branch containing all NAs? If so, it's not removing the correct one. 
   spp_br <- spp_br[,!colSums(spp_br) %in% c(0,nrow(spp_br))]  # here take out all common branches instead
+  spp_br <- spp_br[,-(ncol(com)+1)] # removes root 
+  
   
   print("spp_br")
   
@@ -477,8 +478,9 @@ matpsim.nopar <- function(phyl, com, clust = 7) # make sure nodes are labelled a
     spp_br[i,names(brs[[i]])] <- brs[[i]]
   }
   
-  spp_br <- spp_br[,-(ncol(com)+1)] # removes root
   spp_br <- spp_br[,!colSums(spp_br) %in% c(0,nrow(spp_br))]  # here take out all common branches instead
+  spp_br <- spp_br[,-(ncol(com)+1)] # removes root
+  
   
   print("spp_br")
   
@@ -611,9 +613,8 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
     spp_br[i,names(brs[[i]])] <- brs[[i]]
   }
   
-  spp_br <- spp_br[,-(ncol(com.x)+1)] # removes root
   spp_br <- spp_br[,!colSums(spp_br) %in% c(0,nrow(spp_br))]  # here take out all common branches instead
-  
+  spp_br <- spp_br[,-(ncol(com.x)+1)] # removes root
   print("spp_br")
   
   spp_br <<- spp_br

@@ -77,6 +77,10 @@ runSDM <- function(cell_size, out_path, proj_folder){
   model_eval  <- gather(data.frame(model_eval), Model, value, -Stat, -Species)
   colnames(model_eval)<-c("Stat", "Species", "Model", "Value")
   
+  # summary stats
+  model_eval_summary <- group_by(model_eval, Stat, Model) %>%
+    summarise(mean.val=mean(Value, na.rm=TRUE), sd.val=sd(Value, na.rm=TRUE))
+  
   # heatmap of model evaluations
   ggplot(model_eval, aes(x=Species,y=Model,fill=Value)) + 
     geom_tile() + 
@@ -144,6 +148,20 @@ runSDM <- function(cell_size, out_path, proj_folder){
   mvar <- gather(varI, variable, value, -X1, -spec)
   colnames(mvar)<-c("Bioclim","Species","Model","value")
   
+  # variable importance summary stats
+  varI_summary <- filter(mvar, complete.cases(mvar)==TRUE) %>%
+    group_by(Species, Model) %>%
+    summarise(max.Bioclim=Bioclim[which.max(value)]) %>%
+    spread(Model, max.Bioclim)
+  
+  gbm <- group_by(varI_summary, GBM) %>%
+    summarise(tot=n())
+  
+  glm <- group_by(varI_summary, GLM) %>%
+    summarise(tot=n())
+  
+  maxent <- group_by(varI_summary, MAXENT) %>%
+    summarise(tot=n())
   #Plot variable importance across all models
   ggplot(mvar, aes(x=Species,y=Bioclim,fill=value)) + 
     geom_tile() + 
@@ -152,6 +170,5 @@ runSDM <- function(cell_size, out_path, proj_folder){
     theme(axis.text.x=element_text(angle=-90)) + 
     facet_grid(Model ~ .)
   
-  ggsave(paste(out_path, "VariableImportance.jpeg", sep = "/"), 
-         dpi=600, height = 6, width=11)
+  ggsave(paste(out_path, "VariableImportance.jpeg", sep = "/"), height = 9, width=17)
 }

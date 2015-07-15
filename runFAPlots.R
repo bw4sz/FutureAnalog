@@ -39,6 +39,10 @@ hill = hillShade(slope, aspect, 40, 270)
 hdf <- rasterToPoints(hill)
 hdf <- data.frame(hdf)
 
+# ecuador boundary - get into format for ggplot
+ec <- readOGR("InputData", "EcuadorCut")
+ec@data$id = rownames(ec@data)
+ec.df = fortify(ec, region="id")
 
 # FIGURE 1 WILL BE A CONCEPTUAL DIAGRAM TYPE THING -----------------------------
 
@@ -47,9 +51,17 @@ novel.20.rcp <- filter(dat, comm.type=="Novel", arbthresh == 0.2) %>%
   group_by(x, y, output_srtm, measure, RCP) %>%
   summarise(NoOfAnalogs = mean(value))
 
+novel.20.rcp.summary <- group_by(novel.20.rcp, measure, RCP) %>%
+  summarise(min.analog=min(NoOfAnalogs),
+            max.analog=max(NoOfAnalogs),
+            mean.analog=mean(NoOfAnalogs),
+            sd.analog=sd(NoOfAnalogs),
+            no.analogs=sum(NoOfAnalogs==0))
+
 ggplot(NULL, aes(x, y)) + 
   geom_raster(data = novel.20.rcp, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
   scale_fill_gradient(low = "blue", high = "white", name="Number of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
@@ -75,9 +87,17 @@ diss.20.rcp <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
   group_by(x, y, output_srtm, measure, RCP) %>%
   summarise(NoOfAnalogs = mean(value))
 
+diss.20.rcp.summary <- group_by(diss.20.rcp, measure, RCP) %>%
+  summarise(min.analog=min(NoOfAnalogs),
+            max.analog=max(NoOfAnalogs),
+            mean.analog=mean(NoOfAnalogs),
+            sd.analog=sd(NoOfAnalogs),
+            no.analogs=sum(NoOfAnalogs==0))
+
 ggplot(NULL, aes(x, y)) + 
   geom_raster(data = diss.20.rcp, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
   scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
@@ -99,6 +119,7 @@ ggplot(diss.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(al
 ggsave("Figures/Diss_elevation_gam_RCP_20perc.png", width = 9, height = 9)
 
 # FIGURE 4 BOXPLOTS OF DIFFERENCES IN NUMBER OF ANALOGUES BETWEEN SCENARIOS-----
+
 # function to create all pairwise differences
 # pair.diff <- function(input){
 #   nm1 <- outer(colnames(input), colnames(input), paste, sep=" - ")
@@ -193,6 +214,7 @@ thresh_sa.novel <- filter(dat, comm.type=="Novel") %>%
 ggplot(NULL, aes(x, y)) + 
   geom_raster(data = thresh_sa.novel, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
   scale_fill_gradient(low = "blue", high = "white", name="Number of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
@@ -212,6 +234,7 @@ thresh_sa.diss <- filter(dat, comm.type=="Disappearing") %>%
 ggplot(NULL, aes(x, y)) + 
   geom_raster(data = thresh_sa.diss, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
   scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
@@ -224,14 +247,35 @@ ggplot(NULL, aes(x, y)) +
 
 ggsave("Figures/Threshold_SA_Disappearing.png", width = 17, height = 9)
 
+# SENSITIVITY ANALYSIS FRIEDMAN TEST -------------------------------------------
+# friedman test for each group
+# input.dat <- spread(dat, arbthresh, value)
+# res <- list()
+# for(com in unique(input.dat$comm.type)) {
+#   for(mes in unique(input.dat$measure)) {
+#     dat <- filter(input.dat, comm.type==com, measure==mes)
+#     f <- friedman.test(as.matrix(dat[8:11]))
+#     res[[paste0(com, mes)]] <- cbind(tidy(f), measure=mes, comm.type=com)
+#   }
+# }
+# 
+# res <- do.call("rbind", res)
 # SUPP. MAT. FIGURE X (NOVEL COMMUNITIES BY GCM) -------------------------------
 novel.20.gcm <- filter(dat, comm.type=="Novel", arbthresh == 0.2) %>%
   group_by(x, y, measure, GCM) %>%
   summarise(NoOfAnalogs = mean(value))
 
+novel.20.gcm.summary <- group_by(novel.20.gcm, measure, GCM) %>%
+  summarise(min.analog=min(NoOfAnalogs),
+            max.analog=max(NoOfAnalogs),
+            mean.analog=mean(NoOfAnalogs),
+            sd.analog=sd(NoOfAnalogs),
+            no.analogs=sum(NoOfAnalogs==0))
+
 ggplot(NULL, aes(x, y)) + 
   geom_raster(data = novel.20.gcm, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
   scale_fill_gradient(low = "blue", high = "white", name="Number of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
@@ -248,9 +292,17 @@ diss.20.gcm <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
   group_by(x, y, measure, GCM) %>%
   summarise(NoOfAnalogs = mean(value))
 
+diss.20.gcm.summary <- group_by(diss.20.gcm, measure, GCM) %>%
+  summarise(min.analog=min(NoOfAnalogs),
+            max.analog=max(NoOfAnalogs),
+            mean.analog=mean(NoOfAnalogs),
+            sd.analog=sd(NoOfAnalogs),
+            no.analogs=sum(NoOfAnalogs==0))
+
 ggplot(NULL, aes(x, y)) + 
   geom_raster(data = diss.20.gcm, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
   scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +

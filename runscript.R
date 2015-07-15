@@ -25,7 +25,6 @@ source("runSDM.R")
 source("fnSDM.R")
 source("runProjections.R")
 source("FutureAnalog.R")
-source("GDM.R")
 source("TraitMappingFunctions.R")
 
 # variables for sensitivity analysis
@@ -60,5 +59,6 @@ runAnalogAnalysis(0.1, out_path)
 runAnalogAnalysis(0.2, out_path)
 runAnalogAnalysis(0.5, out_path)
 
-# GDM code ---------------------------------------------------------------------
-gdm.out <- fitGDM()
+# Create the plots for the MS
+source("runFAPlots.R")
+

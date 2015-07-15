@@ -77,7 +77,7 @@ ggsave("Figures/Novel_by_RCP_20perc_thres.png", width = 9, height = 9)
 ggplot(novel.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
   facet_grid(measure~RCP) + 
   geom_smooth(method="gam",formula = y~s(x, k=20)) +
-  labs(x="Elevation", y="Number of analog communities") +
+  labs(x="Elevation (m)", y="Number of analog communities") +
   theme_classic(base_size=15) + theme(strip.background=element_blank())
 
 ggsave("Figures/Novel_elevation_gam_RCP_20perc.png", width = 9, height = 9)
@@ -113,13 +113,12 @@ ggsave("Figures/Disappearing_by_RCP_20perc_thres.png", width = 9, height = 9)
 ggplot(diss.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
   facet_grid(measure~RCP) + 
   geom_smooth(method="gam",formula = y~s(x, k=20), colour="red") +
-  labs(x="Elevation", y="Number of analog communities") +
+  labs(x="Elevation (m)", y="Number of analog communities") +
   theme_classic(base_size=15) + theme(strip.background=element_blank())
 
 ggsave("Figures/Diss_elevation_gam_RCP_20perc.png", width = 9, height = 9)
 
 # FIGURE 4 BOXPLOTS OF DIFFERENCES IN NUMBER OF ANALOGUES BETWEEN SCENARIOS-----
-
 # function to create all pairwise differences
 # pair.diff <- function(input){
 #   nm1 <- outer(colnames(input), colnames(input), paste, sep=" - ")
@@ -313,3 +312,37 @@ ggplot(NULL, aes(x, y)) +
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
 ggsave("Figures/Disappearing_by_GCM_20perc_thres.png", width = 18, height = 9)
+
+# FIGURE X NUMBER OF COMPLETELY DISAPPEARING / NOVEL COMMUNITIES
+RCP.summary <- filter(dat, arbthresh == 0.2) %>%
+  group_by(x, y, output_srtm, measure, RCP, comm.type) %>%
+  summarise(NoOfAnalogs = mean(value)) %>%
+  group_by(measure, comm.type, RCP) %>%
+  summarise(no.analogs=sum(NoOfAnalogs==0)) %>%
+  filter(no.analogs!=0)
+
+GCM.summary <- filter(dat, arbthresh == 0.2) %>%
+  group_by(x, y, output_srtm, measure, GCM, comm.type) %>%
+  summarise(NoOfAnalogs = mean(value)) %>%
+  group_by(measure, comm.type, GCM) %>%
+  summarise(no.analogs=sum(NoOfAnalogs==0)) %>%
+  filter(no.analogs!=0)
+
+gcm.plot <- ggplot(GCM.summary, aes(x=measure, y=no.analogs, fill=GCM)) + 
+  geom_bar(position=position_dodge(), stat="identity") + 
+  scale_fill_grey(start=0.7, end=0.1) + 
+  facet_grid(~comm.type) +
+  labs(x="", y="Number of cells with no analog") + 
+  theme_classic() + theme(strip.background=element_blank())
+
+rcp.plot <- ggplot(RCP.summary, aes(x=measure, y=no.analogs, fill=RCP)) + 
+  geom_bar(position=position_dodge(), stat="identity") + 
+  scale_fill_grey(start=0.7, end=0.1) + 
+  facet_grid(~comm.type) +
+  labs(x="", y="Number of cells with no analog") + 
+  theme_classic() + theme(strip.background=element_blank())
+
+require(gridExtra)
+png("Figures/No_analogs.png", width=628, height=428)
+grid.arrange(rcp.plot, gcm.plot, ncol=1)
+dev.off()

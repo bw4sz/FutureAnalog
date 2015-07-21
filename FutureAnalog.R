@@ -6,15 +6,11 @@
 runBetaDiv <- function(out_path, cell_size, clust = 7){
 
   # Step 1) Bring in Phylogenetic Data -------------------------------------------
-  trx<-read.nexus("InputData/ColombiaPhylogenyUM.tre")
-  spnames<-read.table("InputData/SpNameTree.txt" , sep = "\t", header = TRUE)
-  
-  # Replace tip.label with Spnames, replace the tiplabels with periods, which is
-  # the biomod default Cophenetic distance is the distance between all pairs of
-  # species- measure of relatedness
-  trx$tip.label <- gsub("_",".",as.character(spnames$SpName))
-  co<-cophenetic(trx)
-  
+  trx<-read.tree("InputData/hum294.tre")
+  new<-str_extract(trx$tip.label,"(\\w+).(\\w+)")
+  trx<-drop.tip(trx,trx$tip.label[duplicated(new)])
+  trx$tip.label<-str_extract(trx$tip.label,"(\\w+).(\\w+)")
+
   # Step 2) Bring in trait data --------------------------------------------------
   morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
   

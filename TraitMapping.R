@@ -42,13 +42,13 @@ sXs.future$diff <- sXs.current$perc.occ - sXs.future$perc.occ
 sXs.RCP <- group_by(sXs.future, RCP, species) %>%
   summarise(diff=mean(diff)) %>%
   mutate(groups=ifelse(diff < 0, "More cells occupied in future environment", "More cells occupied in current environment"),
-         diff=abs(diff),
+         diff=abs(diff)*100,
          scenario=RCP)
 
 sXs.GCM <- group_by(sXs.future, GCM, species) %>%
   summarise(diff=mean(diff)) %>%
   mutate(groups=ifelse(diff < 0, "More cells occupied in future environment", "More cells occupied in current environment"),
-         diff=abs(diff),
+         diff=abs(diff)*100,
          scenario=GCM)
 
 # PCA on the species traits

@@ -1,0 +1,173 @@
+---
+title: "Community Biplot"
+author: "Ben Weinstein"
+date: "July 2, 2015"
+output: html_document
+---
+
+```{r}
+library(vegan)
+library(ggbiplot)
+library(reshape2)
+library(dplyr)
+library(tidyr)
+source("TraitMappingFunctions.R")
+```
+
+Load the site by species and traits data
+```{r}
+load("sppXsite/mp85bi70.rda")
+siteXsppF <- t(sppXsite[,2:(ncol(sppXsite) - 3)])
+load("sppXsite/current.rda")
+siteXspp <- t(sppXsite[,2:(ncol(sppXsite) - 3)])
+traits <- getTraitData()
+```
+Start with mean traits
+
+For each site (column) get the mean and standard deviation trait value
+
+```{r}
+
+#container for site trait averages
+out<-matrix(nrow=ncol(siteXspp),ncol=ncol(traits))
+out.var <- matrix(nrow=ncol(siteXspp), ncol=ncol(traits))
+for (x in 1:ncol(siteXspp)){
+  #subset site
+  site<-siteXspp[,x]
+  
+  #get the trait matrix for species that are present
+  site.trait<-traits[rownames(traits) %in% names(site[site==1]),]
+  #mean position
+  out[x,]<-apply(site.trait,2,mean)
+  out.var[x,] <- apply(site.trait,2,var)
+}
+
+#name container based on sites
+rownames(out)<-colnames(siteXspp)
+colnames(out)<-colnames(traits)
+rownames(out.var)<-colnames(siteXspp)
+colnames(out.var)<-colnames(traits)
+
+```
+
+Issue with using the means is that the standard deviation is large (often substantially larger than the mean trait value).
+
+```{r}
+head(out.var)
+head(out)
+```
+Initial biplot
+
+```{r}
+#base package
+biplot(prcomp(out))
+
+#ggbiplot
+ggbiplot((prcomp(out)))
+```
+
+Okay so that what it would look like in one time slice. Let's add a new matrix, which is the future siteXspp. 
+
+Repeat trait calculation
+
+```{r}
+#container for site trait averages
+outF<-matrix(nrow=ncol(siteXsppF),ncol=ncol(traits))
+
+for (x in 1:ncol(siteXsppF)){
+  #subset site
+  site<-siteXsppF[,x]
+  
+  #get the trait matrix for species that are present
+  site.trait<-traits[rownames(traits) %in% names(site[site==1]),]
+  #mean position
+  outF[x,]<-apply(site.trait,2,var)
+}
+
+#name container based on sites
+rownames(outF)<-colnames(siteXsppF)
+colnames(outF)<-colnames(traits)
+```
+
+##Approach #1: Bind the dataframes together
+```{r}
+combin<-rbind(out.var,outF)
+pca<-princomp(combin)
+#lets make a grouping variable, so the plot knows which is current and which is future
+groups<-c(rep("Current",nrow(out.var)),rep("Future",nrow(outF)))
+ggbiplot(pca,groups=groups)
+```
+
+So maybe we want to connect each assemblage by a faint line? Lots of different visualizations we could try
+
+If the two data.frames out (current) and outF (future) are just bound together in a dataframe (combin), and they are ordered in the same manner, then the first row of combin is the current state of the assemblage and the 1+nrow(out) row of combin is the future state of that assemblage. If they are not ordered correctly, you could match off a row name or lookup table by cell number?
+
+### Draw Lines
+So as an example, line segements can be drawn in ggplot like this.
+```{r}
+ggbiplot(pca,groups=groups) + geom_segment(x=0,y=0,xend=0,yend=2,size=1)
+```
+
+So the goal is to get the pca coordinates of each pair, and pass them into geom_segement.
+
+Step 1 is to get the correct pair for each line segement. The scores hold the pca loadings that act as coordinates in the figure. We just use the first two PC axis
+
+As an example show the first site
+```{r}
+#begin coordinates
+coords<-pca$scores[c(1,nrow(out)+1),1:2]
+
+#rename to make more logical
+colnames(coords)<-c("x","y")
+rownames(coords)<-c("Begin","End")
+
+#rearrange the data
+mcoords<-melt(coords)
+df<-dcast(mcoords,...~Var2+Var1)
+df
+ggbiplot(pca,groups=groups,scale = 0) + geom_segment(data=df,aes(x=x_Begin,y=y_Begin,xend=x_End,yend=y_End),size=.1,alpha=.5, arrow = arrow(length = unit(0.5,"cm")))
+```
+
+Repeat this all current assemblages.
+
+```{r}
+#begin coordinates
+df<-list()
+
+for (x in 1:nrow(out)){
+coords<-pca$scores[c(x,nrow(out)+x),1:2]
+
+#rename to make more logical
+colnames(coords)<-c("x","y")
+rownames(coords)<-c("Begin","End")
+
+#rearrange the data
+mcoords<-melt(coords)
+df[[x]]<-dcast(mcoords,...~Var2+Var1)[,-1]
+}
+
+df<-rbind.fill(df)
+```
+
+plot
+
+```{r}
+ggbiplot(pca,groups=groups,scale = 0, varname.size = 5, alpha = 0.05) +
+  geom_segment(data=df,aes(x=x_Begin,y=y_Begin,xend=x_End,yend=y_End),size=.1,alpha=.2, arrow = arrow(length = unit(0.5,"cm"))) +
+  theme_classic() 
+```
+
+It looks like, on the whole, the trait values are less variable going from the current to the future scenario (MPI-ESM-LR under the 8.5 representative concentration pathway). For wing chord and body mass, there are some arrows going against this. 
+
+If we want to look at the average direction / magnitude of change, we can take the average of the vectors and plot:
+
+```{r}
+# average of the vectors 
+df.sum <- data.frame(t(colMeans(df)))
+
+ggbiplot(pca,groups=groups,scale = 0, varname.size = 5, alpha = 0.05) +
+  geom_segment(data=df.sum,aes(x=x_Begin,y=y_Begin,xend=x_End,yend=y_End), arrow = arrow(length = unit(0.5,"cm"))) + 
+  theme_classic() 
+```
+
+This gives us an idea of the direction the variation in trait values as a whole are moving from current to future (all getting less variable, bill length more so). The magnitude, like with the mean values, is small - because of the cells where the pattern is opposite to the majority. 

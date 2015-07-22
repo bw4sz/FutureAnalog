@@ -11,12 +11,6 @@ for(p in packages) {
   require(p, character.only = TRUE)
 }
 
-if(!"ggbiplot" %in% installed.packages()) {
-  install_github("vqv/ggbiplot")
-}
-
-require(ggbiplot)
-
 # Load in source functions
 source("AlphaMappingFunctions.R")
 source("BenHolttraitDiversity.R")

@@ -123,15 +123,15 @@ ggbiplot2 <- function (pcobj, add.dat, choices = 1:2, scale = 1, pc.biplot = TRU
   # create ellipse
   theta <- c(seq(-pi, pi, length = 50), seq(pi, -pi, length = 50))
   circle <- cbind(cos(theta), sin(theta))
-  ell <- ddply(df.u, "groups", function(x) {
+  ell <- ddply(df.u, .(scenario, groups), function(x) {
     if (nrow(x) <= 2) {
       return(NULL)
     }
     sigma <- var(cbind(x$xvar, x$yvar))
-    mu <- c(mean(x$xvar), mean(x$yvar))
+    mu <- c(weighted.mean(x$xvar, x$diff), weighted.mean(x$yvar, x$diff))
     ed <- sqrt(qchisq(ellipse.prob, df = 2))
     data.frame(sweep(circle %*% chol(sigma) * ed, 2, 
-                     mu, FUN = "+"), groups = x$groups[1])
+                     mu, FUN = "+"), groups = x$groups[1], scenario = x$scenario[1])
   })
   names(ell)[1:2] <- c("xvar", "yvar")
   
@@ -141,11 +141,13 @@ ggbiplot2 <- function (pcobj, add.dat, choices = 1:2, scale = 1, pc.biplot = TRU
     #scale_x_continuous(limits=c(0, 2.5)) + 
     #scale_y_continuous(limits=c(-2.5, 2)) + 
     xlab(u.axis.labs[1]) + 
-    ylab(u.axis.labs[2]) + 
+    ylab(u.axis.labs[2]) +
     coord_equal()
   
   
   g <- g + geom_point(aes(size = diff, color = groups), alpha = alpha)
+  
+  g <- g + facet_wrap(~scenario, nrow=floor(length(unique(add.dat$scenario))/2))
   
   g <- g + geom_path(data = ell, aes(color = groups, group = groups))
   
@@ -157,7 +159,7 @@ ggbiplot2 <- function (pcobj, add.dat, choices = 1:2, scale = 1, pc.biplot = TRU
                      aes(label = varname, x = xvar, y = yvar, angle = angle, hjust = hjust), 
                      color = "darkred", size = varname.size)
   
-  g <- g + facet_wrap(~scenario, nrow=floor(length(unique(add.dat$scenario))/2))
+  
   
   return(g)
 }

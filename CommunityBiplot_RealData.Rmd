@@ -152,7 +152,22 @@ df<-rbind.fill(df)
 plot
 
 ```{r}
-ggbiplot(pca,groups=groups,scale = 0, varname.size = 5, alpha = 0.05) + geom_segment(data=df,aes(x=x_Begin,y=y_Begin,xend=x_End,yend=y_End),size=.1,alpha=.2, arrow = arrow(length = unit(0.5,"cm"))) + theme_classic() 
+ggbiplot(pca,groups=groups,scale = 0, varname.size = 5, alpha = 0.05) +
+  geom_segment(data=df,aes(x=x_Begin,y=y_Begin,xend=x_End,yend=y_End),size=.1,alpha=.2, arrow = arrow(length = unit(0.5,"cm"))) +
+  theme_classic() 
 ```
 
 So It looks as though there is some kind of pattern - mainly that the mean community traits going into the future scenario (MPI-ESM-LR under the 8.5 representative concentration pathway) are those with less extreme values. There is also the cluster of movement towards the bottom left corner (lower mass).
+
+If we want to look at the average direction / magnitude of change, we can take the average of the vectors and plot:
+
+```{r}
+# average of the vectors 
+df.sum <- data.frame(t(colMeans(df)))
+
+ggbiplot(pca,groups=groups,scale = 0, varname.size = 5, alpha = 0.05) +
+  geom_segment(data=df.sum,aes(x=x_Begin,y=y_Begin,xend=x_End,yend=y_End), arrow = arrow(length = unit(0.5,"cm"))) + 
+  theme_classic() 
+```
+
+This gives us an idea of the direction the traits as a whole are moving in from current to future (shorter wing chord, bill and body mass not much change). The magnitude is however small and it probably doesn't really tell us much because of the fact the pattern we were seeing before was a move away from extreme values.

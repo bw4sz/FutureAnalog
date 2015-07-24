@@ -346,3 +346,31 @@ require(gridExtra)
 png("Figures/No_analogs.png", width=628, height=428)
 grid.arrange(rcp.plot, gcm.plot, ncol=1)
 dev.off()
+
+# Additional plots, not for the MS ---------------------------------------------
+# get the species counts for each cell
+load("sppXsite/current.rda")
+sp_richness <- data.frame(x=sppXsite$x, y=sppXsite$y, 
+                          sp_richness=rowSums(sppXsite[,2:(ncol(sppXsite)-3)], na.rm=TRUE))
+
+novel.20.rcp.sprich <- merge(novel.20.rcp, sp_richness)
+cor.sprich <- group_by(novel.20.rcp.sprich, RCP, measure) %>%
+  summarise(cor(sp_richness, NoOfAnalogs, method="spearman"))
+novel.20.rcp.sprich <- merge(novel.20.rcp.sprich, cor.sprich)
+names(novel.20.rcp.sprich)[8] <- "cor"
+ggplot(novel.20.rcp.sprich, aes(x=sp_richness, y=NoOfAnalogs)) + geom_point() +
+  facet_grid(RCP~measure) +
+  geom_text(aes(label=paste("rho ==", round(cor, 2))), x=3, y=2000, parse=TRUE) +
+  theme_classic()
+ggsave("Figures/Novel_rich_analog_cor.png", width = 18, height = 9)
+
+diss.20.rcp.sprich <- merge(diss.20.rcp, sp_richness)
+cor.sprich <- group_by(diss.20.rcp.sprich, RCP, measure) %>%
+  summarise(cor(sp_richness, NoOfAnalogs, method="spearman"))
+diss.20.rcp.sprich <- merge(diss.20.rcp.sprich, cor.sprich)
+names(diss.20.rcp.sprich)[8] <- "cor"
+ggplot(diss.20.rcp.sprich, aes(x=sp_richness, y=NoOfAnalogs)) + geom_point() +
+  facet_grid(RCP~measure) +
+  geom_text(aes(label=paste("rho ==", round(cor, 2))), x=3, y=2000, parse=TRUE) +
+  theme_classic()
+ggsave("Figures/Diss_rich_analog_cor.png", width = 18, height = 9)

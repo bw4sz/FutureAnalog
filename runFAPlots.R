@@ -73,6 +73,26 @@ ggplot(NULL, aes(x, y)) +
 
 ggsave("Figures/Novel_by_RCP_20perc_thres.png", width = 9, height = 9)
 
+# plot of the variance to check uncertainty
+novel.20.rcp.var <- filter(dat, comm.type=="Novel", arbthresh == 0.2) %>%
+  group_by(x, y, output_srtm, measure, RCP) %>%
+  summarise(NoOfAnalogs = var(value))
+
+ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = novel.20.rcp.var, aes(fill=NoOfAnalogs)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient(low = "blue", high = "white", name="Variance of # of analog\ncommunities") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_grid(measure ~ RCP) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+ggsave("Figures/Novel_by_RCP_20perc_thres_variance.png", width = 9, height = 9)
+
 # 2b Analog ~ Elevation GAMs
 ggplot(novel.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
   facet_grid(measure~RCP) + 
@@ -108,6 +128,25 @@ ggplot(NULL, aes(x, y)) +
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
 ggsave("Figures/Disappearing_by_RCP_20perc_thres.png", width = 9, height = 9)
+
+diss.20.rcp.var <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
+  group_by(x, y, output_srtm, measure, RCP) %>%
+  summarise(NoOfAnalogs = var(value))
+
+ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = diss.20.rcp.var, aes(fill=NoOfAnalogs)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_grid(measure ~ RCP) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+ggsave("Figures/Disappearing_by_RCP_20perc_thres_variance.png", width = 9, height = 9)
 
 # 3b Analog ~ Elevation GAMs
 ggplot(diss.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 

@@ -74,15 +74,15 @@ ggplot(NULL, aes(x, y)) +
 ggsave("Figures/Novel_by_RCP_20perc_thres.png", width = 9, height = 9)
 
 # plot of the variance to check uncertainty
-novel.20.rcp.var <- filter(dat, comm.type=="Novel", arbthresh == 0.2) %>%
+novel.20.rcp.sd <- filter(dat, comm.type=="Novel", arbthresh == 0.2) %>%
   group_by(x, y, output_srtm, measure, RCP) %>%
-  summarise(NoOfAnalogs = var(value))
+  summarise(NoOfAnalogs = sd(value)/mean(value))
 
 ggplot(NULL, aes(x, y)) + 
-  geom_raster(data = novel.20.rcp.var, aes(fill=NoOfAnalogs)) +
+  geom_raster(data = novel.20.rcp.sd, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
   geom_path(data = ec.df, aes(x=long, y=lat)) +
-  scale_fill_gradient(low = "blue", high = "white", name="Variance of # of analog\ncommunities") +
+  scale_fill_gradient(low = "white", high = "blue", name="CV of # of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
   facet_grid(measure ~ RCP) + 
@@ -91,7 +91,7 @@ ggplot(NULL, aes(x, y)) +
   coord_equal() + theme_classic(base_size=15) + 
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave("Figures/Novel_by_RCP_20perc_thres_variance.png", width = 9, height = 9)
+ggsave("Figures/Novel_by_RCP_20perc_thres_cv.png", width = 9, height = 9)
 
 # 2b Analog ~ Elevation GAMs
 ggplot(novel.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
@@ -129,15 +129,15 @@ ggplot(NULL, aes(x, y)) +
 
 ggsave("Figures/Disappearing_by_RCP_20perc_thres.png", width = 9, height = 9)
 
-diss.20.rcp.var <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
+diss.20.rcp.sd <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
   group_by(x, y, output_srtm, measure, RCP) %>%
-  summarise(NoOfAnalogs = var(value))
+  summarise(NoOfAnalogs = sd(value)/mean(value))
 
 ggplot(NULL, aes(x, y)) + 
-  geom_raster(data = diss.20.rcp.var, aes(fill=NoOfAnalogs)) +
+  geom_raster(data = diss.20.rcp.sd, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
   geom_path(data = ec.df, aes(x=long, y=lat)) +
-  scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
+  scale_fill_gradient(low = "white", high = "red", name="CV of # of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
   facet_grid(measure ~ RCP) + 
@@ -146,7 +146,7 @@ ggplot(NULL, aes(x, y)) +
   coord_equal() + theme_classic(base_size=15) + 
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave("Figures/Disappearing_by_RCP_20perc_thres_variance.png", width = 9, height = 9)
+ggsave("Figures/Disappearing_by_RCP_20perc_thres_CV.png", width = 9, height = 9)
 
 # 3b Analog ~ Elevation GAMs
 ggplot(diss.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
@@ -387,6 +387,7 @@ grid.arrange(rcp.plot, gcm.plot, ncol=1)
 dev.off()
 
 # Additional plots, not for the MS ---------------------------------------------
+# CORRELATION OF SPECIES RICHNESS AND NUMBER OF ANALOGS ------------------------
 # get the species counts for each cell
 load("sppXsite/current.rda")
 sp_richness <- data.frame(x=sppXsite$x, y=sppXsite$y, 
@@ -413,3 +414,107 @@ ggplot(diss.20.rcp.sprich, aes(x=sp_richness, y=NoOfAnalogs)) + geom_point() +
   geom_text(aes(label=paste("rho ==", round(cor, 2))), x=3, y=2000, parse=TRUE) +
   theme_classic()
 ggsave("Figures/Diss_rich_analog_cor.png", width = 18, height = 9)
+
+# UNCERTAINTY IN CLIMATE VARIABLES ---------------------------------------------
+ann_mean_temp <- list.files("../worldclim_data/projections_2070/",
+                   pattern = "701.tif$", full.names = TRUE, recursive = TRUE)
+ann_mean_temp <- stack(ann_mean_temp)
+ann_mean_temp <- stack(crop(ann_mean_temp, elev))
+
+ann_prec <- list.files("../worldclim_data/projections_2070/",
+                   pattern = "7012.tif$", full.names = TRUE, recursive = TRUE)
+ann_prec <- stack(ann_prec)
+ann_prec <- stack(crop(ann_prec, elev))
+
+prec_seasonality <- list.files("../worldclim_data/projections_2070/",
+                   pattern = "7015.tif$", full.names = TRUE, recursive = TRUE)
+prec_seasonality <- stack(prec_seasonality)
+prec_seasonality <- stack(crop(prec_seasonality, elev))
+
+
+ann_mean_temp <- as.data.frame(ann_mean_temp, xy = TRUE) %>%
+  gather(key, value, -x, -y, na.rm = TRUE) %>%
+  mutate(var="ann_mean_temp", 
+         GCM=substr(variable, 1, 2),
+         RCP=substr(variable, 3, 4)) %>%
+  group_by(x, y, var, RCP) %>%
+  summarise(CV=sd(value)/mean(value))
+
+ann_prec <- as.data.frame(ann_prec, xy = TRUE) %>%
+  gather(key, value, -x, -y, na.rm = TRUE) %>%
+  mutate(var="ann_prec", 
+         GCM=substr(variable, 1, 2),
+         RCP=substr(variable, 3, 4)) %>%
+  group_by(x, y, var, RCP) %>%
+  summarise(CV=sd(value)/mean(value))
+
+prec_seasonality <- as.data.frame(prec_seasonality, xy = TRUE) %>%
+  gather(key, value, -x, -y, na.rm = TRUE) %>%
+  mutate(var="prec_seasonality", 
+         GCM=substr(variable, 1, 2),
+         RCP=substr(variable, 3, 4)) %>%
+  group_by(x, y, var, RCP) %>%
+  summarise(CV=sd(value)/mean(value))
+
+climate.CV <- rbind(ann_mean_temp, ann_prec, prec_seasonality)
+
+ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = climate.CV, aes(fill=CV)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient(low = "white", high = "red", name="CV for climate variable") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_grid(var ~ RCP) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+ggsave("Figures/climate_CV.png", width=9, height=9)
+
+ann_temp.p <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = ann_mean_temp, aes(fill=CV)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient(low = "white", high = "red", name="CV mean annual temperature") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_grid(. ~ RCP) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+ann_prec.p <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = ann_prec, aes(fill=SD)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient(low = "white", high = "red", name="SD annual precipitation") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_grid(. ~ RCP) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+prec_seasonality.p <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = prec_seasonality, aes(fill=SD)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient(low = "white", high = "red", name="SD precipitation seasonality") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_grid(. ~ RCP) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+png("Figures/climate_variable_sd.png", width = 864, height = 864)
+grid.arrange(ann_temp.p, ann_prec.p, prec_seasonality.p)
+dev.off()
+
+
+

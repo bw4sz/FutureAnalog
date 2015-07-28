@@ -1,6 +1,24 @@
 # get list of sppXsite matrices for each environmental scenario
 sppXsite.files <- list.files("sppXsite", full.names = TRUE)
 
+# load trait data
+traits <- getTraitData()
+
+# load hillshade data for plotting
+load("InputData/srtm_5arcmin.rda")
+slope = terrain(elev, opt='slope')
+aspect = terrain(elev, opt='aspect')
+hill = hillShade(slope, aspect, 40, 270)
+hdf <- rasterToPoints(hill)
+hdf <- data.frame(hdf)
+
+# ecuador boundary - get into format for ggplot
+ec <- readOGR("InputData", "EcuadorCut")
+ec@data$id = rownames(ec@data)
+ec.df = fortify(ec, region="id")
+
+
+# APPROACH #1 ------------------------------------------------------------------
 # get the number/proportion of cells occupied for each species in each climate scenario
 sXs.summary <- list()
 for(sppXsite.file in sppXsite.files){
@@ -18,9 +36,6 @@ for(sppXsite.file in sppXsite.files){
 }
 
 sXs.summary <- do.call("rbind", sXs.summary)
-
-# load trait data
-traits <- getTraitData()
 
 # remove species from summary where we do not have trait data and vice versa
 sXs.summary <- filter(sXs.summary, species %in% rownames(traits))
@@ -63,3 +78,91 @@ ggbiplot2(pca, add.dat = sXs.GCM) + theme_classic() +
   labs(size="Absolute difference in % cells occupied", color="") + 
   theme(legend.position = c(1, 0), legend.justification = c(1, 0)) 
 ggsave("Figures/traitsbyGCM.pdf", width=17, height=9)
+
+# APPROACH #2 ------------------------------------------------------------------
+# get current species list and calculate mean traits for each site
+current <- list.files("sppXsite", pattern="current", full.names = TRUE)
+currentTraits <- getSiteTraitValues(current, traits)
+
+# get future species lists and calculate mean traits for each site and each model
+future <- sppXsite.files[which(sppXsite.files != current)]
+futureTraits <- list()
+for(f in future) {
+  futureTraits[[f]] <- getSiteTraitValues(f, traits)
+}
+
+futureTraits <- do.call("rbind", futureTraits)
+
+# get the mean trait values grouped by RCP
+futureTraits <- mutate(futureTraits, mod=substr(mod, 3, 4)) %>%
+  group_by(x, y, mod) %>%
+  summarise(Bill=mean(Bill, na.rm=TRUE), 
+            Mass=mean(Mass, na.rm=TRUE), 
+            WingChord=mean(WingChord, na.rm=TRUE))
+
+# bind together and get the values for the first two principal components
+allTraits <- rbind(currentTraits, futureTraits)
+pca <- princomp(allTraits[,4:6])
+allTraits$PCA1 <- pca$scores[,1]
+allTraits$PCA2 <- pca$scores[,2]
+
+# create subsets for current and the three RCPs
+currentTraits <- subset(allTraits, mod=="current")
+RCP26Traits <- subset(allTraits, mod=="26")
+RCP45Traits <- subset(allTraits, mod=="45")
+RCP85Traits <- subset(allTraits, mod=="85")
+
+# calculate the diff between current and each future scenario for PCA
+RCP26PCADiff <- data.frame(mod="RCP 2.6", x=currentTraits$x, y=currentTraits$y, currentTraits[,7:8] - RCP26Traits[,7:8])
+RCP45PCADiff <- data.frame(mod="RCP 4.5", x=currentTraits$x, y=currentTraits$y, currentTraits[,7:8] - RCP45Traits[,7:8])
+RCP85PCADiff <- data.frame(mod="RCP 8.5", x=currentTraits$x, y=currentTraits$y, currentTraits[,7:8] - RCP85Traits[,7:8])
+
+# calculate the diff between current and each future scenario for actual trait value
+RCP26TraitDiff <- data.frame(mod="RCP 2.6", x=currentTraits$x, y=currentTraits$y, currentTraits[,4:6] - RCP26Traits[,4:6])
+RCP45TraitDiff <- data.frame(mod="RCP 4.5", x=currentTraits$x, y=currentTraits$y, currentTraits[,4:6] - RCP45Traits[,4:6])
+RCP85TraitDiff <- data.frame(mod="RCP 8.5", x=currentTraits$x, y=currentTraits$y, currentTraits[,4:6] - RCP85Traits[,4:6])
+
+# get into dataframe for plotting
+PCADiff <- rbind(RCP26PCADiff, RCP45PCADiff, RCP85PCADiff)
+PCADiff <- gather(PCADiff, key, value, -x, -y, -mod)
+
+TraitDiff <- rbind(RCP26TraitDiff, RCP45TraitDiff, RCP85TraitDiff)
+TraitDiff <- gather(TraitDiff, key, value, -x, -y, -mod)
+
+# PCA difference values plotted
+PCAPlot <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = PCADiff, aes(fill=value)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient2(name="Current value - Future value") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_grid(variable ~ mod) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+# biplot for PCA so that the axes make sense
+require(ggbiplot)
+traitBiplot <- ggbiplot(pca, alpha=0.005) + theme_classic()
+
+png("Figures/trait_pca_changes.png", width=1311, height=515)
+grid.arrange(PCAPlot, traitBiplot, nrow=1, widths=c(2, 1))
+dev.off()
+
+# Actual trait value differences plotted
+ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = TraitDiff, aes(fill=value)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient2(name="Current value - Future value") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_grid(variable ~ mod) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + theme_classic(base_size=15) + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+ggsave("Figures/trait_changes.png", width=9, height=9)

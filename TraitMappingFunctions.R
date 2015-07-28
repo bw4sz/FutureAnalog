@@ -163,3 +163,24 @@ ggbiplot2 <- function (pcobj, add.dat, choices = 1:2, scale = 1, pc.biplot = TRU
   
   return(g)
 }
+
+getSiteTraitValues <- function(f, traits) {
+  fName <- str_match(f,pattern=paste("sppXsite/(\\w+.\\w+).rda",sep="/"))[,2]
+  
+  load(f)
+  siteXspp <- t(sppXsite[,2:(ncol(sppXsite) - 3)])
+  out <- matrix(nrow=ncol(siteXspp),ncol=ncol(traits))
+  
+  for (x in 1:ncol(siteXspp)){
+    #subset site
+    site <- siteXspp[,x]
+    #get the trait matrix for species that are present
+    site.trait<-traits[rownames(traits) %in% names(site[site==1]),]
+    #mean position
+    out[x,] <- colMeans(site.trait)
+    
+  }
+  colnames(out) <- colnames(traits)
+  out <- data.frame(x=sppXsite$x, y=sppXsite$y, mod=fName, out)
+  return(out)
+}

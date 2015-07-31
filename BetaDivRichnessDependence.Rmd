@@ -1,0 +1,58 @@
+---
+title: "Beta-diversity richness (in)dependence"
+author: "Laura Graham"
+date: "31 July 2015"
+output: html_document
+---
+```{r}
+# load packages and files
+library(ggplot2)
+library(dplyr)
+load("sppXsite/current.rda")
+totSpecies <- rowSums(sppXsite[2:132], na.rm=TRUE)
+
+# Sorensen dissimilarity calculations
+beta.div <- function(pair, value) {
+  a <- seq(1, min(pair))
+  b <- min(pair) - a
+  c <- max(pair) - a
+  
+  beta.div <- 1 - (2*a/(2*a + b + c))
+  if(value=="mean") return(mean(beta.div))
+  if(value=="min") return(min(beta.div))
+}
+```
+
+Beta-diversity measures such as Sorensen and Jaccard are technically richness independent because multiplying the number of species by a constant keeps the proportions the same and thus the beta-diversity measure the same.
+
+However, when comparing two cells of hugely differing richness, even if there is complete nestedness, the minimum value the dissimilarity measure can take is high. For example in our dataset the cell with the lowest richness has `r min(totSpecies)` and the cell with the highest richness has `r max(totSpecies)`. Assuming complete nestedness, the Sorensen dissimilarity measure is `r beta.div(c(min(totSpecies), max(totSpecies)), "min")`, ie. cells are very different. 
+
+What impact does this have on the number of analogs a cell can potentially have?
+
+If we generate all possible pairs of cells with 1 to 100 species and calculate the Sorensen dissimilarity measure assuming that all cells in the one with the least species are shared, we can investigate:
+```{r}
+sprich <- seq(1, 100)
+sprich.pairs <- expand.grid(sprich, sprich)
+beta.div.test <- data.frame(sprich.pairs, 
+                            beta.div=apply(sprich.pairs, 1, function(x) beta.div(x, "min")))
+beta.div.test$analog <- beta.div.test$beta.div < 0.2
+ggplot(beta.div.test, aes(x=Var1,y=Var2,fill=analog)) + 
+  geom_tile() + 
+  labs(x="Species richness of cell 1", y="Species richness of cell 2") +
+  theme_classic()
+```
+
+The plot shows whether two cells would be considered analogous (threshold of 0.2). Cells with lower species richness have fewer cells with which they can be considered analogous. The pattern is the same for other thresholds, just wider/narrower band of blue depending on higher/lower thresholds.
+
+Below is a plot of species richness against the maximum number of analogs. 
+
+```{r}
+analog.test <- group_by(beta.div.test, Var1) %>%
+  summarise(noAnalogs=sum(analog))
+
+ggplot(analog.test, aes(x=Var1, y=noAnalogs)) + geom_point() + 
+  labs(x="Species richness", y="Maximum number of analogs") +
+  theme_classic()
+```
+
+Almost perfect (~0.999...) correlation for the section up to species richness = 60.   

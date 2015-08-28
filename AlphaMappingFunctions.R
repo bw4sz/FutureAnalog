@@ -737,8 +737,8 @@ Beval.pam <- function( dis, dismat, s.all,maxclust = 100)
 
 MNND_fc <- function(fu,cur,sp.list_current,sp.list_future,dists)
 {
-  Asp     <- sp.list_current[[fu]]
-  Bsp     <- sp.list_future[[cur]]
+  Asp     <- sp.list_current[[cur]]
+  Bsp     <- sp.list_future[[fu]]
   
   if(is.null(Asp) | is.null(Bsp)){
     res <- 1

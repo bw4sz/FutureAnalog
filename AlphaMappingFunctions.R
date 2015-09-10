@@ -560,12 +560,12 @@ matpsim.nopar <- function(phyl, com, clust = 7) # make sure nodes are labelled a
 #Pairwise Version
 ##################
 
-matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes are labelled and that com and phyl species match
+matpsim.pairwise <- function(phyl, com.x, com.y, beta.measure = "sor", clust = 7) # make sure nodes are labelled and that com and phyl species match
 {
   
   require(phylobase)  # detail information for all phylo branches
   new <- phylo4(phyl)
-  dat <- as.data.frame(print(new))
+  dat <- as.data.frame(new)
   allbr <- dat$edge.length
   names(allbr) <- getEdge(new)
   #Assumes same species in the comm matrices
@@ -598,10 +598,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
 }
   names(brs) <- spp
   stopCluster(cl)
-  
-  
-  print("brs")
-  
+
   # create a species by phy branch matrix
   
   spp_br <- matrix(0,nrow = length(spp), ncol = length(allbr))
@@ -644,14 +641,13 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
   
   stopCluster(cl)
   
-  print("cell_br")
   rownames(tcellbr.x) <- rownames(com.x)
   rownames(tcellbr.y) <- rownames(com.y)
   #tcellbr <<- tcellbr
   
   # function to calculate phylobsim between cell_a and cell_b
   
-  nmatsim <- function(cell_a,cell_b) # samp = grid cell of interest
+  nmatsim <- function(cell_a,cell_b, beta.measure) # samp = grid cell of interest
   {
     a_br  <- tcellbr.x[cell_a,]
     b_br <- tcellbr.y[cell_b,]
@@ -662,8 +658,11 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
     ubr <- s_br[,colSums(pa_br > 0)==1]
     a_ubr <- as.matrix(ubr)[1,]
     b_ubr <- as.matrix(ubr)[2,]
-    psim <- 1 - (sum(both,na.rm=T)/(min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))+sum(both,na.rm=T)))
-    return(psim)
+    psor <- (sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))/(2*(sum(both, na.rm=T)) + sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))
+    psim <- (min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))/(min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))+sum(both,na.rm=T)))
+    pnes <- psor - psim
+    res <- switch(beta.measure, "sor" = 1, "sim" = 2, "nes" = 3)
+    return(res)
   }
   
   # calculate full cell by cell phylobsim matrix
@@ -679,11 +678,9 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
   
   stopCluster(cl)
   
-  print("psim")
   psim <- do.call("rbind", psim)
   rownames(psim) <- rownames(tcellbr.x)
   colnames(psim) <- rownames(tcellbr.y)    
-  print("its over")
   return(psim)
 }
 

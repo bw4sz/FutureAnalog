@@ -61,26 +61,9 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   model_eval<-rbind_all(lapply(model_eval, 
                                function(x) read.csv(x, stringsAsFactors = FALSE)))
   colnames(model_eval)[1:2] <- c("Stat", "Species")
-  
-  # change here for sensitivity analyis
-  model_eval$TEST <- (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.5) 
-                      & model_eval$Stat == "TSS") |
-    (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.75) 
-     & model_eval$Stat == "ROC")
-  
-  well.fitting.models <- subset(model_eval, !TEST)
-  well.fitting.species <- unique(well.fitting.models$Species)
-  well.fitting.species <- gsub(" ", ".", well.fitting.species)
-  
-  # get the crop files
+
+    # get the crop files
   niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
-  
-  files <- c()
-  for(s in well.fitting.species){
-    files <- c(files,grep(s, niche.crops))
-  }
-  
-  niche.crops <- niche.crops[files]
   
   # create a blank raster object of the correct size and extent to have for
   # projecting the cell values
@@ -119,7 +102,11 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
     
     # Step 1) TAXONOMIC BETA DIVERSITY ---------------------------------------------
-    beta.time.taxa <- analogue::distance(current, siteXspps, "bray")
+    tsor <- analogue::distance(current, siteXspps, "bray")
+    
+    tsim <- proxy::dist(current, siteXspps, "Simpson")
+    
+    tnes <- tsor - tsim
     
     # Step 2) PHYLO BETA DIVERSITY -------------------------------------------------
     # For phylobeta, there needs to be more than 2 species for a rooted tree
@@ -127,9 +114,19 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     phylo.dat <- phylo.dat[!rowSums(phylo.dat)<=2,]   
     
     strt <- Sys.time()
-    beta.time.phylo <- matpsim.pairwise(phyl = trx, 
+    psor <- matpsim.pairwise(phyl = trx, 
                                         com.x = current.phylo, 
-                                        com.y = phylo.dat)
+                                        com.y = phylo.dat,
+                                        beta.measure = "sor")
+    psim <- matpsim.pairwise(phyl = trx,
+                             com.x = current.phylo,
+                             com.y = phylo.dat,
+                             beta.measure = "sim")
+    
+    pnes <- matpsim.pairwise(phyl = trx,
+                             com.x = current.phylo,
+                             com.y = phylo.dat,
+                             beta.measure = "nes")
     Sys.time()-strt
     
     # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
@@ -169,9 +166,9 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     rownames(beta.time.func) <- rownames(current.func)
     colnames(beta.time.func) <- rownames(func.dat)
     
-    res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
+    res <- list(beta.time.taxa, psor, beta.time.func)
     names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
-    save(res, file = paste0(res_path, "/beta_diversity_", mod, ".rda"))
+    save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
   }
 }
 

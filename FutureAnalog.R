@@ -4,7 +4,11 @@
 # number of analog hummingbird assemblages in Ecuador under future climate scenarios.
 # PART I CALCULATE BETWEEN TIME BETA-DIVERSITY MEASURES ------------------------
 runBetaDiv <- function(out_path, cell_size, clust = 7){
-
+  
+  # create logfile
+  file.create("~/Dropbox/FutureAnalogLog.txt")
+  fileConn <- file("~/Dropbox/FutureAnalogLog.txt")
+  
   # Step 1) Bring in Phylogenetic Data -------------------------------------------
   trx<-read.tree("InputData/hum294.tre")
   new<-str_extract(trx$tip.label,"(\\w+).(\\w+)")
@@ -67,6 +71,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   clim.mods <- list.files("../worldclim_data/projections_2070/")
   
   for(mod in clim.mods){
+    writeLines(paste0("Beginning analysis for ", mod), fileConn)
     niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
     
     #Create siteXspp table from input rasters, function is from
@@ -78,18 +83,21 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
     
     # Step 1) TAXONOMIC BETA DIVERSITY ---------------------------------------------
+    strt <- Sys.time()
     tsor <- analogue::distance(current, siteXspps, "bray")
     
     tsim <- proxy::dist(current, siteXspps, "Simpson")
     
     tnes <- tsor - tsim
     
+    writeLines(paste0("Taxonomic beta diversity took: ",Sys.time() - strt), fileConn)
     # Step 2) PHYLO BETA DIVERSITY -------------------------------------------------
     # For phylobeta, there needs to be more than 2 species for a rooted tree
+    strt <- Sys.time()
     phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
     phylo.dat <- phylo.dat[!rowSums(phylo.dat)<=2,]   
     
-    strt <- Sys.time()
+    
     pbeta <- matpsim.pairwise(phyl = trx, 
                                         com.x = current.phylo, 
                                         com.y = phylo.dat)
@@ -98,9 +106,9 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     psim <- pbeta$psim
     pnes <- pbeta$pnes
     
-    Sys.time()-strt
-    
+    writeLines(paste0("Phylogenetic beta diversity took: ",Sys.time() - strt), fileConn)
     # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
+    strt <- Sys.time()
     func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
     func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
     
@@ -138,6 +146,8 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     tnes <- spread(betadiv[-c(3,5)], Var2, funct.beta.sne)
     rownames(tnes) <- tnes[,1]
     tnes <- tnes[-1]
+    
+    writeLines(paste0("Functional beta diversity took: ",Sys.time() - strt), fileConn)
     
     res <- list(tsor=tsor, tsim=tsim, tnes=tnes, 
                 psor=psor, psim=psim, pnes=pnes, 

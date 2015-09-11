@@ -560,7 +560,7 @@ matpsim.nopar <- function(phyl, com, clust = 7) # make sure nodes are labelled a
 #Pairwise Version
 ##################
 
-matpsim.pairwise <- function(phyl, com.x, com.y, beta.measure = "sor", clust = 7) # make sure nodes are labelled and that com and phyl species match
+matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes are labelled and that com and phyl species match
 {
   
   require(phylobase)  # detail information for all phylo branches
@@ -660,8 +660,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, beta.measure = "sor", clust = 7
     b_ubr <- as.matrix(ubr)[2,]
     psor <- (sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))/(2*(sum(both, na.rm=T)) + sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))
     psim <- (min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))/(min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))+sum(both,na.rm=T)))
-    pnes <- psor - psim
-    res <- switch(beta.measure, "sor" = 1, "sim" = 2, "nes" = 3)
+    res <- switch(beta.measure, "sor" = 1, "sim" = 2)
     return(res)
   }
   
@@ -670,18 +669,30 @@ matpsim.pairwise <- function(phyl, com.x, com.y, beta.measure = "sor", clust = 7
   cl <- makeCluster(clust) # make another cluster
   registerDoSNOW(cl)
   
+  psor<-foreach(j=rownames(tcellbr.x)) %dopar%{
+    sapply(rownames(tcellbr.y),function(k){
+      nmatsim(j,k, "sor")
+    })}
+  
   psim<-foreach(j=rownames(tcellbr.x)) %dopar%{
     sapply(rownames(tcellbr.y),function(k){
-      nmatsim(j,k)
+      nmatsim(j,k, "sim")
   })}
 
   
   stopCluster(cl)
   
+  psor <- do.call("rbind", psor)
+  rownames(psor) <- rownames(tcellbr.x)
+  colnames(psor) <- rownames(tcellbr.y)    
+  
   psim <- do.call("rbind", psim)
   rownames(psim) <- rownames(tcellbr.x)
   colnames(psim) <- rownames(tcellbr.y)    
-  return(psim)
+  
+  pnes <- psor - psim
+  pbeta <- list(psor=psor, psim=psim, pnes=pnes)
+  return(pbeta)
 }
 
 # hierachical clustering eval

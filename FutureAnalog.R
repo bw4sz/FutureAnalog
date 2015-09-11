@@ -12,31 +12,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   trx$tip.label<-str_extract(trx$tip.label,"(\\w+).(\\w+)")
 
   # Step 2) Bring in trait data --------------------------------------------------
-  morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
-  
-  #just get males & the 3 traits of interest
-  mon <- filter(morph, Sex == "Macho") %>%
-    select(SpID, ExpC, Peso, AlCdo) %>%
-    group_by(SpID) %>%
-    summarise_each(funs(mean(., na.rm = TRUE))) %>%
-    filter(complete.cases(.))
-  
-  mon <- data.frame(mon)
-  colnames(mon) <- c("Species","Bill","Mass","WingChord")
-  rownames(mon) <- gsub(" ",".",mon$Species)
-  mon <- mon[,-1]
-  
-  #principal component traits and get euclidean distance matrix
-  means <- apply(mon, 2, mean)
-  
-  Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
-  Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
-  WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
-  
-  z.scores <- data.frame(Bill, Mass, WingChord)
-  rownames(z.scores) <- rownames(mon)
-  
-  fco <- as.matrix(dist(z.scores, method = "euclidean"))
+  getTraitData()
   
   # Step 3) Bring in niche models ------------------------------------------------
   all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
@@ -114,19 +90,14 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     phylo.dat <- phylo.dat[!rowSums(phylo.dat)<=2,]   
     
     strt <- Sys.time()
-    psor <- matpsim.pairwise(phyl = trx, 
+    pbeta <- matpsim.pairwise(phyl = trx, 
                                         com.x = current.phylo, 
-                                        com.y = phylo.dat,
-                                        beta.measure = "sor")
-    psim <- matpsim.pairwise(phyl = trx,
-                             com.x = current.phylo,
-                             com.y = phylo.dat,
-                             beta.measure = "sim")
+                                        com.y = phylo.dat)
     
-    pnes <- matpsim.pairwise(phyl = trx,
-                             com.x = current.phylo,
-                             com.y = phylo.dat,
-                             beta.measure = "nes")
+    psor <- pbeta$psor
+    psim <- pbeta$psim
+    pnes <- pbeta$pnes
+    
     Sys.time()-strt
     
     # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
@@ -155,6 +126,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     cl <- makeCluster(clust) # make another cluster
     registerDoSNOW(cl)
     
+    # adjust this to include betapart...
     beta.time.func <- foreach(fu=rownames(func.dat), .export = c("current.func", "MNND_fc"), .combine="cbind") %dopar%{
       sapply(rownames(current.func), function(cur){
         MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)

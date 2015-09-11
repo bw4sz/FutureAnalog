@@ -6,8 +6,8 @@
 runBetaDiv <- function(out_path, cell_size, clust = 7){
   
   # create logfile
-  file.create("~/Dropbox/FutureAnalogLog.txt")
-  fileConn <- file("~/Dropbox/FutureAnalogLog.txt")
+  file.create(paste0(out_path, "/FutureAnalogLog.txt"))
+  fileConn <- file(paste0(out_path, "/FutureAnalogLog.txt"))
   
   # Step 1) Bring in Phylogenetic Data -------------------------------------------
   trx<-read.tree("InputData/hum294.tre")
@@ -61,7 +61,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   current.phylo <- current[,colnames(current) %in% trx$tip.label]
   current.phylo <- current.phylo[!rowSums(current.phylo)<=2,]  
   
-  current.func <- current[,colnames(current) %in% colnames(fco)]
+  current.func <- current[,colnames(current) %in% rownames(traits)]
   current.func <- current.func[!apply(current.func,1,sum)<=2,]  
   
   # list to output results
@@ -109,7 +109,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     writeLines(paste0("Phylogenetic beta diversity took: ",Sys.time() - strt), fileConn)
     # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
     strt <- Sys.time()
-    func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
+    func.dat <- siteXspps[,colnames(siteXspps) %in% rownames(traits)]
     func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
     
     sp.list_current <- lapply(rownames(current.func), function(k){

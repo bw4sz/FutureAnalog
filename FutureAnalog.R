@@ -12,7 +12,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   trx$tip.label<-str_extract(trx$tip.label,"(\\w+).(\\w+)")
 
   # Step 2) Bring in trait data --------------------------------------------------
-  getTraitData()
+  traits <- getTraitData()
   
   # Step 3) Bring in niche models ------------------------------------------------
   all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
@@ -117,29 +117,32 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     }) 
     
     names(sp.list_future) <- rownames(func.dat)
+
+    site.pairs <- expand.grid(rownames(current.func), rownames(func.dat))
+    betadiv <- apply(site.pairs, 1, function(x) {
+      trait.betadiv(x[1], x[2], current.func, func.dat, "nes",
+                    sp.list_current, sp.list_future, traits)
+    })
     
-    #Get distances from the cophenetic matrix?
-    dists <- as.matrix(fco)
-    rownames(dists) <- rownames(fco)
-    colnames(dists) <- rownames(fco)
+    betadiv <- t(betadiv)
+    betadiv <- cbind(site.pairs, betadiv)
     
-    cl <- makeCluster(clust) # make another cluster
-    registerDoSNOW(cl)
+    tsor <- spread(betadiv[-c(3,4)], Var2, funct.beta.sor)
+    rownames(tsor) <- tsor[,1]
+    tsor <- tsor[-1]
     
-    # adjust this to include betapart...
-    beta.time.func <- foreach(fu=rownames(func.dat), .export = c("current.func", "MNND_fc"), .combine="cbind") %dopar%{
-      sapply(rownames(current.func), function(cur){
-        MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
-      })}
+    tsim <- spread(betadiv[-c(4,5)], Var2, funct.beta.sim)
+    rownames(tsim) <- tsim[,1]
+    tsim <- tsim[-1]
     
+    tnes <- spread(betadiv[-c(3,5)], Var2, funct.beta.sne)
+    rownames(tnes) <- tnes[,1]
+    tnes <- tnes[-1]
     
-    stopCluster(cl)
+    res <- list(tsor=tsor, tsim=tsim, tnes=tnes, 
+                psor=psor, psim=psim, pnes=pnes, 
+                fsor=fsor, fsim=fsim, fnes=fnes)
     
-    rownames(beta.time.func) <- rownames(current.func)
-    colnames(beta.time.func) <- rownames(func.dat)
-    
-    res <- list(beta.time.taxa, psor, beta.time.func)
-    names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
     save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
   }
 }

@@ -660,7 +660,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
     b_ubr <- as.matrix(ubr)[2,]
     psor <- (sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))/(2*(sum(both, na.rm=T)) + sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))
     psim <- (min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))/(min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))+sum(both,na.rm=T)))
-    res <- switch(beta.measure, "sor" = 1, "sim" = 2)
+    res <- switch(beta.measure, "sor" = psor, "sim" = psim)
     return(res)
   }
   
@@ -764,6 +764,19 @@ MNND_fc <- function(fu,cur,sp.list_current,sp.list_future,dists)
     #names(res) <- c("MNND")  
   }
   
+  return(res)
+}
+
+
+trait.betadiv <- function(cur, fu, current.func, func.dat, beta.measure,
+                          sp.list_current, sp.list_future, traits) {
+  species.dat <- unique(unlist(c(sp.list_current[cur], sp.list_future[fu])))
+  comm.dat <- rbind(current.func[cur,], func.dat[fu,])
+  comm.dat <- comm.dat[,colnames(comm.dat) %in% species.dat]
+  trait.dat <- as.matrix(traits[rownames(traits) %in% colnames(comm.dat),])
+  betadiv <- functional.beta.pair(comm.dat, trait.dat)
+  res <- unlist(betadiv)
+  #res <- switch(beta.measure, "sor" = betadiv$funct.beta.sor, "sim" = betadiv$funct.beta.sim)
   return(res)
 }
 

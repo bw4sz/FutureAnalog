@@ -565,7 +565,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
   
   require(phylobase)  # detail information for all phylo branches
   new <- phylo4(phyl)
-  dat <- as.data.frame(new)
+  dat <- as.data.frame(print(new))
   allbr <- dat$edge.length
   names(allbr) <- getEdge(new)
   #Assumes same species in the comm matrices

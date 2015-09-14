@@ -768,7 +768,7 @@ MNND_fc <- function(fu,cur,sp.list_current,sp.list_future,dists)
 }
 
 
-trait.betadiv <- function(cur, fu, current.func, func.dat, beta.measure,
+trait.betadiv <- function(cur, fu, current.func, func.dat,
                           sp.list_current, sp.list_future, traits) {
   species.dat <- unique(unlist(c(sp.list_current[cur], sp.list_future[fu])))
   comm.dat <- rbind(current.func[cur,], func.dat[fu,])
@@ -776,7 +776,6 @@ trait.betadiv <- function(cur, fu, current.func, func.dat, beta.measure,
   trait.dat <- as.matrix(traits[rownames(traits) %in% colnames(comm.dat),])
   betadiv <- functional.beta.pair(comm.dat, trait.dat)
   res <- unlist(betadiv)
-  #res <- switch(beta.measure, "sor" = betadiv$funct.beta.sor, "sim" = betadiv$funct.beta.sim)
   return(res)
 }
 

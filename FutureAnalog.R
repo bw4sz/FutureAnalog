@@ -7,7 +7,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   
   # create logfile
   file.create(paste0(out_path, "/FutureAnalogLog.txt"))
-  fileConn <- file(paste0(out_path, "/FutureAnalogLog.txt"))
+  fileConn <- paste0(out_path, "/FutureAnalogLog.txt")
   
   # Step 1) Bring in Phylogenetic Data -------------------------------------------
   trx<-read.tree("InputData/hum294.tre")
@@ -71,7 +71,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   clim.mods <- list.files("../worldclim_data/projections_2070/")
   
   for(mod in clim.mods){
-    writeLines(paste0("Beginning analysis for ", mod), fileConn)
+    write(paste0("Beginning analysis for ", mod), fileConn, append=TRUE)
     niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
     
     #Create siteXspp table from input rasters, function is from
@@ -90,7 +90,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     
     tnes <- tsor - tsim
     
-    writeLines(paste0("Taxonomic beta diversity took: ",Sys.time() - strt), fileConn)
+    write(paste0("Taxonomic beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
     # Step 2) PHYLO BETA DIVERSITY -------------------------------------------------
     # For phylobeta, there needs to be more than 2 species for a rooted tree
     strt <- Sys.time()
@@ -106,7 +106,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     psim <- pbeta$psim
     pnes <- pbeta$pnes
     
-    writeLines(paste0("Phylogenetic beta diversity took: ",Sys.time() - strt), fileConn)
+    write(paste0("Phylogenetic beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
     # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
     strt <- Sys.time()
     func.dat <- siteXspps[,colnames(siteXspps) %in% rownames(traits)]
@@ -147,7 +147,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     rownames(tnes) <- tnes[,1]
     tnes <- tnes[-1]
     
-    writeLines(paste0("Functional beta diversity took: ",Sys.time() - strt), fileConn)
+    write(paste0("Functional beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
     
     res <- list(tsor=tsor, tsim=tsim, tnes=tnes, 
                 psor=psor, psim=psim, pnes=pnes, 

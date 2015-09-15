@@ -126,26 +126,36 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     
     names(sp.list_future) <- rownames(func.dat)
 
-    site.pairs <- expand.grid(rownames(current.func), rownames(func.dat))
-    betadiv <- apply(site.pairs, 1, function(x) {
-      trait.betadiv(x[1], x[2], current.func, func.dat, "nes",
-                    sp.list_current, sp.list_future, traits)
-    })
+    cl <- makeCluster(clust) # create parellel clusters
+    registerDoSNOW(cl)
     
-    betadiv <- t(betadiv)
-    betadiv <- cbind(site.pairs, betadiv)
+    tsor<-foreach(j=rownames(current.func), .packages = "betapart",
+                  .export = c("current.func", "func.dat", "sp.list_current", 
+                              "sp.list_future", "traits", "trait.betadiv")) %dopar%{
+      sapply(rownames(func.dat),function(k){
+        trait.betadiv(j, k, current.func, func.dat, "sor", 
+                      sp.list_current, sp.list_future, traits)
+      })}
     
-    tsor <- spread(betadiv[-c(3,4)], Var2, funct.beta.sor)
-    rownames(tsor) <- tsor[,1]
-    tsor <- tsor[-1]
+    tsim <- foreach(j=rownames(current.func), .packages = "betapart",
+                  .export = c("current.func", "func.dat", "sp.list_current", 
+                              "sp.list_future", "traits", "trait.betadiv")) %dopar%{
+                                sapply(rownames(func.dat),function(k){
+                                  trait.betadiv(j, k, current.func, func.dat, "sim", 
+                                                sp.list_current, sp.list_future, traits)
+                                })}
     
-    tsim <- spread(betadiv[-c(4,5)], Var2, funct.beta.sim)
-    rownames(tsim) <- tsim[,1]
-    tsim <- tsim[-1]
+    stopCluster(cl)
     
-    tnes <- spread(betadiv[-c(3,5)], Var2, funct.beta.sne)
-    rownames(tnes) <- tnes[,1]
-    tnes <- tnes[-1]
+    tsor <- do.call("rbind", tsor)
+    rownames(tsor) <- rownames(current.func)
+    colnames(tsor) <- rownames(func.dat) 
+    
+    tsim <- do.call("rbind", tsim)
+    rownames(tsim) <- rownames(current.func)
+    colnames(tsim) <- rownames(func.dat) 
+    
+    tnes <- tsor - tsim
     
     write(paste0("Functional beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
     

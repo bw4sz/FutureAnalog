@@ -129,7 +129,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     cl <- makeCluster(clust) # create parellel clusters
     registerDoSNOW(cl)
     
-    tsor<-foreach(j=rownames(current.func), .packages = "betapart",
+    fsor<-foreach(j=rownames(current.func), .packages = "betapart",
                   .export = c("current.func", "func.dat", "sp.list_current", 
                               "sp.list_future", "traits", "trait.betadiv")) %dopar%{
       sapply(rownames(func.dat),function(k){
@@ -137,7 +137,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
                       sp.list_current, sp.list_future, traits)
       })}
     
-    tsim <- foreach(j=rownames(current.func), .packages = "betapart",
+    fsim <- foreach(j=rownames(current.func), .packages = "betapart",
                   .export = c("current.func", "func.dat", "sp.list_current", 
                               "sp.list_future", "traits", "trait.betadiv")) %dopar%{
                                 sapply(rownames(func.dat),function(k){
@@ -147,15 +147,15 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     
     stopCluster(cl)
     
-    tsor <- do.call("rbind", tsor)
-    rownames(tsor) <- rownames(current.func)
-    colnames(tsor) <- rownames(func.dat) 
+    fsor <- do.call("rbind", fsor)
+    rownames(fsor) <- rownames(current.func)
+    colnames(fsor) <- rownames(func.dat) 
     
-    tsim <- do.call("rbind", tsim)
-    rownames(tsim) <- rownames(current.func)
-    colnames(tsim) <- rownames(func.dat) 
+    fsim <- do.call("rbind", fsim)
+    rownames(fsim) <- rownames(current.func)
+    colnames(fsim) <- rownames(func.dat) 
     
-    tnes <- tsor - tsim
+    fnes <- fsor - fsim
     
     write(paste0("Functional beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
     

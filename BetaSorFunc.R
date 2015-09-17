@@ -79,17 +79,13 @@ functional.beta.c2f.pair <- function (cur, fu, traits, multi = TRUE, warning.tim
   }
   
   #use the above calculations to get the amount shared/not shared etc.
-  matCUR_FU <- matrix(0, CUR, FU, dimnames = list(row.names(cur), row.names(fu)))
-  shared <- matCUR_FU
-  not.shared <- matCUR_FU
-  for (i in 1:CUR) for (j in 1:FU) {
-    shared[i, j] <- vol_inter2_mat[i, j]
-    not.shared[i, j] <- cur_FRi[i] - vol_inter2_mat[j, i]
-    not.shared[j, i] <- fu_FRi[j] - vol_inter2_mat[j, i]
-  }
-  sum.not.shared <- not.shared + t(not.shared)
-  max.not.shared <- pmax(not.shared, t(not.shared))
-  min.not.shared <- pmin(not.shared, t(not.shared))
+  shared <- vol_inter2_mat
+  not.shared.cur <- apply(shared, 2, function(x) cur_FRi - x)
+  not.shared.fu <- t(apply(shared, 1, function(x) fu_FRi - x))
+  
+  sum.not.shared <- not.shared.cur + not.shared.fu
+  max.not.shared <- pmax(not.shared.cur, not.shared.fu)
+  min.not.shared <- pmin(not.shared.cur, not.shared.fu)
 
   funct.beta.sim <- min.not.shared/(min.not.shared + shared)
   funct.beta.sne <- ((max.not.shared - min.not.shared)/((2 * shared) + sum.not.shared)) * (shared/(min.not.shared + shared))
@@ -100,6 +96,7 @@ functional.beta.c2f.pair <- function (cur, fu, traits, multi = TRUE, warning.tim
   return(functional.pairwise)
 }
 
+#function to get the intersection of traitspace for two sites (required for above function)
 get_intersection <- function(set1, set2) {
   set1rep <- d2q(cbind(0, cbind(1, set1)))
   set2rep <- d2q(cbind(0, cbind(1, set2)))

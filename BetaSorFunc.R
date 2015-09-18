@@ -7,7 +7,7 @@
 # Based on functional.beta.pair from the betapart package by Andres Baselga,
 # David Orme, Sebastien Villeger, Julien De Bortoli and Fabien Leprieur
 
-functional.beta.c2f.pair <- function (cur, fu, traits, multi = TRUE, warning.time = TRUE, return.details = FALSE) 
+functional.beta.c2f.pair <- function (cur, fu, traits, clust=20) 
 {
   require(geometry)
   require(rcdd)
@@ -16,11 +16,6 @@ functional.beta.c2f.pair <- function (cur, fu, traits, multi = TRUE, warning.tim
   CUR <- nrow(cur)
   FU <- nrow(fu)
 
-  step.fbc <- as.data.frame(matrix("", 3, 1, dimnames = list(c("cur_FRi", "fu_FRi", "intersection"), c("iteration"))))
-  step.fbc[, 1] <- as.character(step.fbc[, 1])
-  step.fbc[1, 1] <- paste("0/", CUR, sep = "")
-  step.fbc[2, 1] <- paste("0/", FU, sep = "")
-  step.fbc[3, 1] <- paste("0/", CUR*FU, sep = "")
   cur_FRi <- rep(NA, CUR)
   names(cur_FRi) <- row.names(cur)
   fu_FRi <- rep(NA, FU)
@@ -37,12 +32,6 @@ functional.beta.c2f.pair <- function (cur, fu, traits, multi = TRUE, warning.tim
     verti <- (vert1 + 1)[-1]
     coord_vert_i[[i]] <- tr_i[verti, ]
     cur_FRi[i] <- convhulln(tr_i[verti, ], "FA")$vol
-    
-    #update log
-    step.fbc["cur_FRi", 1] <- paste(i, "/", CUR, sep = "")
-    step.fbc[, 1] <- as.character(step.fbc[, 1])
-    write.table(step.fbc, file = "step.fbc.txt", row.names = TRUE, 
-                col.names = FALSE, sep = "\t")
   }
    
   for (i in 1:FU) {
@@ -53,30 +42,29 @@ functional.beta.c2f.pair <- function (cur, fu, traits, multi = TRUE, warning.tim
     verti <- (vert1 + 1)[-1]
     coord_vert_i[[i]] <- tr_i[verti, ]
     fu_FRi[i] <- convhulln(tr_i[verti, ], "FA")$vol
-    
-    step.fbc["fu_FRi", 1] <- paste(i, "/", FU, sep = "")
-    step.fbc[, 1] <- as.character(step.fbc[, 1])
-    write.table(step.fbc, file = "step.fbc.txt", row.names = T, 
-                col.names = F, sep = "\t")
   }
 
-  #list of all grid combinations
-  comb2 <- t(expand.grid(1:CUR, 1:FU))
+  #matrix in which to save intersection results
   vol_inter2_mat <- matrix(0, CUR, FU, dimnames = list(row.names(cur), 
                                                     row.names(fu)))
   
   #calculate the intersection between trait spaces
-  for (k in 1:ncol(comb2)) {
-    i <- comb2[1, k]
-    j <- comb2[2, k]
-    seti <- traits[which(cur[i, ] == 1), ]
-    setj <- traits[which(fu[j, ] == 1), ]
-    interij <- get_intersection(seti, setj)
-    vol_inter2_mat[i, j] <- interij
-    step.fbc["intersection", 1] <- paste(k, "/", ncol(comb2), sep = "")
-    write.table(step.fbc, file = "step.fbc.txt", row.names = TRUE, col.names = FALSE, sep = "\t")
-  }
+
+  cl <- makeCluster(clust) # create parellel clusters
+  registerDoSNOW(cl)
   
+  vol_inter2_mat <- foreach(i=1:CUR, .combine=cbind) %:% 
+    foreach(j=1:FU, .packages = c("geometry", "rcdd"), .export = "get_intersection", .combine=c) %dopar% {
+      seti <- traits[which(cur[i, ] == 1), ]
+      setj <- traits[which(fu[j, ] == 1), ]
+      interij <- get_intersection(seti, setj)
+      interij
+    }
+  
+  stopCluster(cl)
+  
+  rownames(vol_inter2_mat) <- rownames(cur)
+  colnames(vol_inter2_mat) <- rownames(fu)
   #use the above calculations to get the amount shared/not shared etc.
   shared <- vol_inter2_mat
   not.shared.cur <- apply(shared, 2, function(x) cur_FRi - x)

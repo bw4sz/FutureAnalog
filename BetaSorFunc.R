@@ -7,7 +7,7 @@
 # Based on functional.beta.pair from the betapart package by Andres Baselga,
 # David Orme, Sebastien Villeger, Julien De Bortoli and Fabien Leprieur
 
-functional.beta.c2f.pair <- function (cur, fu, traits, multi = TRUE, warning.time = TRUE, return.details = FALSE) 
+functional.beta.c2f.pair <- function (cur, fu, traits, clust=20) 
 {
   require(geometry)
   require(rcdd)
@@ -59,27 +59,25 @@ functional.beta.c2f.pair <- function (cur, fu, traits, multi = TRUE, warning.tim
                 col.names = F, sep = "\t")
   }
 
-  #list of all grid combinations
-  comb2 <- t(expand.grid(1:CUR, 1:FU))
+  #matrix in which to save intersection results
   vol_inter2_mat <- matrix(0, CUR, FU, dimnames = list(row.names(cur), 
                                                     row.names(fu)))
-  #vol_inter2 <- rep(0, ncol(comb2))
-  #coord_vert_inter2 <- list()
   
   #calculate the intersection between trait spaces
-  for (k in 1:ncol(comb2)) {
-    i <- comb2[1, k]
-    j <- comb2[2, k]
+  cl <- makeCluster(clust) # create parellel clusters
+  registerDoSNOW(cl)
+  
+  vol_inter2_mat <- foreach(i=1:CUR, .combine=cbind) %:% 
+    foreach(j=1:FU, .packages = c("geometry", "rcdd"), combine=c) %dopar% {
     seti <- traits[which(cur[i, ] == 1), ]
     setj <- traits[which(fu[j, ] == 1), ]
     interij <- get_intersection(seti, setj)
-    vol_inter2_mat[i, j] <- interij$vol_inter
-    step.fbc["intersection", 1] <- paste(k, "/", ncol(comb2), sep = "")
-    write.table(step.fbc, file = "step.fbc.txt", row.names = TRUE, col.names = FALSE, sep = "\t")
-  }
+    interij
+    }
+  
   
   #use the above calculations to get the amount shared/not shared etc.
-  shared <- vol_inter2_mat
+  shared <- matrix(unlist(vol_inter2_mat), ncol=FU, byrow=TRUE)
   not.shared.cur <- apply(shared, 2, function(x) cur_FRi - x)
   not.shared.fu <- t(apply(shared, 1, function(x) fu_FRi - x))
   
@@ -107,13 +105,10 @@ get_intersection <- function(set1, set2) {
   H_inter <- rbind(H_chset1, H_chset2)
   V_inter <- scdd(H_inter, representation = "H")$output
   vert_1n2 <- q2d(V_inter[, -c(1, 2)])
-  coord_vert_inter <- rep(NA, ncol(set1))
   vol_inter <- 0
   if (is.matrix(vert_1n2) == T) 
     if (nrow(vert_1n2) > ncol(vert_1n2)) {
-      coord_vert_inter <- vert_1n2
       vol_inter <- convhulln(vert_1n2, "FA")$vol
     }
-  res <- list(coord_vert_inter = coord_vert_inter, vol_inter = vol_inter)
-  return(res)
+  return(vol_inter)
 }

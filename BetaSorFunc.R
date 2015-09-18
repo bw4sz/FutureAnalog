@@ -15,11 +15,6 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
   CUR <- nrow(cur)
   FU <- nrow(fu)
 
-  step.fbc <- as.data.frame(matrix("", 3, 1, dimnames = list(c("cur_FRi", "fu_FRi", "intersection"), c("iteration"))))
-  step.fbc[, 1] <- as.character(step.fbc[, 1])
-  step.fbc[1, 1] <- paste("0/", CUR, sep = "")
-  step.fbc[2, 1] <- paste("0/", FU, sep = "")
-  step.fbc[3, 1] <- paste("0/", CUR*FU, sep = "")
   cur_FRi <- rep(NA, CUR)
   names(cur_FRi) <- row.names(cur)
   fu_FRi <- rep(NA, FU)
@@ -36,12 +31,6 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
     verti <- (vert1 + 1)[-1]
     coord_vert_i[[i]] <- tr_i[verti, ]
     cur_FRi[i] <- convhulln(tr_i[verti, ], "FA")$vol
-    
-    #update log
-    step.fbc["cur_FRi", 1] <- paste(i, "/", CUR, sep = "")
-    step.fbc[, 1] <- as.character(step.fbc[, 1])
-    write.table(step.fbc, file = "step.fbc.txt", row.names = TRUE, 
-                col.names = FALSE, sep = "\t")
   }
    
   for (i in 1:FU) {
@@ -52,11 +41,6 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
     verti <- (vert1 + 1)[-1]
     coord_vert_i[[i]] <- tr_i[verti, ]
     fu_FRi[i] <- convhulln(tr_i[verti, ], "FA")$vol
-    
-    step.fbc["fu_FRi", 1] <- paste(i, "/", FU, sep = "")
-    step.fbc[, 1] <- as.character(step.fbc[, 1])
-    write.table(step.fbc, file = "step.fbc.txt", row.names = T, 
-                col.names = F, sep = "\t")
   }
 
   #matrix in which to save intersection results
@@ -68,16 +52,19 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
   registerDoSNOW(cl)
   
   vol_inter2_mat <- foreach(i=1:CUR, .combine=cbind) %:% 
-    foreach(j=1:FU, .packages = c("geometry", "rcdd"), combine=c) %dopar% {
-    seti <- traits[which(cur[i, ] == 1), ]
-    setj <- traits[which(fu[j, ] == 1), ]
-    interij <- get_intersection(seti, setj)
-    interij
+    foreach(j=1:FU, .packages = c("geometry", "rcdd"), .export = "get_intersection", .combine=c) %dopar% {
+      seti <- traits[which(cur[i, ] == 1), ]
+      setj <- traits[which(fu[j, ] == 1), ]
+      interij <- get_intersection(seti, setj)
+      interij
     }
   
+  stopCluster(cl)
   
+  rownames(vol_inter2_mat) <- rownames(cur)
+  colnames(vol_inter2_mat) <- rownames(fu)
   #use the above calculations to get the amount shared/not shared etc.
-  shared <- matrix(unlist(vol_inter2_mat), ncol=FU, byrow=TRUE)
+  shared <- vol_inter2_mat
   not.shared.cur <- apply(shared, 2, function(x) cur_FRi - x)
   not.shared.fu <- t(apply(shared, 1, function(x) fu_FRi - x))
   

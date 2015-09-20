@@ -44,15 +44,10 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
     fu_FRi[i] <- convhulln(tr_i[verti, ], "FA")$vol
   }
 
-  #matrix in which to save intersection results
-  vol_inter2_mat <- matrix(0, CUR, FU, dimnames = list(row.names(cur), 
-                                                    row.names(fu)))
-  
   #calculate the intersection between trait spaces
-
-  cl <- makeCluster(clust) # create parellel clusters
+  cl<- makeCluster(8)
   registerDoSNOW(cl)
-  
+
   vol_inter2_mat <- foreach(i=1:CUR, .combine=cbind) %:% 
     foreach(j=1:FU, .packages = c("geometry", "rcdd"), .export = "get_intersection", .combine=c) %dopar% {
       seti <- traits[which(cur[i, ] == 1), ]
@@ -60,7 +55,7 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
       interij <- get_intersection(seti, setj)
       interij
     }
-  
+
   stopCluster(cl)
   
   rownames(vol_inter2_mat) <- rownames(cur)

@@ -11,11 +11,11 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
 {
   require(geometry)
   require(rcdd)
+  
   traits <- as.matrix(traits)
-  D <- ncol(traits)
   CUR <- nrow(cur)
   FU <- nrow(fu)
-
+  
   cur_FRi <- rep(NA, CUR)
   names(cur_FRi) <- row.names(cur)
   fu_FRi <- rep(NA, FU)
@@ -33,7 +33,7 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
     coord_vert_i[[i]] <- tr_i[verti, ]
     cur_FRi[i] <- convhulln(tr_i[verti, ], "FA")$vol
   }
-   
+  
   for (i in 1:FU) {
     #future
     tr_i <- traits[which(fu[i, ] == 1), ]
@@ -44,22 +44,40 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
     fu_FRi[i] <- convhulln(tr_i[verti, ], "FA")$vol
   }
 
-  #calculate the intersection between trait spaces
-  cl<- makeCluster(8)
-  registerDoSNOW(cl)
-
-  vol_inter2_mat <- foreach(i=1:CUR, .combine=cbind) %:% 
-    foreach(j=1:FU, .packages = c("geometry", "rcdd"), .export = "get_intersection", .combine=c) %dopar% {
-      seti <- traits[which(cur[i, ] == 1), ]
-      setj <- traits[which(fu[j, ] == 1), ]
-      interij <- get_intersection(seti, setj)
-      interij
-    }
-
-  stopCluster(cl)
+  #matrix in which to save intersection results
+  vol_inter2_mat <- matrix(0, CUR, FU, dimnames = list(row.names(cur), 
+                                                       row.names(fu)))
   
-  rownames(vol_inter2_mat) <- rownames(cur)
-  colnames(vol_inter2_mat) <- rownames(fu)
+  #calculate the intersection between trait spaces
+  unique.comm.pairs <- data.frame(set1=as.character(), set2=as.character(),
+                                  stringsAsFactors = FALSE)
+  interij <- as.numeric()
+  
+  vol_inter2_mat <- matrix(numeric(), nrow=CUR, ncol=FU, dimnames = c(rownames(CUR), rownames(FU)))
+  
+  for(i in 1:CUR) {
+    for(j in 1:FU) {
+      sp_i <- cur[i,]
+      sp_i <- paste(names(sp_i[which(sp_i==1)]), collapse = ", ")
+      sp_j <- fu[j,]
+      sp_j <- paste(names(sp_j[which(sp_j==1)]), collapse = ", ")
+      # this line finds a row which matches the current species community pair
+      val <- which(apply(unique.comm.pairs, 1, function(x) all(x == c(sp_i, sp_j))))
+      # if the above doesn't find a match, it searches for the pair reversed
+      if(length(val)==0) val <- which(apply(unique.comm.pairs, 1, function(x) all(x == c(sp_j, sp_i)))) 
+      
+      if(length(val)==0) {
+        unique.comm.pairs[nrow(unique.comm.pairs) + 1,] <- c(sp_i, sp_j)
+        tr_i <- traits[which(cur[i, ] == 1), ]
+        tr_j <- traits[which(fu[j, ] == 1), ]
+        val <- length(interij) + 1
+        interij[val] <- get_intersection(tr_i, tr_j)
+        
+      }
+      vol_inter2_mat[i, j] <- interij[val]
+    }
+  }
+  
   #use the above calculations to get the amount shared/not shared etc.
   shared <- vol_inter2_mat
   not.shared.cur <- apply(shared, 2, function(x) cur_FRi - x)
@@ -68,7 +86,7 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
   sum.not.shared <- not.shared.cur + not.shared.fu
   max.not.shared <- pmax(not.shared.cur, not.shared.fu)
   min.not.shared <- pmin(not.shared.cur, not.shared.fu)
-
+  
   funct.beta.sim <- min.not.shared/(min.not.shared + shared)
   funct.beta.sne <- ((max.not.shared - min.not.shared)/((2 * shared) + sum.not.shared)) * (shared/(min.not.shared + shared))
   funct.beta.sor <- sum.not.shared/(2 * shared + sum.not.shared)

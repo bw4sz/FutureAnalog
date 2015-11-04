@@ -11,6 +11,8 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
 {
   require(geometry)
   require(rcdd)
+  
+  traits <- as.matrix(traits)
   CUR <- nrow(cur)
   FU <- nrow(fu)
   
@@ -41,7 +43,7 @@ functional.beta.c2f.pair <- function (cur, fu, traits, clust=20)
     coord_vert_i[[i]] <- tr_i[verti, ]
     fu_FRi[i] <- convhulln(tr_i[verti, ], "FA")$vol
   }
-  
+
   #matrix in which to save intersection results
   vol_inter2_mat <- matrix(0, CUR, FU, dimnames = list(row.names(cur), 
                                                        row.names(fu)))

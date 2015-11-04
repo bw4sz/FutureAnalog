@@ -4,11 +4,7 @@
 # number of analog hummingbird assemblages in Ecuador under future climate scenarios.
 # PART I CALCULATE BETWEEN TIME BETA-DIVERSITY MEASURES ------------------------
 runBetaDiv <- function(out_path, cell_size, clust = 7){
-  
-  # create logfile
-  file.create(paste0(out_path, "/FutureAnalogLog.txt"))
-  fileConn <- paste0(out_path, "/FutureAnalogLog.txt")
-  
+
   # Step 1) Bring in Phylogenetic Data -------------------------------------------
   trx<-read.tree("InputData/hum294.tre")
   new<-str_extract(trx$tip.label,"(\\w+).(\\w+)")
@@ -16,7 +12,31 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   trx$tip.label<-str_extract(trx$tip.label,"(\\w+).(\\w+)")
 
   # Step 2) Bring in trait data --------------------------------------------------
-  traits <- getTraitData()
+  morph <- read.csv("InputData/MorphologyShort.csv", na.strings="9999")
+  
+  #just get males & the 3 traits of interest
+  mon <- filter(morph, Sex == "Macho") %>%
+    select(SpID, ExpC, Peso, AlCdo) %>%
+    group_by(SpID) %>%
+    summarise_each(funs(mean(., na.rm = TRUE))) %>%
+    filter(complete.cases(.))
+  
+  mon <- data.frame(mon)
+  colnames(mon) <- c("Species","Bill","Mass","WingChord")
+  rownames(mon) <- gsub(" ",".",mon$Species)
+  mon <- mon[,-1]
+  
+  #principal component traits and get euclidean distance matrix
+  means <- apply(mon, 2, mean)
+  
+  Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
+  Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
+  WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
+  
+  z.scores <- data.frame(Bill, Mass, WingChord)
+  rownames(z.scores) <- rownames(mon)
+  
+  fco <- as.matrix(dist(z.scores, method = "euclidean"))
   
   # Step 3) Bring in niche models ------------------------------------------------
   all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
@@ -41,8 +61,8 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   model_eval<-rbind_all(lapply(model_eval, 
                                function(x) read.csv(x, stringsAsFactors = FALSE)))
   colnames(model_eval)[1:2] <- c("Stat", "Species")
-
-    # get the crop files
+  
+  # get the crop files
   niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
   
   # create a blank raster object of the correct size and extent to have for
@@ -61,7 +81,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   current.phylo <- current[,colnames(current) %in% trx$tip.label]
   current.phylo <- current.phylo[!rowSums(current.phylo)<=2,]  
   
-  current.func <- current[,colnames(current) %in% rownames(traits)]
+  current.func <- current[,colnames(current) %in% colnames(fco)]
   current.func <- current.func[!apply(current.func,1,sum)<=2,]  
   
   # list to output results
@@ -71,7 +91,6 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   clim.mods <- list.files("../worldclim_data/projections_2070/")
   
   for(mod in clim.mods){
-    write(paste0("Beginning analysis for ", mod), fileConn, append=TRUE)
     niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
     
     #Create siteXspp table from input rasters, function is from
@@ -83,33 +102,21 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
     
     # Step 1) TAXONOMIC BETA DIVERSITY ---------------------------------------------
-    strt <- Sys.time()
-    tsor <- analogue::distance(current, siteXspps, "bray")
+    beta.time.taxa <- analogue::distance(current, siteXspps, "bray")
     
-    tsim <- proxy::dist(current, siteXspps, "Simpson")
-    
-    tnes <- tsor - tsim
-    
-    write(paste0("Taxonomic beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
     # Step 2) PHYLO BETA DIVERSITY -------------------------------------------------
     # For phylobeta, there needs to be more than 2 species for a rooted tree
-    strt <- Sys.time()
     phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
     phylo.dat <- phylo.dat[!rowSums(phylo.dat)<=2,]   
     
-    
-    pbeta <- matpsim.pairwise(phyl = trx, 
+    strt <- Sys.time()
+    beta.time.phylo <- matpsim.pairwise(phyl = trx, 
                                         com.x = current.phylo, 
                                         com.y = phylo.dat)
+    Sys.time()-strt
     
-    psor <- pbeta$psor
-    psim <- pbeta$psim
-    pnes <- pbeta$pnes
-    
-    write(paste0("Phylogenetic beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
     # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
-    strt <- Sys.time()
-    func.dat <- siteXspps[,colnames(siteXspps) %in% rownames(traits)]
+    func.dat <- siteXspps[,colnames(siteXspps) %in% colnames(fco)]
     func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
     
     sp.list_current <- lapply(rownames(current.func), function(k){
@@ -125,45 +132,29 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     }) 
     
     names(sp.list_future) <- rownames(func.dat)
-
-    cl <- makeCluster(clust) # create parellel clusters
+    
+    #Get distances from the cophenetic matrix?
+    dists <- as.matrix(fco)
+    rownames(dists) <- rownames(fco)
+    colnames(dists) <- rownames(fco)
+    
+    cl <- makeCluster(clust) # make another cluster
     registerDoSNOW(cl)
     
-    tsor<-foreach(j=rownames(current.func), .packages = "betapart",
-                  .export = c("current.func", "func.dat", "sp.list_current", 
-                              "sp.list_future", "traits", "trait.betadiv")) %dopar%{
-      sapply(rownames(func.dat),function(k){
-        trait.betadiv(j, k, current.func, func.dat, "sor", 
-                      sp.list_current, sp.list_future, traits)
+    beta.time.func <- foreach(fu=rownames(func.dat), .export = c("current.func", "MNND_fc"), .combine="cbind") %dopar%{
+      sapply(rownames(current.func), function(cur){
+        MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
       })}
     
-    tsim <- foreach(j=rownames(current.func), .packages = "betapart",
-                  .export = c("current.func", "func.dat", "sp.list_current", 
-                              "sp.list_future", "traits", "trait.betadiv")) %dopar%{
-                                sapply(rownames(func.dat),function(k){
-                                  trait.betadiv(j, k, current.func, func.dat, "sim", 
-                                                sp.list_current, sp.list_future, traits)
-                                })}
     
     stopCluster(cl)
     
-    tsor <- do.call("rbind", tsor)
-    rownames(tsor) <- rownames(current.func)
-    colnames(tsor) <- rownames(func.dat) 
+    rownames(beta.time.func) <- rownames(current.func)
+    colnames(beta.time.func) <- rownames(func.dat)
     
-    tsim <- do.call("rbind", tsim)
-    rownames(tsim) <- rownames(current.func)
-    colnames(tsim) <- rownames(func.dat) 
-    
-    tnes <- tsor - tsim
-    
-    write(paste0("Functional beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
-    
-    res <- list(tsor=tsor, tsim=tsim, tnes=tnes, 
-                psor=psor, psim=psim, pnes=pnes, 
-                fsor=fsor, fsim=fsim, fnes=fnes)
-    
-    save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
+    res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
+    names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
+    save(res, file = paste0(res_path, "/beta_diversity_", mod, ".rda"))
   }
 }
 

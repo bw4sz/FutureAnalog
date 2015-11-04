@@ -647,7 +647,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
   
   # function to calculate phylobsim between cell_a and cell_b
   
-  nmatsim <- function(cell_a,cell_b, beta.measure) # samp = grid cell of interest
+  nmatsim <- function(cell_a,cell_b) # samp = grid cell of interest
   {
     a_br  <- tcellbr.x[cell_a,]
     b_br <- tcellbr.y[cell_b,]
@@ -658,9 +658,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
     ubr <- s_br[,colSums(pa_br > 0)==1]
     a_ubr <- as.matrix(ubr)[1,]
     b_ubr <- as.matrix(ubr)[2,]
-    psor <- (sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))/(2*(sum(both, na.rm=T)) + sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))
-    psim <- (min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))/(min(sum(a_ubr,na.rm=T),sum(b_ubr,na.rm=T))+sum(both,na.rm=T)))
-    res <- switch(beta.measure, "sor" = psor, "sim" = psim)
+    res <- (sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))/(2*(sum(both, na.rm=T)) + sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T)
     return(res)
   }
   
@@ -671,14 +669,8 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
   
   psor<-foreach(j=rownames(tcellbr.x)) %dopar%{
     sapply(rownames(tcellbr.y),function(k){
-      nmatsim(j,k, "sor")
+      nmatsim(j,k)
     })}
-  
-  psim<-foreach(j=rownames(tcellbr.x)) %dopar%{
-    sapply(rownames(tcellbr.y),function(k){
-      nmatsim(j,k, "sim")
-  })}
-
   
   stopCluster(cl)
   
@@ -686,13 +678,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
   rownames(psor) <- rownames(tcellbr.x)
   colnames(psor) <- rownames(tcellbr.y)    
   
-  psim <- do.call("rbind", psim)
-  rownames(psim) <- rownames(tcellbr.x)
-  colnames(psim) <- rownames(tcellbr.y)    
-  
-  pnes <- psor - psim
-  pbeta <- list(psor=psor, psim=psim, pnes=pnes)
-  return(pbeta)
+  return(psor)
 }
 
 # hierachical clustering eval

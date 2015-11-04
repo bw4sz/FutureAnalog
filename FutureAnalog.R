@@ -108,60 +108,61 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     
     write(paste0("Phylogenetic beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
     # Step 3) FUNC BETA DIVERSITY ---------------------------------------------------
-    strt <- Sys.time()
-    func.dat <- siteXspps[,colnames(siteXspps) %in% rownames(traits)]
-    func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
-    
-    sp.list_current <- lapply(rownames(current.func), function(k){
-      g <- current.func[k,]
-      names(g[which(g==1)])
-    })
-    
-    names(sp.list_current) <- rownames(current.func)
-    
-    sp.list_future <- lapply(rownames(func.dat), function(k){
-      g <- func.dat[k,]
-      names(g[which(g==1)])
-    }) 
-    
-    names(sp.list_future) <- rownames(func.dat)
-
-    cl <- makeCluster(clust) # create parellel clusters
-    registerDoSNOW(cl)
-    
-    fsor<-foreach(j=rownames(current.func), .packages = "betapart",
-                  .export = c("current.func", "func.dat", "sp.list_current", 
-                              "sp.list_future", "traits", "trait.betadiv")) %dopar%{
-      sapply(rownames(func.dat),function(k){
-        trait.betadiv(j, k, current.func, func.dat, "sor", 
-                      sp.list_current, sp.list_future, traits)
-      })}
-    
-    fsim <- foreach(j=rownames(current.func), .packages = "betapart",
-                  .export = c("current.func", "func.dat", "sp.list_current", 
-                              "sp.list_future", "traits", "trait.betadiv")) %dopar%{
-                                sapply(rownames(func.dat),function(k){
-                                  trait.betadiv(j, k, current.func, func.dat, "sim", 
-                                                sp.list_current, sp.list_future, traits)
-                                })}
-    
-    stopCluster(cl)
-    
-    fsor <- do.call("rbind", fsor)
-    rownames(fsor) <- rownames(current.func)
-    colnames(fsor) <- rownames(func.dat) 
-    
-    fsim <- do.call("rbind", fsim)
-    rownames(fsim) <- rownames(current.func)
-    colnames(fsim) <- rownames(func.dat) 
-    
-    fnes <- fsor - fsim
-    
-    write(paste0("Functional beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
-    
+#     strt <- Sys.time()
+#     func.dat <- siteXspps[,colnames(siteXspps) %in% rownames(traits)]
+#     func.dat <- func.dat[!apply(func.dat,1,sum)<=2,]  
+#     
+#     sp.list_current <- lapply(rownames(current.func), function(k){
+#       g <- current.func[k,]
+#       names(g[which(g==1)])
+#     })
+#     
+#     names(sp.list_current) <- rownames(current.func)
+#     
+#     sp.list_future <- lapply(rownames(func.dat), function(k){
+#       g <- func.dat[k,]
+#       names(g[which(g==1)])
+#     }) 
+#     
+#     names(sp.list_future) <- rownames(func.dat)
+# 
+#     cl <- makeCluster(clust) # create parellel clusters
+#     registerDoSNOW(cl)
+#     
+#     fsor<-foreach(j=rownames(current.func), .packages = "betapart",
+#                   .export = c("current.func", "func.dat", "sp.list_current", 
+#                               "sp.list_future", "traits", "trait.betadiv")) %dopar%{
+#       sapply(rownames(func.dat),function(k){
+#         trait.betadiv(j, k, current.func, func.dat, "sor", 
+#                       sp.list_current, sp.list_future, traits)
+#       })}
+#     
+#     fsim <- foreach(j=rownames(current.func), .packages = "betapart",
+#                   .export = c("current.func", "func.dat", "sp.list_current", 
+#                               "sp.list_future", "traits", "trait.betadiv")) %dopar%{
+#                                 sapply(rownames(func.dat),function(k){
+#                                   trait.betadiv(j, k, current.func, func.dat, "sim", 
+#                                                 sp.list_current, sp.list_future, traits)
+#                                 })}
+#     
+#     stopCluster(cl)
+#     
+#     fsor <- do.call("rbind", fsor)
+#     rownames(fsor) <- rownames(current.func)
+#     colnames(fsor) <- rownames(func.dat) 
+#     
+#     fsim <- do.call("rbind", fsim)
+#     rownames(fsim) <- rownames(current.func)
+#     colnames(fsim) <- rownames(func.dat) 
+#     
+#     fnes <- fsor - fsim
+#     
+#     write(paste0("Functional beta diversity took: ",Sys.time() - strt), fileConn, append=TRUE)
+#     
     res <- list(tsor=tsor, tsim=tsim, tnes=tnes, 
-                psor=psor, psim=psim, pnes=pnes, 
-                fsor=fsor, fsim=fsim, fnes=fnes)
+                psor=psor, psim=psim, pnes=pnes 
+                #fsor=fsor, fsim=fsim, fnes=fnes
+                )
     
     save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
   }
@@ -184,32 +185,72 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
     
     # For each of the current communities how many future communities fall below the
     # threshold (e.g., are analogous; 0 = similar, 1 = different)
-    c_f_tax <- fnCurrent2Future(res$beta.time.taxa, arbthresh)
-    c_f_phylo <- fnCurrent2Future(res$beta.time.phylo, arbthresh)
-    c_f_func <- fnCurrent2Future(res$beta.time.func, arbthresh)
+    c_f_tax_sor <- fnCurrent2Future(res$tsor, arbthresh)
+    c_f_tax_sim <- fnCurrent2Future(res$tsim, arbthresh)
+    c_f_tax_nes <- fnCurrent2Future(res$tnes, arbthresh)
+    
+    c_f_phylo_sor <- fnCurrent2Future(res$psor, arbthresh)
+    c_f_phylo_sim <- fnCurrent2Future(res$psim, arbthresh)
+    c_f_phylo_nes <- fnCurrent2Future(res$pnes, arbthresh)
+    
+    #c_f_func_sor <- fnCurrent2Future(res$fsor, arbthresh)
+    #c_f_func_sim <- fnCurrent2Future(res$fsim, arbthresh)
+    #c_f_func_nes <- fnCurrent2Future(res$fnes, arbthresh)
+    
     
     # Create output raster stack (Disappearing) 
-    c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
-    names(c_f) <- c("Taxonomic", "Phylogenetic", "Functional")
+    c_f_sor <- stack(c(c_f_tax_sor,c_f_phylo_sor))
+    names(c_f_sor) <- c("Taxonomic", "Phylogenetic")
+    c_f_sim <- stack(c(c_f_tax_sim,c_f_phylo_sim))
+    names(c_f_sim) <- c("Taxonomic", "Phylogenetic")
+    c_f_nes <- stack(c(c_f_tax_nes,c_f_phylo_nes))
+    names(c_f_nes) <- c("Taxonomic", "Phylogenetic")
+    
     
     # Step 2) FUTURE COMMUNITIES WITHOUT ANALOGS IN CURRENT (Novel) --------------
     
     #How many future communities do not have analogs in the current time?
     #These are akin to communities that are novel, "Novel"
-    f_c_tax <- fnFuture2Current(res$beta.time.taxa, arbthresh)
-    f_c_phylo <- fnFuture2Current(res$beta.time.phylo, arbthresh)
-    f_c_func <- fnFuture2Current(res$beta.time.func, arbthresh)
     
+    f_c_tax_sor <- fnFuture2Current(res$tsor, arbthresh)
+    f_c_tax_sim <- fnFuture2Current(res$tsim, arbthresh)
+    f_c_tax_nes <- fnFuture2Current(res$tnes, arbthresh)
+    
+    f_c_phylo_sor <- fnFuture2Current(res$psor, arbthresh)
+    f_c_phylo_sim <- fnFuture2Current(res$psim, arbthresh)
+    f_c_phylo_nes <- fnFuture2Current(res$pnes, arbthresh)
+    
+    #f_c_func_sor <- fnFuture2Current(res$fsor, arbthresh)
+    #f_c_func_sim <- fnFuture2Current(res$fsim, arbthresh)
+    #f_c_func_nes <- fnFuture2Current(res$fnes, arbthresh)
+
     # Visualize all three NON-ANALOGS together --------------------------
-    f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
-    names(f_c) <- c("Taxonomic", "Phylogenetic", "Functional")
+    # Create output raster stack (Disappearing) 
+    f_c_sor <- stack(c(f_c_tax_sor,f_c_phylo_sor))
+    names(f_c_sor) <- c("Taxonomic", "Phylogenetic")
+    f_c_sim <- stack(c(f_c_tax_sim,f_c_phylo_sim))
+    names(f_c_sim) <- c("Taxonomic", "Phylogenetic")
+    f_c_nes <- stack(c(f_c_tax_nes,f_c_phylo_nes))
+    names(f_c_nes) <- c("Taxonomic", "Phylogenetic")
     
     # output the raster stacks
-    results <- stack(c_f, f_c)
-    names(results) <- c(paste("Novel",c("Tax","Phylo","Func")), 
-                        paste("Disappearing",c("Tax","Phylo","Func")))
+    results_sor <- stack(c_f_sor, f_c_sor)
+    names(results_sor) <- c(paste("Novel",c("Tax","Phylo")), 
+                        paste("Disappearing",c("Tax","Phylo")))
     
-    save(results, file=paste0(out_path, "/", arbthresh, "/NonAnalogRasters_", mod, ".rda"))
+    save(results_sor, file=paste0(out_path, "/", arbthresh, "/NonAnalogRasters_sor_", mod, ".rda"))
+    
+    results_sim <- stack(c_f_sim, f_c_sim)
+    names(results_sim) <- c(paste("Novel",c("Tax","Phylo")), 
+                            paste("Disappearing",c("Tax","Phylo")))
+    
+    save(results_sim, file=paste0(out_path, "/", arbthresh, "/NonAnalogRasters_sim_", mod, ".rda"))
+    
+    results_nes <- stack(c_f_nes, f_c_nes)
+    names(results_nes) <- c(paste("Novel",c("Tax","Phylo")), 
+                            paste("Disappearing",c("Tax","Phylo")))
+    
+    save(results_nes, file=paste0(out_path, "/", arbthresh, "/NonAnalogRasters_nes_", mod, ".rda"))
   }
 }
 

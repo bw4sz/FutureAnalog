@@ -169,7 +169,7 @@ ggsave("Figures/trait_changes.png", width=9, height=9)
 
 # PLOTTING THE HYPERVOLUMES
 require(hypervolume)
-
+strt <- system.time()
 # get file names
 files <- list.files("sppXsite", pattern="85", full.names = TRUE)
 cur <- list.files("sppXsite", pattern="current", full.names = TRUE)
@@ -192,3 +192,5 @@ load(cur)
 sppXsite <- sppXsite[1:10,]
 xy <- sppXsite[,c("x", "y")]
 trait_vol <- data.frame(xy, current, future)
+print(paste0("hypervolume calculations took ", system.time()-strt))
+      

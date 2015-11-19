@@ -188,7 +188,7 @@ getSiteTraitValues <- function(f, traits) {
 # function to calculate the hypervolume for each community
 calcHV <- function(f) {
   load(f)
-  sppXsite <- sppXsite[1:10,2:(ncol(sppXsite)-3)]
+  sppXsite <- sppXsite[,2:(ncol(sppXsite)-3)]
   comm.hv <- sapply(rownames(sppXsite), function(k){
     g <- sppXsite[k,]
     sp <- names(g[which(g==1)])

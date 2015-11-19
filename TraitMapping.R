@@ -166,3 +166,29 @@ ggplot(NULL, aes(x, y)) +
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
 ggsave("Figures/trait_changes.png", width=9, height=9)
+
+# PLOTTING THE HYPERVOLUMES
+require(hypervolume)
+
+# get file names
+files <- list.files("sppXsite", pattern="85", full.names = TRUE)
+cur <- list.files("sppXsite", pattern="current", full.names = TRUE)
+files <- c(files, cur)
+
+# get trait data
+traits <- getTraitData()
+
+# calculate hypervolume
+hv_res <- list()
+
+for(f in files) {
+  hv_res[[f]] <- calcHV(f)
+}
+
+hv_res <- do.call("cbind",hv_res)
+future <- rowMeans(hv_res[,which(colnames(hv_res)!=cur)])
+current <- hv_res[,cur]
+load(cur)
+sppXsite <- sppXsite[1:10,]
+xy <- sppXsite[,c("x", "y")]
+trait_vol <- data.frame(xy, current, future)

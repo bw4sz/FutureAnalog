@@ -184,3 +184,17 @@ getSiteTraitValues <- function(f, traits) {
   out <- data.frame(x=sppXsite$x, y=sppXsite$y, mod=fName, out)
   return(out)
 }
+
+# function to calculate the hypervolume for each community
+calcHV <- function(f) {
+  load(f)
+  sppXsite <- sppXsite[1:10,2:(ncol(sppXsite)-3)]
+  comm.hv <- sapply(rownames(sppXsite), function(k){
+    g <- sppXsite[k,]
+    sp <- names(g[which(g==1)])
+    traits.sub <- subset(traits, rownames(traits) %in% sp)
+    bw <- mean(estimate_bandwidth(traits.sub))
+    trait.hv <- get_volume(hypervolume(traits, bandwidth = bw))
+  })
+  return(comm.hv)
+}

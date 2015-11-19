@@ -8,14 +8,14 @@ rasterToDataFrame <- function(out_path){
   out <- lapply(out.rasters, function(x) { 
     load(x)
     
-    results <- stack(get("results"), elev, ecoregions.r) 
+    results <- stack(get("results"), elev)
     
     arbthresh <- str_match(x,pattern=paste(cell,"(\\w+.\\w+)/NonAnalog",sep="/"))[,2] 
     GCM <- substr(str_match(x,pattern="NonAnalogRasters_(\\w+.\\w+)bi70")[,2], 1, 2) 
     RCP <- substr(str_match(x,pattern="NonAnalogRasters_(\\w+.\\w+)bi70")[,2], 3, 4)  
     
     dat <- as.data.frame(results, xy = TRUE) %>%
-      gather(key, value, -x, -y, -output_srtm, -ecoregion_id, na.rm = TRUE) %>%
+      gather(key, value, -x, -y, -output_srtm, na.rm = TRUE) %>%
       mutate(arbthresh = arbthresh, GCM = GCM, RCP = RCP) %>%
       separate(key, into = c("comm.type", "measure"), sep = "\\.")
   } 
@@ -36,12 +36,6 @@ ec <- readOGR("InputData", "EcuadorCut")
 ec@data$id = rownames(ec@data)
 ec.df = fortify(ec, region="id")
 
-# ecoregions data
-ecoregions <- readOGR("InputData", "Ecoregions")
-ecoregions <- crop(ecoregions, extent(elev))
-ecoregions.r <- rasterize(ecoregions, elev, 'ECO_ID')
-names(ecoregions.r) <- "ecoregion_id"
-
 # get results data
 dat <- rasterToDataFrame(out_path)
 
@@ -49,28 +43,97 @@ dat$measure <- factor(dat$measure, levels=c("Tax", "Phylo", "Func"),
                       labels=c("Taxonomic", "Phylogenetic", "Functional"))
 
 # data for the main plots will use the most severe RCP and analog threshold of 20%
-dat.main <- filter(dat, RCP=="85", arbthresh == 0.2) %>%
-  group_by(x, y, output_srtm, ecoregion_id, measure, comm.type) %>%
-  summarise(NoOfAnalogs = mean(value))
+dat.NvsD <- filter(dat, RCP=="85", arbthresh == 0.2) %>%
+  group_by(x, y, output_srtm, measure, comm.type) %>%
+  summarise(NoOfAnalogs = mean(value)) %>%
+  spread(comm.type, NoOfAnalogs) %>%
+  mutate(NminusD=Novel-Disappearing)
 
-ggplot(NULL, aes(x, y)) + 
-  geom_raster(data = dat.main, aes(fill=NoOfAnalogs)) +
+plot.NvsD <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = dat.NvsD, aes(fill=NminusD)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
   geom_path(data = ec.df, aes(x=long, y=lat)) +
-  scale_fill_gradient(low = "blue", high = "white", name="Number of analog\ncommunities") +
+  scale_fill_gradient2(name="# Novel analogs \n- # Disappearing \nanalogs") +
   guides(fill = guide_colorbar()) +
+  facet_wrap(~measure, nrow=1) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
-  facet_grid(measure ~ comm.type) + 
   scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
   scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
-  coord_equal() + theme_classic(base_size=15) + 
+  coord_equal() + 
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave("Figures/main_plot.png", width=6.55, height=7.48, units="in")
+dat.PvsF <- filter(dat, RCP=="85", arbthresh==0.2) %>%
+  group_by(x, y, output_srtm, measure, comm.type) %>%
+  summarise(NoOfAnalogs=mean(value)) %>%
+  spread(measure, NoOfAnalogs) %>%
+  mutate(FminusP=Functional-Phylogenetic)
+
+plot.PvsF <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = dat.PvsF, aes(fill=FminusP)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient2(name="# Functional analogs \n- # Phylogenetic analogs") +
+  guides(fill = guide_colorbar()) +
+  facet_wrap(~comm.type, nrow=1) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+dat.novel <- filter(dat, RCP=="85", arbthresh == 0.2, comm.type=="Novel") %>%
+  group_by(x, y, output_srtm, measure) %>%
+  summarise(NoOfAnalogs = mean(value))
+
+plot.novel <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = dat.novel, aes(fill=NoOfAnalogs)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient(low = "blue", high = "white", name="Number of analog\ncommunities", limits=c(0, 3000)) +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_wrap(~ measure, nrow=1) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+# data for the main plots will use the most severe RCP and analog threshold of 20%
+dat.dis <- filter(dat, RCP=="85", arbthresh == 0.2, comm.type=="Disappearing") %>%
+  group_by(x, y, output_srtm, measure) %>%
+  summarise(NoOfAnalogs = mean(value))
+
+plot.dis <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = dat.dis, aes(fill=NoOfAnalogs)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities", limits=c(0, 3000)) +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_wrap(~ measure, nrow=1) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+gam.novel <- ggplot(dat.novel, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
+  facet_wrap(~ measure) + 
+  geom_smooth(method="gam",formula = y~s(x, k=20), colour="blue") +
+  labs(x="Elevation (m)", y="Number of analog communities") +
+  theme(strip.background=element_blank())
+
+gam.dis <- ggplot(dat.dis, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
+  facet_wrap(~ measure) + 
+  geom_smooth(method="gam",formula = y~s(x, k=20), colour="red") +
+  labs(x="Elevation (m)", y="Number of analog communities") +
+  theme(strip.background=element_blank())
+
+output.plot <- plot_grid(plot.novel, gam.novel, plot.dis, gam.dis, plot.NvsD, plot.PvsF, labels=c("A", "B", "C", "D", "E", "F"), ncol=2, align="h")
+save_plot("Figures/Main_Results.png", output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)
 
 # plot of the variance to check uncertainty
-novel.20.rcp.sd <- filter(dat, comm.type=="Novel", arbthresh == 0.2) %>%
-  group_by(x, y, output_srtm, measure, RCP) %>%
+novel.20.sd <- filter(dat, comm.type=="Novel", arbthresh == 0.2, RCP=="85") %>%
+  group_by(x, y, output_srtm, measure) %>%
   summarise(NoOfAnalogs = sd(value)/mean(value))
 
 ggplot(NULL, aes(x, y)) + 
@@ -88,70 +151,7 @@ ggplot(NULL, aes(x, y)) +
 
 ggsave(paste0("Figures/Novel_by_RCP_20perc_thres_cv_", measure, ".png"), width = 9, height = 9)
 
-# 2b Analog ~ Elevation GAMs
-ggplot(novel.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
-  facet_grid(measure~RCP) + 
-  geom_smooth(method="gam",formula = y~s(x, k=20)) +
-  labs(x="Elevation (m)", y="Number of analog communities") +
-  theme_classic(base_size=15) + theme(strip.background=element_blank())
 
-ggsave(paste0("Figures/Novel_elevation_gam_RCP_20perc_", measure, ".png"), width = 9, height = 9)
-
-# FIGURE 3 DISAPPEARING COMMUNITIES BY RCP -------------------------------------
-diss.20.rcp <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
-  group_by(x, y, output_srtm, measure, RCP) %>%
-  summarise(NoOfAnalogs = mean(value))
-
-diss.20.rcp.summary <- group_by(diss.20.rcp, measure, RCP) %>%
-  summarise(min.analog=min(NoOfAnalogs),
-            max.analog=max(NoOfAnalogs),
-            mean.analog=mean(NoOfAnalogs),
-            sd.analog=sd(NoOfAnalogs),
-            no.analogs=sum(NoOfAnalogs==0))
-
-ggplot(NULL, aes(x, y)) + 
-  geom_raster(data = diss.20.rcp, aes(fill=NoOfAnalogs)) +
-  geom_raster(data = hdf, aes(alpha=layer)) +
-  geom_path(data = ec.df, aes(x=long, y=lat)) +
-  scale_fill_gradient(low = "red", high = "white", name="Number of analog\ncommunities") +
-  guides(fill = guide_colorbar()) +
-  scale_alpha(range = c(0, 0.5), guide = "none") +
-  facet_grid(measure ~ RCP) + 
-  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
-  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
-  coord_equal() + theme_classic(base_size=15) + 
-  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
-
-ggsave(paste0("Figures/Disappearing_by_RCP_20perc_thres_", measure, ".png"), width = 9, height = 9)
-
-diss.20.rcp.sd <- filter(dat, comm.type=="Disappearing", arbthresh == 0.2) %>%
-  group_by(x, y, output_srtm, measure, RCP) %>%
-  summarise(NoOfAnalogs = sd(value)/mean(value)) 
-
-ggplot(NULL, aes(x, y)) + 
-  geom_raster(data = diss.20.rcp.sd, aes(fill=NoOfAnalogs)) +
-  geom_raster(data = hdf, aes(alpha=layer)) +
-  geom_path(data = ec.df, aes(x=long, y=lat)) +
-  scale_fill_gradient(low = "white", high = "red", name="CV of # of analog\ncommunities") +
-  guides(fill = guide_colorbar()) +
-  scale_alpha(range = c(0, 0.5), guide = "none") +
-  facet_grid(measure ~ RCP) + 
-  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
-  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
-  coord_equal() + theme_classic(base_size=15) + 
-  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
-
-ggsave(paste0("Figures/Disappearing_by_RCP_20perc_thres_cv_", measure, ".png"), width = 9, height = 9)
-
-# 3b Analog ~ Elevation GAMs
-ggplot(diss.20.rcp, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
-  facet_grid(measure~RCP) + 
-  geom_smooth(method="gam",formula = y~s(x, k=20), colour="red") +
-  labs(x="Elevation (m)", y="Number of analog communities") +
-  theme_classic(base_size=15) + theme(strip.background=element_blank())
-
-ggsave(paste0("Figures/Diss_elevation_gam_RCP_20perc_", measure, ".png"), width = 9, height = 9)
-} 
 # FIGURE 4 BOXPLOTS OF DIFFERENCES IN NUMBER OF ANALOGUES BETWEEN SCENARIOS-----
 # function to create all pairwise differences
 # pair.diff <- function(input){
@@ -240,7 +240,7 @@ ggsave(paste0("Figures/Diss_elevation_gam_RCP_20perc_", measure, ".png"), width 
 
 
 # SUPP. MAT. FIGURE X (THRESHOLD SENSITIVITY NOVEL) ----------------------------
-thresh_sa.novel <- filter(dat, comm.type=="Novel") %>% 
+thresh_sa.novel <- filter(dat, comm.type=="Novel", RCP=="85") %>% 
   group_by(x, y, measure, arbthresh) %>%
   summarise(NoOfAnalogs = mean(value))
 

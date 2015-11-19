@@ -2,7 +2,7 @@
 packages <- c("vegan", "picante", "analogue", "doSNOW", "ape", "cluster", 
               "RColorBrewer", "raster", "ggplot2", "phylobase", "rgdal", 
               "tidyr", "stringr", "dplyr", "biomod2", "rasterVis", "grid", 
-              "devtools", "broom", "gridExtra", "proxy", "geometry", "rcdd")
+              "devtools", "broom", "gridExtra", "proxy", "geometry", "rcdd", "cowplot")
 
 for(p in packages) {
   if (!p %in% installed.packages()) {

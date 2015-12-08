@@ -52,7 +52,7 @@ getTraitData <- function() {
   
   #just get males & the 3 traits of interest
   mon <- filter(morph, Sex == "Macho") %>%
-    select(SpID, ExpC, Peso, AlCdo) %>%
+    select(SpID, ExpC, Peso, AlCdo, TarsL) %>%
     group_by(SpID) %>%
     summarise_each(funs(mean(., na.rm = TRUE))) %>%
     filter(complete.cases(.))
@@ -186,15 +186,17 @@ getSiteTraitValues <- function(f, traits) {
 }
 
 # function to calculate the hypervolume for each community
-calcHV <- function(f) {
+calcHV <- function(f, traits) {
   load(f)
-  sppXsite <- sppXsite[1:10,2:(ncol(sppXsite)-3)]
+  xy <- sppXsite[,c("x", "y")]
+  sppXsite <- sppXsite[,2:(ncol(sppXsite)-3)]
   comm.hv <- sapply(rownames(sppXsite), function(k){
     g <- sppXsite[k,]
     sp <- names(g[which(g==1)])
     traits.sub <- subset(traits, rownames(traits) %in% sp)
-    bw <- mean(estimate_bandwidth(traits.sub))
-    trait.hv <- get_volume(hypervolume(traits, bandwidth = bw))
+    bw <- estimate_bandwidth(traits.sub, method="silverman")
+    trait.hv <- ifelse(nrow(traits.sub) < 2, 0, get_volume(hypervolume(traits.sub, bandwidth = bw)))
   })
-  return(comm.hv)
+  comm.hv <- unlist(comm.hv)
+  return(data.frame(xy, comm.hv=comm.hv))
 }

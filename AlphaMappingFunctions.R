@@ -658,7 +658,7 @@ matpsim.pairwise <- function(phyl, com.x, com.y, clust = 7) # make sure nodes ar
     ubr <- s_br[,colSums(pa_br > 0)==1]
     a_ubr <- as.matrix(ubr)[1,]
     b_ubr <- as.matrix(ubr)[2,]
-    res <- (sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))/(2*(sum(both, na.rm=T)) + sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T)
+    res <- (sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))/(2*(sum(both, na.rm=T)) + sum(a_ubr,na.rm=T) + sum(b_ubr,na.rm=T))
     return(res)
   }
   

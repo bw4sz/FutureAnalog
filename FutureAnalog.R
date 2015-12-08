@@ -55,33 +55,9 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     writeRaster(r,filnam,overwrite=TRUE)
   })
   
-  # select only well fitting species (currently set as all where TSS is over 0.5
-  # for all models and ROC is over 7.5 for all models)
-  model_eval<-list.files(out_path, full.name=TRUE,recursive=T,pattern="Eval.csv")
-  model_eval<-rbind_all(lapply(model_eval, 
-                               function(x) read.csv(x, stringsAsFactors = FALSE)))
-  colnames(model_eval)[1:2] <- c("Stat", "Species")
-  
-  # change here for sensitivity analyis
-  model_eval$TEST <- (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.5) 
-                      & model_eval$Stat == "TSS") |
-    (apply(model_eval, 1, function(x) min(x[3:5], na.rm=TRUE) < 0.75) 
-     & model_eval$Stat == "ROC")
-  
-  well.fitting.models <- subset(model_eval, !TEST)
-  well.fitting.species <- unique(well.fitting.models$Species)
-  well.fitting.species <- gsub(" ", ".", well.fitting.species)
-  
   # get the crop files
   niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
-  
-  files <- c()
-  for(s in well.fitting.species){
-    files <- c(files,grep(s, niche.crops))
-  }
-  
-  niche.crops <- niche.crops[files]
-  
+
   # create a blank raster object of the correct size and extent to have for
   # projecting the cell values
   blank <- raster(niche.crops[[1]])
@@ -171,12 +147,19 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     
     res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
     names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
-    save(res, file = paste0(res_path, "/beta_diversity_", mod, ".rda"))
+    save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
   }
 }
 
 # PART II: ANALOG ANALYSIS ---------------------------------------------------
 runAnalogAnalysis <- function(arbthresh, out_path) {
+  # get the crop files
+  niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
+  
+  # create a blank raster object of the correct size and extent to have for
+  # projecting the cell values
+  blank <- raster(niche.crops[[1]])
+  
   # get list of results from beta diversity analysis
   betadiv.files <- list.files(out_path, pattern = "beta_diversity", full.name = TRUE)
   if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))

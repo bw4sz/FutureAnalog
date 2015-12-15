@@ -85,7 +85,7 @@ current <- list.files("sppXsite", pattern="current", full.names = TRUE)
 currentTraits <- getSiteTraitValues(current, traits)
 
 # get future species lists and calculate mean traits for each site and each model
-future <- sppXsite.files[which(sppXsite.files != current)]
+future <- list.files("sppXsite", pattern="85", full.names=TRUE)
 futureTraits <- list()
 for(f in future) {
   futureTraits[[f]] <- getSiteTraitValues(f, traits)
@@ -151,21 +151,7 @@ png("Figures/trait_pca_changes.png", width=1311, height=515)
 grid.arrange(PCAPlot, traitBiplot, nrow=1, widths=c(2, 1))
 dev.off()
 
-# Actual trait value differences plotted
-ggplot(NULL, aes(x, y)) + 
-  geom_raster(data = TraitDiff, aes(fill=value)) +
-  geom_raster(data = hdf, aes(alpha=layer)) +
-  geom_path(data = ec.df, aes(x=long, y=lat)) +
-  scale_fill_gradient2(name="Current value - Future value") +
-  guides(fill = guide_colorbar()) +
-  scale_alpha(range = c(0, 0.5), guide = "none") +
-  facet_grid(variable ~ mod) + 
-  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
-  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
-  coord_equal() + theme_classic(base_size=15) + 
-  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave("Figures/trait_changes.png", width=9, height=9)
 
 # PLOTTING THE HYPERVOLUMES
 require(hypervolume)
@@ -187,11 +173,50 @@ for(f in files) {
 }
 
 save(hv_res, file="hypervolume_results.rda")
+load("hypervolume_results.rda")
 
-future <- rowMeans(hv_res.df[,which(colnames(hv_res.df)!=cur)])
-current <- hv_res.df[,cur]
-load(cur)
-xy <- sppXsite[,c("x", "y")]
-trait_vol <- data.frame(xy, current, future)
-print(paste0("hypervolume calculations took ", Sys.time()-strt))
+hv_res.df <- Reduce(function(...) merge(..., by=c('x', 'y'), all=TRUE), hv_res)
+colnames(hv_res.df) <- c('x', 'y', names(hv_res))
+
+future <- rowMeans(hv_res.df[,-(c(1,2,10))], na.rm=TRUE)
+current <- hv_res.df[,c(1,2,10)]
+
+trait_vol <- data.frame(current, future)
+trait_vol$diff <- trait_vol$sppXsite.current.rda - trait_vol$future
+trait_vol <- mutate(trait_vol, key="Hypervolume", value=diff) %>%
+  select(x, y, key, value)
+TraitDiff <- filter(TraitDiff, mod=="RCP 8.5") %>%
+  select(x, y, key, value)
+
+# Actual trait value differences plotted
+traits <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = TraitDiff, aes(fill=value)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient2(name="Current value - Future value") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  facet_wrap(~key) + 
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+vol <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = trait_vol, aes(fill=value)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  geom_path(data = ec.df, aes(x=long, y=lat)) +
+  scale_fill_gradient2(name="Current value - Future value") +
+  facet_wrap(~key) +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal() + 
+  theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
+
+output <- plot_grid(vol, traits, nrow = 2, labels = c('A', 'B'))
+save_plot("Figures/traitplot.png", output, base_width = 12, base_height=12)
+
+
       

@@ -207,7 +207,7 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
 # Misc functions needed for the above functions
 fnCurrent2Future <- function(betadiv, arb.thresh) {
   n.analogs <- sapply(rownames(betadiv), function(x){
-    sum(betadiv[rownames(betadiv) %in% x,] <= arb.thresh) 
+    sum(betadiv[rownames(betadiv) %in% x,] > arb.thresh) 
     #counts the number of assemblages with beta div values less than arb.thresh
   })
   
@@ -222,7 +222,7 @@ fnCurrent2Future <- function(betadiv, arb.thresh) {
 
 fnFuture2Current <- function(betadiv, arb.thresh){
   n.analogs <- sapply(colnames(betadiv), function(x){
-    sum(betadiv[,colnames(betadiv) %in% x] <= arb.thresh)
+    sum(betadiv[,colnames(betadiv) %in% x] > arb.thresh)
   })
   
   future_to_current.analog <- data.frame(colnames(betadiv), n.analogs)

@@ -30,12 +30,27 @@ aspect = terrain(elev, opt='aspect')
 hill = hillShade(slope, aspect, 40, 270)
 hdf <- rasterToPoints(hill)
 hdf <- data.frame(hdf)
-
+prec <- raster("InputData/MAPA_VEGETACION_MAE_FINAL_OFICIAL/Shapefile/BIOCLIMATICO/MODELO BIOCLIMATICO/PRECIPITACION_RASTER/PRECIPITACION_ANUAL/RASTER/prc_a_e_lat_long.tif")
+prec <- rasterToPoints(prec)
+prec <- data.frame(prec)
+province <- readOGR("InputData/MAPA_VEGETACION_MAE_FINAL_OFICIAL/Shapefile/BIOGEOGRAFICOS", "Provincia_Biogeograficos")
+province <- fortify(province, region="PROVINCIA")
 # ecuador boundary - get into format for ggplot
 ec <- readOGR("InputData", "EcuadorCut")
 ec@data$id = rownames(ec@data)
 ec.df = fortify(ec, region="id")
 
+# study site plot
+studysite <- ggplot(NULL, aes(x, y)) + 
+  geom_raster(data = prec, aes(fill=prc_a_e_lat_long)) +
+  geom_raster(data = hdf, aes(alpha=layer)) +
+  #geom_path(data = province, aes(x=long, y=lat)) +
+  scale_fill_gradient2(name="Precipitation") +
+  guides(fill = guide_colorbar()) +
+  scale_alpha(range = c(0, 0.5), guide = "none") +
+  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
+  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
+  coord_equal()
 # get results data
 dat <- rasterToDataFrame(out_path)
 
@@ -140,18 +155,18 @@ for(rcp in rcp.list) {
 }
 
 # plot of the variance to check uncertainty
-novel.20.sd <- filter(dat, comm.type=="Novel", arbthresh == 0.2, RCP=="85") %>%
-  group_by(x, y, output_srtm, measure) %>%
+cvplot.dat <- filter(dat, arbthresh == 0.2, RCP=="85") %>%
+  group_by(x, y, output_srtm, measure, comm.type) %>%
   summarise(NoOfAnalogs = sd(value)/mean(value))
 
 cvplot <- ggplot(NULL, aes(x, y)) + 
-  geom_raster(data = novel.20.sd, aes(fill=NoOfAnalogs)) +
+  geom_raster(data = cvplot.dat, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
   geom_path(data = ec.df, aes(x=long, y=lat)) +
-  scale_fill_gradient(low = "white", high = "blue", name="CV of # of analog\ncommunities") +
+  scale_fill_gradient(low = "white", high = "darkgreen", name="CV of # of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
-  facet_wrap(~measure) + 
+  facet_grid(comm.type~measure) + 
   scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
   scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
   coord_equal() +
@@ -222,25 +237,28 @@ prec_seasonality <- stack(crop(prec_seasonality, elev))
 ann_mean_temp <- as.data.frame(ann_mean_temp, xy = TRUE) %>%
   gather(key, value, -x, -y, na.rm = TRUE) %>%
   mutate(var="ann_mean_temp", 
-         GCM=substr(variable, 1, 2),
-         RCP=substr(variable, 3, 4)) %>%
-  group_by(x, y, var, RCP) %>%
+         GCM=substr(key, 1, 2),
+         RCP=substr(key, 3, 4)) %>%
+  filter(RCP=="85") %>%
+  group_by(x, y, var) %>%
   summarise(CV=sd(value)/mean(value))
 
 ann_prec <- as.data.frame(ann_prec, xy = TRUE) %>%
   gather(key, value, -x, -y, na.rm = TRUE) %>%
   mutate(var="ann_prec", 
-         GCM=substr(variable, 1, 2),
-         RCP=substr(variable, 3, 4)) %>%
-  group_by(x, y, var, RCP) %>%
+         GCM=substr(key, 1, 2),
+         RCP=substr(key, 3, 4)) %>%
+  filter(RCP=='85') %>%
+  group_by(x, y, var) %>%
   summarise(CV=sd(value)/mean(value))
 
 prec_seasonality <- as.data.frame(prec_seasonality, xy = TRUE) %>%
   gather(key, value, -x, -y, na.rm = TRUE) %>%
   mutate(var="prec_seasonality", 
-         GCM=substr(variable, 1, 2),
-         RCP=substr(variable, 3, 4)) %>%
-  group_by(x, y, var, RCP) %>%
+         GCM=substr(key, 1, 2),
+         RCP=substr(key, 3, 4)) %>%
+  filter(RCP=='85') %>%
+  group_by(x, y, var) %>%
   summarise(CV=sd(value)/mean(value))
 
 climate.CV <- rbind(ann_mean_temp, ann_prec, prec_seasonality)
@@ -249,16 +267,16 @@ ggplot(NULL, aes(x, y)) +
   geom_raster(data = climate.CV, aes(fill=CV)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
   geom_path(data = ec.df, aes(x=long, y=lat)) +
-  scale_fill_gradient(low = "white", high = "red", name="CV for climate variable") +
+  scale_fill_gradient(low = "white", high = "darkgreen", name="CV for climate variable") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
-  facet_grid(var ~ RCP) + 
+  facet_wrap(~var) + 
   scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
   scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
   coord_equal() + theme_classic(base_size=15) + 
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave("Figures/climate_CV.png", width=9, height=9)
+ggsave("Figures/climate_CV.png", width=9, height=3)
 
 ann_temp.p <- ggplot(NULL, aes(x, y)) + 
   geom_raster(data = ann_mean_temp, aes(fill=CV)) +

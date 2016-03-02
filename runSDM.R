@@ -76,7 +76,7 @@ runSDM <- function(cell_size, out_path, proj_folder){
   colnames(model_eval)[1:2] <- c("Stat", "Species")
   model_eval  <- gather(data.frame(model_eval), Model, value, -Stat, -Species)
   colnames(model_eval)<-c("Stat", "Species", "Model", "Value")
-  
+  model_eval$Stat <- ifelse(model_eval$Stat=="ROC", "AUC", model_eval$Stat)
   # summary stats
   model_eval_summary <- group_by(model_eval, Stat, Model) %>%
     summarise(mean.val=mean(Value, na.rm=TRUE), sd.val=sd(Value, na.rm=TRUE))
@@ -88,17 +88,17 @@ runSDM <- function(cell_size, out_path, proj_folder){
     scale_fill_gradient("Score",limits=c(0,1),low="blue",high="red",na.value="white") + 
     theme_classic() +
     theme(axis.text.x=element_text(angle=-90))
-  ggsave(paste(out_path, "ModelEvaluations.jpeg", sep = "/"), height = 9, width=17)
+  ggsave("Figures/ModelEvaluations.jpeg", height = 9, width=17)
   
   #Plot correlation of ROC and TSS scores
   model_compare <- spread(model_eval, Stat, Value)
-  ggplot(model_compare, aes(TSS, ROC)) + 
+  ggplot(model_compare, aes(TSS, AUC)) + 
     geom_point() + 
     stat_smooth(method="lm") + 
     theme_classic() + 
     theme(text=element_text(size=20))
   lm1=lm(ROC~TSS, data=model_compare)
-  ggsave(paste(out_path, "ModelComparison_ROC-TSS.jpeg", sep = "/"), 
+  ggsave("Figures/ModelComparison_ROC-TSS.jpeg", 
          dpi=600, height = 6, width=11)
   
   model_thresh.ROC <- sapply(seq(.5,.95,.05),function(x){

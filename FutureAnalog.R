@@ -58,9 +58,6 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   # get the crop files
   niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
 
-  # create a blank raster object of the correct size and extent to have for
-  # projecting the cell values
-  blank <- raster(niche.crops[[1]])
   
   # Step 4) Get current niches for comparing to ----------------------------------
   current <- niche.crops[grep("current", niche.crops, value=FALSE)]
@@ -156,10 +153,6 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
   # get the crop files
   niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
   
-  # create a blank raster object of the correct size and extent to have for
-  # projecting the cell values
-  blank <- raster(niche.crops[[1]])
-  
   # get list of results from beta diversity analysis
   betadiv.files <- list.files(out_path, pattern = "beta_diversity", full.name = TRUE)
   if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))
@@ -203,47 +196,6 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
     save(results, file=paste0(out_path, "/", arbthresh, "/NonAnalogRasters_", mod, ".rda"))
   }
 }
-
-# Misc functions needed for the above functions
-fnCurrent2Future <- function(betadiv, arb.thresh) {
-  n.analogs <- sapply(rownames(betadiv), function(x){
-    sum(betadiv[rownames(betadiv) %in% x,] > arb.thresh) 
-    #counts the number of assemblages with beta div values less than arb.thresh
-  })
-  
-  current_to_future.analog <- data.frame(rownames(betadiv), n.analogs)
-  colnames(current_to_future.analog) <- c("cell.number", "numberofanalogs")  
-  
-  c_f <- cellVis(cells=current_to_future.analog$cell.number, 
-                 value=current_to_future.analog$numberofanalogs)
-  hist(current_to_future.analog$numberofanalogs)
-  return(c_f)
-}
-
-fnFuture2Current <- function(betadiv, arb.thresh){
-  n.analogs <- sapply(colnames(betadiv), function(x){
-    sum(betadiv[,colnames(betadiv) %in% x] > arb.thresh)
-  })
-  
-  future_to_current.analog <- data.frame(colnames(betadiv), n.analogs)
-  colnames(future_to_current.analog) <- c("cell.number", "numberofanalogs")  
-  
-  f_c <- cellVis(cell=future_to_current.analog$cell.number, 
-                 value=future_to_current.analog$numberofanalogs)
-  hist(future_to_current.analog$numberofanalogs)
-  return(f_c)
-}
-
-na.test <-  function (x) {
-  w <- apply(x, 2, function(x)all(is.na(x)))
-  if (any(w)) {
-    fails <- names(which(w))
-    print(paste("All NA in columns", paste(names(which(w)), collapse=", ")))
-    return(fails)
-  }
-}
-
-
 
 
 

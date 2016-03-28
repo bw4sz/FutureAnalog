@@ -79,6 +79,10 @@ fnCurrent2Future <- function(betadiv, arb.thresh) {
   current_to_future.analog <- data.frame(rownames(betadiv), n.analogs)
   colnames(current_to_future.analog) <- c("cell.number", "numberofanalogs")  
   
+  # create a blank raster object of the correct size and extent to have for
+  # projecting the cell values
+  blank <- raster(niche.crops[[1]])
+  
   c_f <- cellVis(cells=current_to_future.analog$cell.number, 
                  value=current_to_future.analog$numberofanalogs)
   hist(current_to_future.analog$numberofanalogs)
@@ -92,6 +96,10 @@ fnFuture2Current <- function(betadiv, arb.thresh){
   
   future_to_current.analog <- data.frame(colnames(betadiv), n.analogs)
   colnames(future_to_current.analog) <- c("cell.number", "numberofanalogs")  
+  
+  # create a blank raster object of the correct size and extent to have for
+  # projecting the cell values
+  blank <- raster(niche.crops[[1]])
   
   f_c <- cellVis(cell=future_to_current.analog$cell.number, 
                  value=future_to_current.analog$numberofanalogs)

@@ -123,9 +123,13 @@ for(rcp in rcp.list) {
       group_by(x, y, output_srtm, measure) %>%
       summarise(NoOfAnalogs = mean(value))
     
+    
+    q <- as.integer(quantile(filter(dat.novel, NoOfAnalogs!=0)$NoOfAnalogs))
+    dat.novel$analog_cat <- cut(dat.novel$NoOfAnalogs, q)
+    
     plot.novel <- ggplot(NULL, aes(x, y)) + 
-      geom_raster(data = dat.novel, aes(fill=NoOfAnalogs)) +
-      scale_fill_gradient2(name="# novel\ncommunities") +
+      geom_raster(data = dat.novel, aes(fill=analog_cat)) +
+      scale_fill_discrete(name="# novel\ncommunities") +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(alpha=layer)) +
       scale_alpha(range = c(0, 0.5), guide = "none") +

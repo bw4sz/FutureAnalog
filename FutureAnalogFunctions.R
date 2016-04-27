@@ -70,7 +70,7 @@ fnBetaDiv <- function(mod, clust = 7){
   return(res)
 }
 
-fnCurrent2Future <- function(betadiv, arb.thresh) {
+fnCurrent2Future <- function(betadiv, arb.thresh, blank) {
   n.analogs <- sapply(rownames(betadiv), function(x){
     sum(betadiv[rownames(betadiv) %in% x,] < arb.thresh) 
     #counts the number of assemblages with beta div values less than arb.thresh
@@ -78,18 +78,15 @@ fnCurrent2Future <- function(betadiv, arb.thresh) {
   
   current_to_future.analog <- data.frame(rownames(betadiv), n.analogs)
   colnames(current_to_future.analog) <- c("cell.number", "numberofanalogs")  
-  
-  # create a blank raster object of the correct size and extent to have for
-  # projecting the cell values
-  blank <- raster(niche.crops[[1]])
-  
+
   c_f <- cellVis(cells=current_to_future.analog$cell.number, 
-                 value=current_to_future.analog$numberofanalogs)
+                 value=current_to_future.analog$numberofanalogs,
+                 blank=blank)
   hist(current_to_future.analog$numberofanalogs)
   return(c_f)
 }
 
-fnFuture2Current <- function(betadiv, arb.thresh){
+fnFuture2Current <- function(betadiv, arb.thresh, blank){
   n.analogs <- sapply(colnames(betadiv), function(x){
     sum(betadiv[,colnames(betadiv) %in% x] < arb.thresh)
   })
@@ -97,12 +94,9 @@ fnFuture2Current <- function(betadiv, arb.thresh){
   future_to_current.analog <- data.frame(colnames(betadiv), n.analogs)
   colnames(future_to_current.analog) <- c("cell.number", "numberofanalogs")  
   
-  # create a blank raster object of the correct size and extent to have for
-  # projecting the cell values
-  blank <- raster(niche.crops[[1]])
-  
   f_c <- cellVis(cell=future_to_current.analog$cell.number, 
-                 value=future_to_current.analog$numberofanalogs)
+                 value=future_to_current.analog$numberofanalogs,
+                 blank=blank)
   hist(future_to_current.analog$numberofanalogs)
   return(f_c)
 }

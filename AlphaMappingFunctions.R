@@ -162,7 +162,7 @@ AlphaFunc.FD<-function(siteXspp.raster,traits){
   rownames(trait_FD)<-rownames(siteXspp.FD)
   return(trait_FD)}
 
-cellVis<-function(cells,value){
+cellVis<-function(cells,value, blank){
   #create a empty raster the exact dimensions of the model, this needs to match extent and grain first
   alpha_structure<-raster(blank)
   values(alpha_structure)<-NA

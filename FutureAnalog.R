@@ -153,6 +153,11 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
   # get the crop files
   niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
   
+  
+  # create a blank raster object of the correct size and extent to have for
+  # projecting the cell values
+  blank <- raster(niche.crops[[1]])
+  
   # get list of results from beta diversity analysis
   betadiv.files <- list.files(out_path, pattern = "beta_diversity", full.name = TRUE)
   if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))
@@ -168,9 +173,9 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
     
     # For each of the current communities how many future communities fall below the
     # threshold (e.g., are analogous; 0 = similar, 1 = different)
-    c_f_tax <- fnCurrent2Future(res$beta.time.taxa, arbthresh)
-    c_f_phylo <- fnCurrent2Future(res$beta.time.phylo, arbthresh)
-    c_f_func <- fnCurrent2Future(res$beta.time.func, arbthresh)
+    c_f_tax <- fnCurrent2Future(res$beta.time.taxa, arbthresh, blank)
+    c_f_phylo <- fnCurrent2Future(res$beta.time.phylo, arbthresh, blank)
+    c_f_func <- fnCurrent2Future(res$beta.time.func, arbthresh, blank)
     
     # Create output raster stack (Disappearing) 
     c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
@@ -180,9 +185,9 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
     
     #How many future communities do not have analogs in the current time?
     #These are akin to communities that are novel, "Novel"
-    f_c_tax <- fnFuture2Current(res$beta.time.taxa, arbthresh)
-    f_c_phylo <- fnFuture2Current(res$beta.time.phylo, arbthresh)
-    f_c_func <- fnFuture2Current(res$beta.time.func, arbthresh)
+    f_c_tax <- fnFuture2Current(res$beta.time.taxa, arbthresh, blank)
+    f_c_phylo <- fnFuture2Current(res$beta.time.phylo, arbthresh, blank)
+    f_c_func <- fnFuture2Current(res$beta.time.func, arbthresh, blank)
     
     # Visualize all three NON-ANALOGS together --------------------------
     f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))

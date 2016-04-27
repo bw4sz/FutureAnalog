@@ -27,31 +27,11 @@ rasterToDataFrame <- function(out_path){
 # hillshade data
 ec <- readOGR("InputData", "EcuadorCut")
 load("InputData/srtm_5arcmin.rda")
-elev <- mask(elev, ec)
-slope = terrain(elev, opt='slope')
-aspect = terrain(elev, opt='aspect')
-hill = hillShade(slope, aspect, 40, 270)
+hill <- raster("MAPA_VEGETACION_MAE_FINAL_OFICIAL/hillshade_cropped.tif")
 hdf <- as.data.frame(hill, xy=TRUE)
 hdf <- data.frame(hdf)
 hdf <- hdf[complete.cases(hdf),]
-prec <- raster("../worldclim_data/bio_5m_bil/bio12.bil")
-prec <- mask(prec, ec)
-prec <- rasterToPoints(prec)
-prec <- data.frame(prec)
-
-
-# Figure 1: study site plot ----
-studysite <- ggplot(NULL, aes(x, y)) + 
-  geom_raster(data = prec, aes(fill=bio12)) +
-  geom_raster(data = hdf, aes(alpha=layer)) +
-  scale_fill_gradient2(name="Annual precipitation (mm)") +
-  guides(fill = guide_colorbar()) +
-  scale_alpha(range = c(0, 0.5), guide = "none") +
-  scale_x_continuous(name=expression(paste("Longitude (", degree, ")"))) + 
-  scale_y_continuous(name=expression(paste("Latitude (", degree, ")"))) +
-  coord_equal()
-
-save_plot("Figures/studysite.png", studysite, base_width = 6, base_height = 5)
+colnames(hdf) <- c("x", "y", "layer")
 
 # Get results data ----
 dat <- rasterToDataFrame(out_path)
@@ -76,14 +56,14 @@ for(rcp in rcp.list) {
       spread(comm.type, NoOfAnalogs) %>%
       mutate(NminusD=Novel-Disappearing)
     
-    minval <- min(dat.NvsD$NminusD)
-    maxval <- max(dat.NvsD$NminusD)
+    minval <- min(dat.NvsD$NminusD) + 0.3*min(dat.NvsD$NminusD)
+    maxval <- max(dat.NvsD$NminusD) - 0.3*max(dat.NvsD$NminusD)
     maxval <- max(abs(minval), maxval)
     
     plot.NvsD <- ggplot(NULL, aes(x, y)) + 
       geom_raster(data = dat.NvsD, aes(fill=NminusD)) +
-      scale_fill_gradient2(name="# non-analog\ncommunities", breaks=c(-maxval, 0, maxval), 
-                           labels=c("Disappearing", "No difference", "Novel"),
+      scale_fill_gradient2(name="Difference in\nno. analog\ncommunities", breaks=c(-maxval, 0, maxval), 
+                           labels=c("Future", "No difference", "Current"),
                            limits=c(-maxval, maxval)) +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(alpha=layer)) +
@@ -100,13 +80,14 @@ for(rcp in rcp.list) {
       spread(measure, NoOfAnalogs) %>%
       mutate(FminusP=Functional-Phylogenetic)
     
-    minval <- min(dat.PvsF$FminusP)
-    maxval <- max(dat.PvsF$FminusP)
+    dat.PvsF$comm.type <- factor(dat.PvsF$comm.type, levels=c("Novel", "Disappearing"), labels=c("Current", "Future"))
+    minval <- min(dat.PvsF$FminusP) + 0.3*min(dat.PvsF$FminusP)
+    maxval <- max(dat.PvsF$FminusP) - 0.3*max(dat.PvsF$FminusP)
     maxval <- max(abs(minval), maxval)
     
     plot.PvsF <- ggplot(NULL, aes(x, y)) + 
       geom_raster(data = dat.PvsF, aes(fill=FminusP)) +
-      scale_fill_gradient2(name="# non-analog\ncommunities", breaks=c(-maxval, 0, maxval), 
+      scale_fill_gradient2(name="No. analog\ncommunities", breaks=c(-maxval, 0, maxval), 
                            labels=c("Phylogenetic", "No difference", "Functional"),
                            limits=c(-maxval, maxval)) +
       facet_wrap(~comm.type, nrow=1) +
@@ -123,15 +104,14 @@ for(rcp in rcp.list) {
       group_by(x, y, output_srtm, measure) %>%
       summarise(NoOfAnalogs = mean(value))
     
+    dat.novel.zero <- filter(dat.novel, NoOfAnalogs==0)
     
-    q <- as.integer(quantile(filter(dat.novel, NoOfAnalogs!=0)$NoOfAnalogs))
-    dat.novel$analog_cat <- cut(dat.novel$NoOfAnalogs, q)
-    
-    plot.novel <- ggplot(NULL, aes(x, y)) + 
-      geom_raster(data = dat.novel, aes(fill=analog_cat)) +
-      scale_fill_discrete(name="# novel\ncommunities") +
+    plot.novel <- ggplot(NULL) + 
+      geom_raster(data = dat.novel, aes(x = x, y = y, fill=NoOfAnalogs)) +
+      geom_raster(data = dat.novel.zero, color = "black", aes(x = x, y = y)) +
+      scale_fill_gradient2(name="No. current\nanalogs") +
       facet_wrap(~measure, nrow=1) +
-      geom_raster(data = hdf, aes(alpha=layer)) +
+      geom_raster(data = hdf, aes(x = x, y = y, alpha=layer)) +
       scale_alpha(range = c(0, 0.5), guide = "none") +
       scale_x_continuous(name="") + 
       scale_y_continuous(name="") +
@@ -139,16 +119,16 @@ for(rcp in rcp.list) {
       theme(strip.background = element_blank(), panel.margin = unit(2, "lines"), 
             axis.ticks=element_blank(), axis.text=element_blank(), axis.line=element_blank())
     
-
-    
     # data for the main plots will use the most severe RCP and analog threshold of 20%
     dat.dis <- filter(dat, RCP==rcp, arbthresh == thresh, comm.type=="Disappearing") %>%
       group_by(x, y, output_srtm, measure) %>%
       summarise(NoOfAnalogs = mean(value))
     
+    dat.dis.zero <- filter(dat.dis, NoOfAnalogs==0)
     plot.dis <- ggplot(NULL, aes(x, y)) + 
       geom_raster(data = dat.dis, aes(fill=NoOfAnalogs)) +
-      scale_fill_gradient2(low="white", high="red", name="# disappearing\ncommunities") +
+      geom_raster(data = dat.dis.zero, color = "black") +
+      scale_fill_gradient2(low="white", high="red", name="No. future\nanalogs") +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(alpha=layer)) +
       scale_alpha(range = c(0, 0.5), guide = "none") +
@@ -161,13 +141,15 @@ for(rcp in rcp.list) {
     gam.novel <- ggplot(dat.novel, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
       facet_wrap(~ measure) + 
       geom_smooth(method="gam",formula = y~s(x, k=20), colour="blue") +
-      labs(x=expression("Elevation (m)"), y=expression("# novel communities")) +
+      labs(x=expression("Elevation (m)"), y=expression("No. current analogs")) +
+      ylim(0, 3000) +
       theme(strip.background=element_blank())
     
     gam.dis <- ggplot(dat.dis, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
       facet_wrap(~ measure) + 
       geom_smooth(method="gam",formula = y~s(x, k=20), colour="red") +
-      labs(x=expression("Elevation (m)"), y=expression("# disappearing communities")) +
+      labs(x=expression("Elevation (m)"), y=expression("No. future analogs")) +
+      ylim(0, 3000) +
       theme(strip.background=element_blank())
     
     output.plot <- plot_grid(plot.novel, gam.novel, plot.dis, gam.dis, plot.NvsD, plot.PvsF, labels=c("A", "B", "C", "D", "E", "F"), ncol=2, align="h")
@@ -180,10 +162,12 @@ cvplot.dat <- filter(dat, arbthresh == 0.2, RCP=="85") %>%
   group_by(x, y, output_srtm, measure, comm.type) %>%
   summarise(NoOfAnalogs = sd(value)/mean(value))
 
+cvplot.dat$comm.type <- factor(cvplot.dat$comm.type, levels=c("Novel", "Disappearing"), labels=c("Current", "Future"))
+
 cvplot <- ggplot(NULL, aes(x, y)) + 
   geom_raster(data = cvplot.dat, aes(fill=NoOfAnalogs)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
-  scale_fill_gradient(low = "white", high = "darkgreen", name="CV of # of analog\ncommunities") +
+  scale_fill_gradient(low = "white", high = "darkgreen", name="CV of no. of analog\ncommunities") +
   guides(fill = guide_colorbar()) +
   scale_alpha(range = c(0, 0.5), guide = "none") +
   facet_grid(comm.type~measure) + 
@@ -253,7 +237,7 @@ ggplot(NULL, aes(x, y)) +
   coord_equal() + theme_classic(base_size=15) + 
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-ggsave("Figures/climate_CV.png", width=9, height=3)
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ggsave("Figures/climate_CV.png", width=9, height=3)
 
 ann_temp.p <- ggplot(NULL, aes(x, y)) + 
   geom_raster(data = ann_mean_temp, aes(fill=CV)) +

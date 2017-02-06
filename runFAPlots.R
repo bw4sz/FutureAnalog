@@ -62,7 +62,7 @@ for(rcp in rcp.list) {
     
     plot.NvsD <- ggplot(NULL, aes(x, y)) + 
       geom_raster(data = dat.NvsD, aes(fill=NminusD)) +
-      scale_fill_gradient2(name="Difference in\nno. analog\ncommunities", breaks=c(-maxval, 0, maxval), 
+      scale_fill_gradient2(name="Greater amount\nof analog\ncommunities", breaks=c(-maxval, 0, maxval), 
                            labels=c("Future", "No difference", "Current"),
                            limits=c(-maxval, maxval)) +
       facet_wrap(~measure, nrow=1) +
@@ -87,7 +87,7 @@ for(rcp in rcp.list) {
     
     plot.PvsF <- ggplot(NULL, aes(x, y)) + 
       geom_raster(data = dat.PvsF, aes(fill=FminusP)) +
-      scale_fill_gradient2(name="No. analog\ncommunities", breaks=c(-maxval, 0, maxval), 
+      scale_fill_gradient2(name="Greater amount\nof analog\ncommunities", breaks=c(-maxval, 0, maxval), 
                            labels=c("Phylogenetic", "No difference", "Functional"),
                            limits=c(-maxval, maxval)) +
       facet_wrap(~comm.type, nrow=1) +
@@ -225,7 +225,7 @@ prec_seasonality <- as.data.frame(prec_seasonality, xy = TRUE) %>%
 
 climate.CV <- rbind(ann_mean_temp, ann_prec, prec_seasonality)
 
-ggplot(NULL, aes(x, y)) + 
+climate.cv.plot <- ggplot(NULL, aes(x, y)) + 
   geom_raster(data = climate.CV, aes(fill=CV)) +
   geom_raster(data = hdf, aes(alpha=layer)) +
   scale_fill_gradient(low = "white", high = "darkgreen", name="CV for climate variable") +
@@ -237,7 +237,7 @@ ggplot(NULL, aes(x, y)) +
   coord_equal() + theme_classic(base_size=15) + 
   theme(strip.background = element_blank(), panel.margin = unit(2, "lines"))
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ggsave("Figures/climate_CV.png", width=9, height=3)
+ggsave("Figures/climate_CV.png", width=9, height=3)
 
 ann_temp.p <- ggplot(NULL, aes(x, y)) + 
   geom_raster(data = ann_mean_temp, aes(fill=CV)) +

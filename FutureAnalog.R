@@ -26,42 +26,49 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   rownames(mon) <- gsub(" ",".",mon$Species)
   mon <- mon[,-1]
   
-  #principal component traits and get euclidean distance matrix
-  means <- apply(mon, 2, mean)
+  #normalise traits and get euclidean distance matrix
+  normalise <- function(dcol) {
+    out <- (dcol - min(dcol))/(max(dcol) - min(dcol))
+  }
   
-  Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
-  Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
-  WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
+  normalise_mon <- apply(mon, 2, normalise)
   
-  z.scores <- data.frame(Bill, Mass, WingChord)
-  rownames(z.scores) <- rownames(mon)
+  fco <- as.matrix(dist(normalise_mon, method = "euclidean"))
   
-  fco <- as.matrix(dist(z.scores, method = "euclidean"))
+  # standardise fco between 0 and 1 to make comparable to phylo and tax measures
+  fco <- (fco - min(fco))/(max(fco) - min(fco))
   
   # Step 3) Bring in niche models ------------------------------------------------
-  all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
+  #all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
   
   # Clip to Extent and shape of desired countries (Ecuador for now)
-  ec<-readOGR("InputData", "EcuadorCut")
-  r<-raster(extent(ec))
+  #ec<-readOGR("InputData", "EcuadorCut")
+  #r<-raster(extent(ec))
   
   # Match cell size above from the SDM_SP function
-  res(r) <- cell_size
-  ec.r <- rasterize(ec,r)
+  #res(r) <- cell_size
+  #ec.r <- rasterize(ec,r)
   
-  niche.crop <- lapply(all.niche,function(x){
-    r <- crop(raster(x),extent(ec.r))
-    filnam <- paste(strsplit(x,".gri$")[[1]][1],"crop",sep="")
-    writeRaster(r,filnam,overwrite=TRUE)
-  })
+  #niche.crop <- lapply(all.niche,function(x){
+   # r <- crop(raster(x),extent(ec.r))
+  #  filnam <- paste(strsplit(x,".gri$")[[1]][1],"crop",sep="")
+   # writeRaster(r,filnam,overwrite=TRUE)
+  #})
   
   # get the crop files
-  niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
+  #niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
 
   
   # Step 4) Get current niches for comparing to ----------------------------------
-  current <- niche.crops[grep("current", niche.crops, value=FALSE)]
-  current <- tableFromRaster(current, threshold = 0.05)
+  #current <- niche.crops[grep("current", niche.crops, value=FALSE)]
+  #current <- tableFromRaster(current, threshold = 0.05)
+  # for now, load from the siteXspp folder
+  load("sppXsite/current.rda")
+  current <- sppXsite
+  
+  # set cell to the rownames and get rid of column - this is how the code set up to work
+  rownames(current) <- current$cell
+  current <- current[-1]
   
   #Remove NAs from current so we can do the following analyses. Some species do
   #not occur in Ecuador, so they should be removed from analysis here.
@@ -74,19 +81,63 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   current.func <- current[,colnames(current) %in% colnames(fco)]
   current.func <- current.func[!apply(current.func,1,sum)<=2,]  
   
-  # list to output results
-  NonAnalogRasters <- list()
+  # Step 5) calculate current null model (current-to-current betadiversity)
+  # taxonomic beta-diversity
+  beta.time.taxa.cnull <- analogue::distance(current, current, "bray")
+  
+  # phylogenetic beta-diversity
+  beta.time.phylo.cnull <- matpsim.pairwise(phyl = trx, 
+                                      com.x = current.phylo, 
+                                      com.y = current.phylo)
+  
+  # functional beta-diversity 
+  sp.list <- lapply(rownames(current.func), function(k){
+    g <- current.func[k,]
+    names(g[which(g==1)])
+  })
+  
+  names(sp.list) <- rownames(current.func)
+  
+  #Get distances from the cophenetic matrix?
+  dists <- as.matrix(fco)
+  rownames(dists) <- rownames(fco)
+  colnames(dists) <- rownames(fco)
+  
+  cl <- makeCluster(clust) # make another cluster
+  registerDoSNOW(cl)
+  
+  beta.time.func.cnull <- foreach(a=rownames(current.func), .export = c("current.func", "MNND_fc"), .combine="cbind") %dopar%{
+    sapply(rownames(current.func), function(b){
+      MNND_fc(a, b, sp.list, sp.list, dists)
+    })}
+  
+  stopCluster(cl)
+  
+  rownames(beta.time.func.cnull) <- rownames(current.func)
+  colnames(beta.time.func.cnull) <- rownames(current.func)
+
+  res <- list(beta.time.taxa.cnull, beta.time.phylo.cnull, beta.time.func.cnull)
+  names(res) <- c("beta.time.taxa.cnull", "beta.time.phylo.cnull", "beta.time.func.cnull")
+  save(res, file = paste0(out_path, "/beta_diversity_cnull.rda"))
   
   # Get climate models in use
-  clim.mods <- list.files("../worldclim_data/projections_2070/")
+  #clim.mods <- list.files("../worldclim_data/projections_2070/")
+  #for now
+  clim.mods <- list.files("sppXsite", full.names = TRUE)
+  clim.mods_not <- list.files("sppXsite", full.names = TRUE, pattern = "current")
+  clim.mods <- setdiff(clim.mods, clim.mods_not)
   
   for(mod in clim.mods){
-    niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
+    # niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
     
     #Create siteXspp table from input rasters, function is from
     #AlphaMappingFunctions.R, sourced at the top.
-    siteXspps <- tableFromRaster(niche, threshold = 0.05)
-    
+    # siteXspps <- tableFromRaster(niche, threshold = 0.05)
+    load(mod)
+    siteXspps <- sppXsite
+    # set cell to the rownames and get rid of column - this is how the code set up to work
+    rownames(siteXspps) <- siteXspps$cell
+    siteXspps <- siteXspps[-1]
     #Remove NAs from siteXspps 
     fails <- na.test(siteXspps)
     siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
@@ -94,6 +145,8 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     # Step 1) TAXONOMIC BETA DIVERSITY ---------------------------------------------
     beta.time.taxa <- analogue::distance(current, siteXspps, "bray")
     
+    # future null 
+    beta.time.taxa.fnull <- analogue::distance(siteXspps, siteXspps, "bray")
     # Step 2) PHYLO BETA DIVERSITY -------------------------------------------------
     # For phylobeta, there needs to be more than 2 species for a rooted tree
     phylo.dat <- siteXspps[,colnames(siteXspps) %in% trx$tip.label]
@@ -102,6 +155,11 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     strt <- Sys.time()
     beta.time.phylo <- matpsim.pairwise(phyl = trx, 
                                         com.x = current.phylo, 
+                                        com.y = phylo.dat)
+    
+    # future null
+    beta.time.phylo.fnull <- matpsim.pairwise(phyl = trx, 
+                                        com.x = phylo.dat, 
                                         com.y = phylo.dat)
     Sys.time()-strt
     
@@ -131,7 +189,7 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     cl <- makeCluster(clust) # make another cluster
     registerDoSNOW(cl)
     
-    beta.time.func <- foreach(fu=rownames(func.dat), .export = c("current.func", "MNND_fc"), .combine="cbind") %dopar%{
+    beta.time.func <- foreach(fu=rownames(func.dat), .export = c("MNND_fc"), .combine="cbind") %dopar%{
       sapply(rownames(current.func), function(cur){
         MNND_fc(fu, cur, sp.list_current, sp.list_future, dists)
       })}
@@ -142,27 +200,55 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     rownames(beta.time.func) <- rownames(current.func)
     colnames(beta.time.func) <- rownames(func.dat)
     
+    cl <- makeCluster(clust) # make another cluster
+    registerDoSNOW(cl)
+    
+    # future null
+    beta.time.func.fnull <- foreach(a=rownames(func.dat), .export = c("func.dat", "MNND_fc"), .combine="cbind") %dopar%{
+      sapply(rownames(func.dat), function(b){
+        MNND_fc(a, b, sp.list_future, sp.list_future, dists)
+      })}
+    
+    stopCluster(cl)
+    
+    rownames(beta.time.func.fnull) <- rownames(func.dat)
+    colnames(beta.time.func.fnull) <- rownames(func.dat)
+    
+    # cut model name out of file name
+    mod <- substr(mod, 10, 17)
+    
     res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
     names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
     save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
+    
+    res_fnull <- list(beta.time.taxa.fnull, beta.time.phylo.fnull, beta.time.func.fnull)
+    names(res) <- c("beta.time.taxa.fnull", "beta.time.phylo.fnull", "beta.time.func.fnull")
+    save(res, file = paste0(out_path, "/beta_diversity_fnull_", mod, ".rda"))
   }
 }
 
 # PART II: ANALOG ANALYSIS ---------------------------------------------------
 runAnalogAnalysis <- function(arbthresh, out_path) {
   # get the crop files
-  niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
+  #niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
   
   
   # create a blank raster object of the correct size and extent to have for
   # projecting the cell values
-  blank <- raster(niche.crops[[1]])
-  
+  #blank <- raster(niche.crops[[1]])
+  blank <- raster("blank.grd")
   # get list of results from beta diversity analysis
-  betadiv.files <- list.files(out_path, pattern = "beta_diversity", full.name = TRUE)
+  betadiv.files <- list.files(out_path, pattern = "fnull", full.name = TRUE)
   if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))
-
+  
+  # load the current null expectation
+  load(paste0(out_path, "/beta_diversity_cnull.rda"))
+  res_cnull <- res
+  
   for(f in betadiv.files){
+    load(f)
+    res_fnull <- res
+    f <- gsub("fnull_", "", f)
     load(f)
     mod <- substr(f, nchar(f)-11, nchar(f)-4)
     
@@ -181,6 +267,20 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
     c_f <- stack(c(c_f_tax,c_f_phylo,c_f_func))
     names(c_f) <- c("Taxonomic", "Phylogenetic", "Functional")
     
+    # calculate the null expectation
+    c_c_tax <- fnCurrent2Future(res_cnull$beta.time.taxa.cnull, arbthresh, blank)
+    c_c_phylo <- fnCurrent2Future(res_cnull$beta.time.phylo.cnull, arbthresh, blank)
+    c_c_func <- fnCurrent2Future(res_cnull$beta.time.func.cnull, arbthresh, blank)
+    
+    # calculate corrected number of analogs
+    c_f_tax_null <- c_f_tax / c_c_tax
+    c_f_phylo_null <- c_f_phylo / c_c_phylo
+    c_f_func_null <- c_f_func / c_c_func
+    
+    # stack
+    c_f_null <- stack(c(c_f_tax_null, c_f_phylo_null, c_f_func_null))
+    names(c_f_null) <- c("Taxonomic", "Phylogenetic", "Functional")
+    
     # Step 2) FUTURE COMMUNITIES WITHOUT ANALOGS IN CURRENT (Novel) --------------
     
     #How many future communities do not have analogs in the current time?
@@ -193,12 +293,33 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
     f_c <- stack(c(f_c_tax,f_c_phylo,f_c_func))
     names(f_c) <- c("Taxonomic", "Phylogenetic", "Functional")
     
+    # calculate null expectation
+    f_f_tax <- fnFuture2Current(res_fnull$beta.time.taxa.fnull, arbthresh, blank)
+    f_f_phylo <- fnFuture2Current(res_fnull$beta.time.phylo.fnull, arbthresh, blank)
+    f_f_func <- fnFuture2Current(res_fnull$beta.time.func.fnull, arbthresh, blank)
+    
+    # calculate corrected number of analogs
+    f_c_tax_null <- f_c_tax / f_f_tax
+    f_c_phylo_null <- f_c_phylo / f_f_phylo
+    f_c_func_null <- f_c_func / f_f_func
+    
+    # stack
+    f_c_null <- stack(c(f_c_tax_null, f_c_phylo_null, f_c_func_null))
+    names(f_c_null) <- c("Taxonomic", "Phylogenetic", "Functional")
+    
     # output the raster stacks
     results <- stack(c_f, f_c)
     names(results) <- c(paste("Novel",c("Tax","Phylo","Func")), 
                         paste("Disappearing",c("Tax","Phylo","Func")))
     
     save(results, file=paste0(out_path, "/", arbthresh, "/NonAnalogRasters_", mod, ".rda"))
+    
+    # output null raster stacks
+    results <- stack(c_f_null, f_c_null)
+    names(results) <- c(paste("Novel",c("Tax","Phylo","Func")), 
+                        paste("Disappearing",c("Tax","Phylo","Func")))
+    
+    save(results, file=paste0(out_path, "/", arbthresh, "/NonAnalogRastersNull_", mod, ".rda"))
   }
 }
 

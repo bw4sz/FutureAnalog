@@ -52,7 +52,7 @@ getTraitData <- function() {
   
   #just get males & the 3 traits of interest
   mon <- filter(morph, Sex == "Macho") %>%
-    select(SpID, ExpC, Peso, AlCdo, TarsL) %>%
+    select(SpID, ExpC, Peso, AlCdo) %>%
     group_by(SpID) %>%
     summarise_each(funs(mean(., na.rm = TRUE))) %>%
     filter(complete.cases(.))

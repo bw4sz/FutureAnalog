@@ -39,36 +39,29 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   fco <- (fco - min(fco))/(max(fco) - min(fco))
   
   # Step 3) Bring in niche models ------------------------------------------------
-  #all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
+  all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
   
   # Clip to Extent and shape of desired countries (Ecuador for now)
-  #ec<-readOGR("InputData", "EcuadorCut")
-  #r<-raster(extent(ec))
+  ec<-readOGR("InputData", "EcuadorCut")
+  r<-raster(extent(ec))
   
   # Match cell size above from the SDM_SP function
-  #res(r) <- cell_size
-  #ec.r <- rasterize(ec,r)
+  res(r) <- cell_size
+  ec.r <- rasterize(ec,r)
   
-  #niche.crop <- lapply(all.niche,function(x){
-   # r <- crop(raster(x),extent(ec.r))
-  #  filnam <- paste(strsplit(x,".gri$")[[1]][1],"crop",sep="")
-   # writeRaster(r,filnam,overwrite=TRUE)
-  #})
+  niche.crop <- lapply(all.niche,function(x){
+    r <- crop(raster(x),extent(ec.r))
+    filnam <- paste(strsplit(x,".gri$")[[1]][1],"crop",sep="")
+    writeRaster(r,filnam,overwrite=TRUE)
+  })
   
   # get the crop files
-  #niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
+  niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
 
   
   # Step 4) Get current niches for comparing to ----------------------------------
-  #current <- niche.crops[grep("current", niche.crops, value=FALSE)]
-  #current <- tableFromRaster(current, threshold = 0.05)
-  # for now, load from the siteXspp folder
-  load("sppXsite/current.rda")
-  current <- sppXsite
-  
-  # set cell to the rownames and get rid of column - this is how the code set up to work
-  rownames(current) <- current$cell
-  current <- current[-1]
+  current <- niche.crops[grep("current", niche.crops, value=FALSE)]
+  current <- tableFromRaster(current, threshold = 0.05)
   
   #Remove NAs from current so we can do the following analyses. Some species do
   #not occur in Ecuador, so they should be removed from analysis here.
@@ -121,23 +114,19 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   save(res, file = paste0(out_path, "/beta_diversity_cnull.rda"))
   
   # Get climate models in use
-  #clim.mods <- list.files("../worldclim_data/projections_2070/")
+  clim.mods <- list.files("../worldclim_data/projections_2070/")
   #for now
-  clim.mods <- list.files("sppXsite", full.names = TRUE)
-  clim.mods_not <- list.files("sppXsite", full.names = TRUE, pattern = "current")
-  clim.mods <- setdiff(clim.mods, clim.mods_not)
+  #clim.mods <- list.files("sppXsite", full.names = TRUE)
+  #clim.mods_not <- list.files("sppXsite", full.names = TRUE, pattern = "current")
+  #clim.mods <- setdiff(clim.mods, clim.mods_not)
   
   for(mod in clim.mods){
-    # niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
+    niche <- niche.crops[grep(mod,niche.crops,value=FALSE)]
     
     #Create siteXspp table from input rasters, function is from
     #AlphaMappingFunctions.R, sourced at the top.
-    # siteXspps <- tableFromRaster(niche, threshold = 0.05)
-    load(mod)
-    siteXspps <- sppXsite
-    # set cell to the rownames and get rid of column - this is how the code set up to work
-    rownames(siteXspps) <- siteXspps$cell
-    siteXspps <- siteXspps[-1]
+    siteXspps <- tableFromRaster(niche, threshold = 0.05)
+    
     #Remove NAs from siteXspps 
     fails <- na.test(siteXspps)
     siteXspps <- siteXspps[,!colnames(siteXspps) %in% fails]
@@ -214,9 +203,6 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     rownames(beta.time.func.fnull) <- rownames(func.dat)
     colnames(beta.time.func.fnull) <- rownames(func.dat)
     
-    # cut model name out of file name
-    mod <- substr(mod, 10, 17)
-    
     res <- list(beta.time.taxa, beta.time.phylo, beta.time.func)
     names(res) <- c("beta.time.taxa", "beta.time.phylo", "beta.time.func")
     save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
@@ -230,13 +216,13 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
 # PART II: ANALOG ANALYSIS ---------------------------------------------------
 runAnalogAnalysis <- function(arbthresh, out_path) {
   # get the crop files
-  #niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
+  niche.crops <- list.files(out_path,pattern="crop.gri",full.name=T,recursive=T)
   
   
   # create a blank raster object of the correct size and extent to have for
   # projecting the cell values
-  #blank <- raster(niche.crops[[1]])
-  blank <- raster("blank.grd")
+  blank <- raster(niche.crops[[1]])
+  
   # get list of results from beta diversity analysis
   betadiv.files <- list.files(out_path, pattern = "fnull", full.name = TRUE)
   if(!dir.exists(paste(out_path, arbthresh, sep = "/"))) dir.create(paste(out_path, arbthresh, sep="/"))

@@ -1,9 +1,12 @@
 # GET DATA FOR THE CURRENT/FUTURE COMPARISON -----------------------------------
 
 
-rasterToDataFrame <- function(out_path){ 
-  
-  out.rasters <- list.files(out_path, pattern = "NonAnalogRastersNull_", full.names = TRUE, recursive = TRUE)
+rasterToDataFrame <- function(out_path, nullmod=TRUE){ 
+  if(nullmod) {
+    out.rasters <- list.files(out_path, pattern = "NonAnalogRastersNull_", full.names = TRUE, recursive = TRUE)
+  } else {
+    out.rasters <- list.files(out_path, pattern = "NonAnalogRasters_", full.names = TRUE, recursive = TRUE)
+  }
   
   out <- lapply(out.rasters, function(x) { 
     load(x)
@@ -11,8 +14,13 @@ rasterToDataFrame <- function(out_path){
     results <- stack(get("results"), elev)
     results <- mask(results, ec)
     arbthresh <- str_match(x,pattern=paste(cell,"(\\w+.\\w+)/NonAnalog",sep="/"))[,2] 
-    GCM <- substr(str_match(x,pattern="NonAnalogRastersNull_(\\w+.\\w+)bi70")[,2], 1, 2) 
-    RCP <- substr(str_match(x,pattern="NonAnalogRastersNull_(\\w+.\\w+)bi70")[,2], 3, 4)  
+    if(nullmod){
+      GCM <- substr(str_match(x,pattern="NonAnalogRastersNull_(\\w+.\\w+)bi70")[,2], 1, 2) 
+      RCP <- substr(str_match(x,pattern="NonAnalogRastersNull_(\\w+.\\w+)bi70")[,2], 3, 4)  
+    } else {
+      GCM <- substr(str_match(x,pattern="NonAnalogRasters_(\\w+.\\w+)bi70")[,2], 1, 2) 
+      RCP <- substr(str_match(x,pattern="NonAnalogRasters_(\\w+.\\w+)bi70")[,2], 3, 4)  
+    }
     
     dat <- rasterToPoints(results) %>%
       data.frame() %>%
@@ -131,7 +139,7 @@ for(rcp in rcp.list) {
       geom_raster(data = dat.dis.zero, aes(x = x, y = y)) +
       scale_fill_gradient2(low="white", high="red", name="No. future\nanalogs") +
       facet_wrap(~measure, nrow=1) +
-      geom_raster(data = hdf, aes(alpha=layer)) +
+      geom_raster(data = hdf, aes(x = x, y = y, alpha=layer)) +
       scale_alpha(range = c(0, 0.5), guide = "none") +
       scale_x_continuous(name="") + 
       scale_y_continuous(name="") +
@@ -153,7 +161,12 @@ for(rcp in rcp.list) {
       theme(strip.background=element_blank())
     
     output.plot <- plot_grid(plot.novel, gam.novel, plot.dis, gam.dis, plot.NvsD, plot.PvsF, labels=c("A", "B", "C", "D", "E", "F"), ncol=2, align="h")
-    save_plot(paste0("Figures/Main_Results_", rcp, "_", thresh, ".png"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)
+    if(nullmod) {
+      save_plot(paste0("Figures/Main_Results_Nullmod_", rcp, "_", thresh, ".png"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)  
+    } else {
+      save_plot(paste0("Figures/Main_Results_", rcp, "_", thresh, ".png"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)
+    }
+    
   }
 }
 

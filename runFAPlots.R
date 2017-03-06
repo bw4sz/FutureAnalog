@@ -27,7 +27,7 @@ rasterToDataFrame <- function(out_path){
 # hillshade data
 ec <- readOGR("InputData", "EcuadorCut")
 load("InputData/srtm_5arcmin.rda")
-hill <- raster("MAPA_VEGETACION_MAE_FINAL_OFICIAL/hillshade_cropped.tif")
+hill <- raster("InputData/hillshade_cropped.tif")
 hdf <- as.data.frame(hill, xy=TRUE)
 hdf <- data.frame(hdf)
 hdf <- hdf[complete.cases(hdf),]
@@ -81,8 +81,8 @@ for(rcp in rcp.list) {
       mutate(FminusP=Functional-Phylogenetic)
     
     dat.PvsF$comm.type <- factor(dat.PvsF$comm.type, levels=c("Novel", "Disappearing"), labels=c("Current", "Future"))
-    minval <- min(dat.PvsF$FminusP) + 0.3*min(dat.PvsF$FminusP)
-    maxval <- max(dat.PvsF$FminusP) - 0.3*max(dat.PvsF$FminusP)
+    minval <- min(dat.PvsF$FminusP, na.rm=TRUE) + 0.3*min(dat.PvsF$FminusP, na.rm=TRUE)
+    maxval <- max(dat.PvsF$FminusP, na.rm=TRUE) - 0.3*max(dat.PvsF$FminusP, na.rm=TRUE)
     maxval <- max(abs(minval), maxval)
     
     plot.PvsF <- ggplot(NULL, aes(x, y)) + 
@@ -108,7 +108,7 @@ for(rcp in rcp.list) {
     
     plot.novel <- ggplot(NULL) + 
       geom_raster(data = dat.novel, aes(x = x, y = y, fill=NoOfAnalogs)) +
-      geom_raster(data = dat.novel.zero, aes(color = "black", x = x, y = y)) +
+      geom_raster(data = dat.novel.zero, aes(x = x, y = y)) +
       scale_fill_gradient2(name="No. current\nanalogs", midpoint = 1) +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(x = x, y = y, alpha=layer)) +
@@ -116,7 +116,7 @@ for(rcp in rcp.list) {
       scale_x_continuous(name="") + 
       scale_y_continuous(name="") +
       coord_equal() + 
-      theme(strip.background = element_blank(), panel.margin = unit(2, "lines"), 
+      theme(strip.background = element_blank(), panel.spacing = unit(2, "lines"), 
             axis.ticks=element_blank(), axis.text=element_blank(), axis.line=element_blank())
     
     # data for the main plots will use the most severe RCP and analog threshold of 20%
@@ -125,9 +125,10 @@ for(rcp in rcp.list) {
       summarise(NoOfAnalogs = mean(value))
     
     dat.dis.zero <- filter(dat.dis, NoOfAnalogs==0)
-    plot.dis <- ggplot(NULL, aes(x, y)) + 
-      geom_raster(data = dat.dis, aes(fill=NoOfAnalogs)) +
-      geom_raster(data = dat.dis.zero, aes(color = "black")) +
+    
+    plot.dis <- ggplot(NULL) + 
+      geom_raster(data = dat.dis, aes(x = x, y = y, fill=NoOfAnalogs)) +
+      #geom_raster(data = dat.dis.zero, aes(x = x, y = y)) +
       scale_fill_gradient2(low="white", high="red", name="No. future\nanalogs") +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(alpha=layer)) +
@@ -135,7 +136,7 @@ for(rcp in rcp.list) {
       scale_x_continuous(name="") + 
       scale_y_continuous(name="") +
       coord_equal() + 
-      theme(strip.background = element_blank(), panel.margin = unit(2, "lines"), 
+      theme(strip.background = element_blank(), panel.spacing = unit(2, "lines"), 
             axis.ticks=element_blank(), axis.text=element_blank(), axis.line=element_blank())
     
     gam.novel <- ggplot(dat.novel, aes(x=output_srtm, y=NoOfAnalogs)) + geom_point(alpha=0.01) + 
@@ -149,7 +150,6 @@ for(rcp in rcp.list) {
       facet_wrap(~ measure) + 
       geom_smooth(method="gam",formula = y~s(x, k=20), colour="red") +
       labs(x=expression("Elevation (m)"), y=expression("No. future analogs")) +
-      ylim(0, 3000) +
       theme(strip.background=element_blank())
     
     output.plot <- plot_grid(plot.novel, gam.novel, plot.dis, gam.dis, plot.NvsD, plot.PvsF, labels=c("A", "B", "C", "D", "E", "F"), ncol=2, align="h")

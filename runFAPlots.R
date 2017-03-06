@@ -1,9 +1,12 @@
 # GET DATA FOR THE CURRENT/FUTURE COMPARISON -----------------------------------
 
 
-rasterToDataFrame <- function(out_path){ 
-  
-  out.rasters <- list.files(out_path, pattern = "NonAnalogRastersNull_", full.names = TRUE, recursive = TRUE)
+rasterToDataFrame <- function(out_path, nullmod=TRUE){ 
+  if(nullmod) {
+    out.rasters <- list.files(out_path, pattern = "NonAnalogRastersNull_", full.names = TRUE, recursive = TRUE)
+  } else {
+    out.rasters <- list.files(out_path, pattern = "NonAnalogRasters_", full.names = TRUE, recursive = TRUE)
+  }
   
   out <- lapply(out.rasters, function(x) { 
     load(x)
@@ -11,8 +14,13 @@ rasterToDataFrame <- function(out_path){
     results <- stack(get("results"), elev)
     results <- mask(results, ec)
     arbthresh <- str_match(x,pattern=paste(cell,"(\\w+.\\w+)/NonAnalog",sep="/"))[,2] 
-    GCM <- substr(str_match(x,pattern="NonAnalogRastersNull_(\\w+.\\w+)bi70")[,2], 1, 2) 
-    RCP <- substr(str_match(x,pattern="NonAnalogRastersNull_(\\w+.\\w+)bi70")[,2], 3, 4)  
+    if(nullmod){
+      GCM <- substr(str_match(x,pattern="NonAnalogRastersNull_(\\w+.\\w+)bi70")[,2], 1, 2) 
+      RCP <- substr(str_match(x,pattern="NonAnalogRastersNull_(\\w+.\\w+)bi70")[,2], 3, 4)  
+    } else {
+      GCM <- substr(str_match(x,pattern="NonAnalogRasters_(\\w+.\\w+)bi70")[,2], 1, 2) 
+      RCP <- substr(str_match(x,pattern="NonAnalogRasters_(\\w+.\\w+)bi70")[,2], 3, 4)  
+    }
     
     dat <- rasterToPoints(results) %>%
       data.frame() %>%
@@ -128,10 +136,10 @@ for(rcp in rcp.list) {
     
     plot.dis <- ggplot(NULL) + 
       geom_raster(data = dat.dis, aes(x = x, y = y, fill=NoOfAnalogs)) +
-      #geom_raster(data = dat.dis.zero, aes(x = x, y = y)) +
+      geom_raster(data = dat.dis.zero, aes(x = x, y = y)) +
       scale_fill_gradient2(low="white", high="red", name="No. future\nanalogs") +
       facet_wrap(~measure, nrow=1) +
-      geom_raster(data = hdf, aes(alpha=layer)) +
+      geom_raster(data = hdf, aes(x = x, y = y, alpha=layer)) +
       scale_alpha(range = c(0, 0.5), guide = "none") +
       scale_x_continuous(name="") + 
       scale_y_continuous(name="") +

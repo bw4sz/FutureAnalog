@@ -26,14 +26,17 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   rownames(mon) <- gsub(" ",".",mon$Species)
   mon <- mon[,-1]
   
-  #normalise traits and get euclidean distance matrix
-  normalise <- function(dcol) {
-    out <- (dcol - min(dcol))/(max(dcol) - min(dcol))
-  }
+  #principal component traits and get euclidean distance matrix
+  means <- apply(mon, 2, mean)
   
-  normalise_mon <- apply(mon, 2, normalise)
+  Bill <- (mon$Bill - means["Bill"])/sd(mon$Bill)
+  Mass <- (mon$Mass - means["Mass"])/sd(mon$Mass)
+  WingChord <- (mon$WingChord - means["WingChord"])/sd(mon$WingChord)
   
-  fco <- as.matrix(dist(normalise_mon, method = "euclidean"))
+  z.scores <- data.frame(Bill, Mass, WingChord)
+  rownames(z.scores) <- rownames(mon)
+  
+  fco <- as.matrix(dist(z.scores, method = "euclidean"))
   
   # standardise fco between 0 and 1 to make comparable to phylo and tax measures
   fco <- (fco - min(fco))/(max(fco) - min(fco))
@@ -208,8 +211,8 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
     save(res, file = paste0(out_path, "/beta_diversity_", mod, ".rda"))
     
     res_fnull <- list(beta.time.taxa.fnull, beta.time.phylo.fnull, beta.time.func.fnull)
-    names(res) <- c("beta.time.taxa.fnull", "beta.time.phylo.fnull", "beta.time.func.fnull")
-    save(res, file = paste0(out_path, "/beta_diversity_fnull_", mod, ".rda"))
+    names(res_fnull) <- c("beta.time.taxa.fnull", "beta.time.phylo.fnull", "beta.time.func.fnull")
+    save(res_fnull, file = paste0(out_path, "/beta_diversity_fnull_", mod, ".rda"))
   }
 }
 
@@ -233,7 +236,6 @@ runAnalogAnalysis <- function(arbthresh, out_path) {
   
   for(f in betadiv.files){
     load(f)
-    res_fnull <- res
     f <- gsub("fnull_", "", f)
     load(f)
     mod <- substr(f, nchar(f)-11, nchar(f)-4)

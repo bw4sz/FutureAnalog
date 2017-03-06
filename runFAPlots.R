@@ -27,7 +27,7 @@ rasterToDataFrame <- function(out_path){
 # hillshade data
 ec <- readOGR("InputData", "EcuadorCut")
 load("InputData/srtm_5arcmin.rda")
-hill <- raster("InputData/hillshade_cropped.tif")
+hill <- raster("MAPA_VEGETACION_MAE_FINAL_OFICIAL/hillshade_cropped.tif")
 hdf <- as.data.frame(hill, xy=TRUE)
 hdf <- data.frame(hdf)
 hdf <- hdf[complete.cases(hdf),]
@@ -116,7 +116,7 @@ for(rcp in rcp.list) {
       scale_x_continuous(name="") + 
       scale_y_continuous(name="") +
       coord_equal() + 
-      theme(strip.background = element_blank(), panel.spacing = unit(2, "lines"), 
+      theme(strip.background = element_blank(), panel.margin = unit(2, "lines"), 
             axis.ticks=element_blank(), axis.text=element_blank(), axis.line=element_blank())
     
     # data for the main plots will use the most severe RCP and analog threshold of 20%
@@ -128,7 +128,7 @@ for(rcp in rcp.list) {
     
     plot.dis <- ggplot(NULL) + 
       geom_raster(data = dat.dis, aes(x = x, y = y, fill=NoOfAnalogs)) +
-      #geom_raster(data = dat.dis.zero, aes(x = x, y = y)) +
+      geom_raster(data = dat.dis.zero, aes(x = x, y = y)) +
       scale_fill_gradient2(low="white", high="red", name="No. future\nanalogs") +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(alpha=layer)) +
@@ -136,7 +136,7 @@ for(rcp in rcp.list) {
       scale_x_continuous(name="") + 
       scale_y_continuous(name="") +
       coord_equal() + 
-      theme(strip.background = element_blank(), panel.spacing = unit(2, "lines"), 
+      theme(strip.background = element_blank(), panel.margin = unit(2, "lines"), 
             axis.ticks=element_blank(), axis.text=element_blank(), axis.line=element_blank())
     
     gam.novel <- ggplot(dat.novel, aes(x=output_srtm, y=NoOfAnalogs)) + geom_point(alpha=0.01) + 

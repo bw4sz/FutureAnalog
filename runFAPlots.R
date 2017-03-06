@@ -161,7 +161,12 @@ for(rcp in rcp.list) {
       theme(strip.background=element_blank())
     
     output.plot <- plot_grid(plot.novel, gam.novel, plot.dis, gam.dis, plot.NvsD, plot.PvsF, labels=c("A", "B", "C", "D", "E", "F"), ncol=2, align="h")
-    save_plot(paste0("Figures/Main_Results_", rcp, "_", thresh, ".png"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)
+    if(nullmod) {
+      save_plot(paste0("Figures/Main_Results_Nullmod_", rcp, "_", thresh, ".png"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)  
+    } else {
+      save_plot(paste0("Figures/Main_Results_", rcp, "_", thresh, ".png"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)
+    }
+    
   }
 }
 

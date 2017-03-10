@@ -38,9 +38,6 @@ runBetaDiv <- function(out_path, cell_size, clust = 7){
   
   fco <- as.matrix(dist(z.scores, method = "euclidean"))
   
-  # standardise fco between 0 and 1 to make comparable to phylo and tax measures
-  fco <- (fco - min(fco))/(max(fco) - min(fco))
-  
   # Step 3) Bring in niche models ------------------------------------------------
   all.niche <- list.files(out_path, pattern="ensemble.gri",full.name=T,recursive=T)
   

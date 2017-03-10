@@ -1,6 +1,6 @@
 # GET DATA FOR THE CURRENT/FUTURE COMPARISON -----------------------------------
 
-
+nullmod = TRUE
 rasterToDataFrame <- function(out_path, nullmod=TRUE){ 
   if(nullmod) {
     out.rasters <- list.files(out_path, pattern = "NonAnalogRastersNull_", full.names = TRUE, recursive = TRUE)
@@ -137,7 +137,7 @@ for(rcp in rcp.list) {
     plot.dis <- ggplot(NULL) + 
       geom_raster(data = dat.dis, aes(x = x, y = y, fill=NoOfAnalogs)) +
       geom_raster(data = dat.dis.zero, aes(x = x, y = y)) +
-      scale_fill_gradient2(low="white", high="red", name="No. future\nanalogs") +
+      scale_fill_gradient2(name="No. future\nanalogs", midpoint = 1) +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(x = x, y = y, alpha=layer)) +
       scale_alpha(range = c(0, 0.5), guide = "none") +

@@ -70,7 +70,7 @@ for(rcp in rcp.list) {
     
     plot.NvsD <- ggplot(NULL, aes(x, y)) + 
       geom_raster(data = dat.NvsD, aes(fill=NminusD)) +
-      scale_fill_gradient2(name="Greater amount\nof analog\ncommunities", breaks=c(-maxval, 0, maxval), 
+      scale_fill_gradient2(name="Greater amount\nof analog\ncommunities\n   ", breaks=c(-maxval, 0, maxval), 
                            labels=c("Future", "No difference", "Current"),
                            limits=c(-maxval, maxval)) +
       facet_wrap(~measure, nrow=1) +
@@ -95,7 +95,7 @@ for(rcp in rcp.list) {
     
     plot.PvsF <- ggplot(NULL, aes(x, y)) + 
       geom_raster(data = dat.PvsF, aes(fill=FminusP)) +
-      scale_fill_gradient2(name="Greater amount\nof analog\ncommunities", breaks=c(-maxval, 0, maxval), 
+      scale_fill_gradient2(name="Greater amount\nof analog\ncommunities\n   ", breaks=c(-maxval, 0, maxval), 
                            labels=c("Phylogenetic", "No difference", "Functional"),
                            limits=c(-maxval, maxval)) +
       facet_wrap(~comm.type, nrow=1) +
@@ -117,7 +117,7 @@ for(rcp in rcp.list) {
     plot.novel <- ggplot(NULL) + 
       geom_raster(data = dat.novel, aes(x = x, y = y, fill=NoOfAnalogs)) +
       geom_raster(data = dat.novel.zero, aes(x = x, y = y)) +
-      scale_fill_gradient2(name="No. current\nanalogs", midpoint = 1) +
+      scale_fill_gradient2(name="Current analogs", midpoint = 1) +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(x = x, y = y, alpha=layer)) +
       scale_alpha(range = c(0, 0.5), guide = "none") +
@@ -137,7 +137,7 @@ for(rcp in rcp.list) {
     plot.dis <- ggplot(NULL) + 
       geom_raster(data = dat.dis, aes(x = x, y = y, fill=NoOfAnalogs)) +
       geom_raster(data = dat.dis.zero, aes(x = x, y = y)) +
-      scale_fill_gradient2(name="No. future\nanalogs", midpoint = 1) +
+      scale_fill_gradient2(name="Future analogs", midpoint = 1) +
       facet_wrap(~measure, nrow=1) +
       geom_raster(data = hdf, aes(x = x, y = y, alpha=layer)) +
       scale_alpha(range = c(0, 0.5), guide = "none") +
@@ -150,21 +150,21 @@ for(rcp in rcp.list) {
     gam.novel <- ggplot(dat.novel, aes(x=output_srtm, y=NoOfAnalogs)) + geom_point(alpha=0.01) + 
       facet_wrap(~ measure) + 
       geom_smooth(method="gam",formula = y~s(x, k=20), colour="blue") +
-      labs(x=expression("Elevation (m)"), y=expression("No. current analogs")) +
+      labs(x=expression("Elevation (m)"), y=expression("Current analogs")) +
       #ylim(0, 5) +
       theme(strip.background=element_blank())
     
     gam.dis <- ggplot(dat.dis, aes(x=output_srtm, y=round(NoOfAnalogs, 0))) + geom_point(alpha=0.01) + 
       facet_wrap(~ measure) + 
       geom_smooth(method="gam",formula = y~s(x, k=20), colour="red") +
-      labs(x=expression("Elevation (m)"), y=expression("No. future analogs")) +
+      labs(x=expression("Elevation (m)"), y=expression("Future analogs")) +
       theme(strip.background=element_blank())
     
-    output.plot <- plot_grid(plot.novel, gam.novel, plot.dis, gam.dis, plot.NvsD, plot.PvsF, labels=c("A", "B", "C", "D", "E", "F"), ncol=2, align="h")
+    output.plot <- plot_grid(plot.novel, gam.novel, plot.dis, gam.dis, plot.NvsD, plot.PvsF, labels=c("(a)", "(b)", "(c)", "(d)", "(e)", "(f)"), ncol=2, align="h")
     if(nullmod) {
-      save_plot(paste0("Figures/Main_Results_Nullmod_", rcp, "_", thresh, ".png"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)  
+      save_plot(paste0("Figures/Main_Results_Nullmod_", rcp, "_", thresh, ".pdf"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)  
     } else {
-      save_plot(paste0("Figures/Main_Results_", rcp, "_", thresh, ".png"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)
+      save_plot(paste0("Figures/Main_Results_", rcp, "_", thresh, ".pdf"), output.plot, ncol=2, nrow=2, base_aspect_ratio = 1.3, base_width = 8.75, base_height = 4.66)
     }
     
   }

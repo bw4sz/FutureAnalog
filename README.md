@@ -1,4 +1,4 @@
-Hummingbird Taxonomic, Phylogenetic and Trait Analogs under Climate Change
+Future geographic patterns of novel and disappearing assemblages across three dimensions of diversity: a case study with Ecuadorian hummingbirds
 ============
 
 __Authors:__ Laura J. Graham, Ben Weinstein, Sarah R. Supp, Catherine Graham
@@ -46,7 +46,7 @@ __Packages:__
 `vegan`, `picante`, `analogue`, `doSNOW`, `ape`, `cluster`, `RColorBrewer`, `raster`, `ggplot2`, `phylobase`, `rgdal`, `tidyr`, `stringr`, `dplyr`, `biomod2`, `rasterVis`, `grid`, `devtools`, `broom`, `gridExtra`, `proxy`, `geometry`, `rcdd`, `cowplot`, `hypervolume`
 
 ## Workflow
-`runscript.R`
+Top level script `runscript.R` runs all code required for analysis:
 
 - Installs and loads all required packages
 - Sets resolution of analysis

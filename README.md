@@ -1,13 +1,13 @@
 Hummingbird Taxonomic, Phylogenetic and Trait Analogs under Climate Change
 ============
 
-__Authors:__ Ben Weinstein, Sarah R. Supp, Anusha Shankar, Marisa Lim, Catherine Graham
+__Authors:__ Laura J. Graham, Ben Weinstein, Sarah R. Supp, Catherine Graham
 
-Code for computing analog and non-analog  hummingbird communities under future climate change scenarios.
+Code for [Future geographic patterns of novel and disappearing assemblages across three dimensions of diversity: a case study with Ecuadorian hummingbirds](http://onlinelibrary.wiley.com/doi/10.1111/ddi.12587/full) DOI: 10.1111/ddi.12587
 
 License: This code is available under a BSD 2-Clause License.
 
-Copyright (c) 2013. All rights reserved.
+Copyright (c) 2017. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided that the 
 following conditions are met:
@@ -23,28 +23,15 @@ LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON A
 STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
 EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Contact information Ben Weinstein's email: benweinstein2010@gmail.com
+Contact information Laura J. Graham's email: laurajaneegraham@gmail.com, Ben Weinstein's email: benweinstein2010@gmail.com
 
 Contents
 =================================
 
+Data
+--------------
 `Inputdata` folder contains hummingbird localities for Ecuador and Colombia, the shapefile for the country perimeter of Ecuador
 morphology, and phylogeny. 
-
-Alpha Diversity
----------------
-* `AlphaMapping.R` : Computes Alpha mapping of phylogenetic, taxonomic, and trait metrics
-calls 
-* `AlphaMappingFunctions.R` to calculate grid based metrics of alpha diversity on grid cells
-* `SDM.R` which performs the ensemble niche models using biomod
--The input localities are in the Inputdata folder, but the env layers need to be held locally, they are > 30GB
-* `BenHolttraitDiversity.R` to calculate MNND
-
-Beta Diversity
-------------
-* `FutureAnalog.R` computes betametrics between current and future assemblages, needs to be done carefully, 
-consider how parallelization works on your operating system. 
-* `GDM_hbird.R` computes beta diversity using a generalized dissimilarity modeling (GDM) framework.
 
 Figures
 --------------
@@ -56,24 +43,16 @@ Requirements
 R version 2.XX or greater and 
 __Packages:__
 
-* analogue 
-* ape
-* biomod2
-* doSNOW
-* ecodist
-* FD
-* ggplot2
-* maptools
-* MASS
-* parallel
-* picante
-* raster
-* RColorBrewer
-* reshape
-* rgdal
-* stringr
-* vegan
+`vegan`, `picante`, `analogue`, `doSNOW`, `ape`, `cluster`, `RColorBrewer`, `raster`, `ggplot2`, `phylobase`, `rgdal`, `tidyr`, `stringr`, `dplyr`, `biomod2`, `rasterVis`, `grid`, `devtools`, `broom`, `gridExtra`, `proxy`, `geometry`, `rcdd`, `cowplot`, `hypervolume`
 
 ## Workflow
-- AlphaMapping.R (calls AlphaMappingFunctions.r and SDM.R) -> FutureAnalog.R
-- The GDM_hbird.R is a seperate idea for the moment.
+`runscript.R`
+
+- Installs and loads all required packages
+- Sets resolution of analysis
+- Sets up output folder structure
+- Calls `runSDM()` function from `runSDM.R` (depends `fnSDM.R`)
+- Calls `runProjections()` function from `runProjections.R`
+- Calls `runBetaDiv()` function from `FutureAnalog.R` (depends `AlphaMappingFunctions.R`)
+- Calls `runAnalogAnalysis` function from `FutureAnalog.R` for each threshold value (depends `FutureAnalogFunctions.R`)
+- Calls `runFAPlots.R`

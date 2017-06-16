@@ -14,14 +14,12 @@ for(p in packages) {
 
 # Load in source functions
 source("AlphaMappingFunctions.R")
-source("BenHolttraitDiversity.R")
 source("FutureAnalogFunctions.R")
 source("runSDM.R")
 source("fnSDM.R")
 source("runProjections.R")
 source("FutureAnalog.R")
 source("TraitMappingFunctions.R")
-source("BetaSorFunc.R")
 
 # variables for sensitivity analysis
 cell_size = 0.0833333333 # cell size numerical (degrees)
